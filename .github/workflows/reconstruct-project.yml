@@ -1,0 +1,75 @@
+name: Reconstruct Scripture Games
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reconstruct-scripture-games
+  cancel-in-progress: false
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether reconstruction is needed
+        id: payload
+        shell: bash
+        run: |
+          if [ -f ci-payload/part-00.b64 ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Payload already removed; project is already reconstructed."
+          fi
+
+      - name: Reassemble and verify archive
+        if: steps.payload.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t parts < <(find ci-payload -maxdepth 1 -type f -name 'part-*.b64' | sort)
+          test "${#parts[@]}" -eq 10
+          cat "${parts[@]}" > /tmp/scripture-games.b64
+          echo "aaf9b3f2fc3a28894fbb1b347026fa2cf55aaf071b73fd47380cc59cb7b9d2ca  /tmp/scripture-games.b64" | sha256sum -c -
+          base64 --decode /tmp/scripture-games.b64 > /tmp/scripture-games.tar.gz
+          echo "77e0376e994b0969584dd105a72ae03fa997f434824d1a4f55207c761475bcaa  /tmp/scripture-games.tar.gz" | sha256sum -c -
+          tar -tzf /tmp/scripture-games.tar.gz >/dev/null
+
+      - name: Extract audited source
+        if: steps.payload.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -xzf /tmp/scripture-games.tar.gz -C .
+          rm -rf ci-payload payload
+          test -f frontend/package.json
+          test -f frontend/app.json
+          test -f frontend/eas.json
+          test -f frontend/src/content.generated.ts
+          test -f scripts/audit.py
+
+      - name: Run content and source audit
+        if: steps.payload.outputs.present == 'true'
+        shell: bash
+        run: python3 scripts/audit.py
+
+      - name: Commit reconstructed project
+        if: steps.payload.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Reconstruct audited Scripture Games source"
+          git push origin main
