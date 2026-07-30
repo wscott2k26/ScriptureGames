@@ -1,0 +1,130 @@
+name: Promote RC3 Full Source
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - rc3-cinematic-visual-master
+    paths:
+      - '.github/workflows/promote-rc3.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-rc3-cinematic-source
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out promotion branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+        continue-on-error: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download and verify exact RC3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sg-stage /tmp/sg-download
+          mkdir -p /tmp/sg-stage /tmp/sg-download
+          cd /tmp/sg-download
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output scripture-games-rc3-source.tar.gz \
+            https://scripture-games-rc3-source-host.vercel.app/scripture-games-rc3-source.tar.gz
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output scripture-games-rc3-source.sha256 \
+            https://scripture-games-rc3-source-host.vercel.app/scripture-games-rc3-source.sha256
+          sha256sum --check scripture-games-rc3-source.sha256
+          tar -xzf scripture-games-rc3-source.tar.gz -C /tmp/sg-stage
+          test -f /tmp/sg-stage/frontend/package.json
+          test -f /tmp/sg-stage/frontend/app.json
+          test -f /tmp/sg-stage/frontend/eas.json
+          test -f /tmp/sg-stage/scripts/audit.py
+          test -f /tmp/sg-stage/scripts/audit-visual-master.py
+
+      - name: Regenerate and verify the complete art system
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sg-stage
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          python scripts/generate-rc3-assets.py
+          python scripts/audit.py
+          python scripts/audit-visual-master.py
+
+      - name: Install registry-backed dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd /tmp/sg-stage/frontend
+          yarn install --non-interactive
+
+      - name: Run Expo Doctor
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sg-stage/frontend
+          yarn doctor
+
+      - name: Run TypeScript and lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sg-stage/frontend
+          yarn typecheck
+          yarn lint
+
+      - name: Export iOS and Android bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sg-stage/frontend
+          yarn export:ios
+          yarn export:android
+          test -d dist-ios
+          test -d dist-android
+
+      - name: Remove transient build output
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sg-stage/frontend/node_modules
+          rm -rf /tmp/sg-stage/frontend/dist-ios
+          rm -rf /tmp/sg-stage/frontend/dist-android
+          rm -rf /tmp/sg-stage/frontend/.expo
+
+      - name: Replace branch with certified normal source
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/sg-stage/. .
+          rm -rf release-patches ci-payload payload
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Certified source already matches branch.'
+          else
+            git commit -m 'Promote certified RC3 cinematic source'
+            git push origin HEAD:rc3-cinematic-visual-master
+          fi
