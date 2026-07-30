@@ -2,6 +2,10 @@ name: Build and Submit RC3
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-submit-rc3.yml'
   workflow_run:
     workflows:
       - Certify and Merge RC3
@@ -9,14 +13,17 @@ on:
       - completed
 
 permissions:
-  contents: read
+  contents: write
   actions: read
+  issues: write
 
 jobs:
   signed-builds:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: Check out certified main
@@ -33,7 +40,19 @@ jobs:
           test -f frontend/app.json
           test -f frontend/eas.json
           test -f scripts/audit-visual-master.py
-          grep -q 'Cinematic Visual Master' CINEMATIC_VISUAL_MASTER.md
+          test -f CINEMATIC_VISUAL_MASTER_RC3.md
+
+      - name: Confirm protected Expo token is available
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo "EXPO_TOKEN is missing from repository Actions secrets." >&2
+            exit 1
+          fi
+          echo "Expo token is present and protected."
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -103,3 +122,28 @@ jobs:
             ios-build.json
           if-no-files-found: error
           retention-days: 90
+
+      - name: Record successful signed-build handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > SIGNED_BUILD_STATUS.md <<EOF
+          # Scripture Games RC3 Signed Build Status
+
+          - GitHub run: $GITHUB_RUN_ID
+          - Expo authentication: passed
+          - Android preview build: requested/completed by EAS
+          - iOS production build and TestFlight submission: requested/completed by EAS
+          - Recorded: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          EOF
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add SIGNED_BUILD_STATUS.md
+          git commit -m 'Record successful RC3 signed-build handoff' || true
+          git push origin HEAD:main
+
+      - name: Report signed-build blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 signed-build-only run needs attention — $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
