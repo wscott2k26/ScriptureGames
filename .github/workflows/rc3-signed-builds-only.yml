@@ -1,0 +1,93 @@
+name: RC3 Signed Builds Only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scripture-games-rc3-signed-builds
+  cancel-in-progress: false
+
+jobs:
+  signed-builds:
+    name: Android preview and TestFlight submission
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo 'EXPO_TOKEN is not configured for this repository.' >&2
+            exit 1
+          fi
+
+      - name: Check out certified main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install certified dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Verify Expo identity and linked project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          test "$(eas whoami)" = 'wscott2k8'
+          eas project:info --non-interactive
+
+      - name: Build Android preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform android --profile preview --non-interactive --json > ../android-build.json
+
+      - name: Build and submit iOS to TestFlight
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform ios --profile production --non-interactive --auto-submit --json > ../ios-build.json
+
+      - name: Save signed-build records
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-signed-build-records
+          path: |
+            android-build.json
+            ios-build.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact signed-build blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 signed-only release needs attention — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
