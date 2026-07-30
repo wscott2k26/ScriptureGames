@@ -1,0 +1,21 @@
+# Source and dependencies
+node_modules
+.expo
+dist-*
+*.log
+.env
+.env.*
+!.env.example
+
+# Local and generated QA artifacts
+coverage
+__pycache__
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Documentation not required in native builds
+../*.md
+../*.txt
+../backend
+../scripts

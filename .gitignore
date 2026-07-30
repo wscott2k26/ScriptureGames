@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist-ios/
+dist-android/
+coverage/
+*.log
+.DS_Store
+__pycache__/
+*.pyc

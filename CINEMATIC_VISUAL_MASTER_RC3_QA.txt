@@ -1,0 +1,85 @@
+SCRIPTURE GAMES RC3 — CINEMATIC VISUAL MASTER
+FINAL FOUR-PASS LOCAL VERIFICATION
+=============================================
+
+Scope
+-----
+This report covers the exact RC3 source package before final ZIP creation.
+It verifies the complete local-first app, all 25 user-facing routes, the three
+locked premium experience pillars, deterministic original artwork, content,
+configuration, persistence structure, and source syntax.
+
+Each of the four independent passes produced the same results:
+
+PASS 1 — PASSED
+PASS 2 — PASSED
+PASS 3 — PASSED
+PASS 4 — PASSED
+
+Per-pass results
+----------------
+- Deterministic asset regeneration: exact SHA-256 match before and after
+- Release/content audit: 1,468 passed, 0 failed
+- Cinematic visual master audit: 182 passed, 0 failed
+- TypeScript/TSX transpile diagnostics: 53 files, 0 errors
+- Structural, route, tool-boundary, material, and image checks: 148 passed
+- User-facing route coverage: 25 routes
+- Python source compilation: passed
+
+Three-pillar release gates
+--------------------------
+1. Liquid Glassmorphism
+   - Native Expo BlurView
+   - Five glass strengths
+   - Glass caustic texture
+   - Luminous edges, highlights, shadows, and fallback opacity
+   - Reduced-transparency fallback
+   - Shared glass surface present on every user-facing route
+
+2. Tactile Maximalism
+   - Polished gold, aged bronze, obsidian stone, carved sandstone
+   - Raised faces, bevels, depth plates, and texture overlays
+   - Spring compression, translate depth, scale response, haptics
+   - Tactile wrappers used for interactive controls
+   - Raw native Pressable bypass prohibited by visual audit
+
+3. Immersive Cinematic Pacing
+   - Drifting and breathing backgrounds
+   - Light sweeps, dust, depth orbs, vignette
+   - Shared screen entrance pacing
+   - Word-by-word story reveal with tap-to-complete
+   - Consistent router transitions
+   - Reduced Motion and Cinematic Text preferences
+
+Approved runtime visual tools
+-----------------------------
+- React Native + Expo
+- React Native Reanimated
+- Expo BlurView
+- Expo Linear Gradient
+- Expo Haptics
+
+No duplicate animation engine, UI builder, automation platform, or second
+backend was introduced.
+
+Deterministic art
+-----------------
+The project includes scripts/generate-rc3-assets.py. It recreates all five
+material textures, eleven Genesis environments, fifteen story panels, app
+icon, adaptive icon, favicon, splash art, devotional art, and placeholders.
+Four consecutive rebuilds produced exact matching hashes.
+
+GitHub Actions
+--------------
+The account-level Actions restriction was removed. The project includes
+.github/workflows/quality.yml for registry-backed dependency installation,
+asset regeneration/diff verification, both audits, Expo Doctor, installed-SDK
+TypeScript, lint, and iOS/Android exports.
+
+Honest remaining external gates
+-------------------------------
+This offline packaging environment could not reach the package registry.
+Therefore the included GitHub Actions quality workflow still needs to run on
+the canonical source commit before RC3 can be promoted to TestFlight build
+status. Signed EAS builds and physical iPhone/Android testing also remain
+required before Production.

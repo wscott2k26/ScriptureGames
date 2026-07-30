@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Scripture Games",
+    "slug": "scripture-games",
+    "description": "A premium biblical competition-adventure. Enter Genesis, face ten cinematic trials, master Scripture, and rise through the ranks.",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "scripturegames",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.willywill.scripturegames",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#080D18"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.willywill.scripturegames",
+      "versionCode": 1
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-image.png",
+          "imageWidth": 300,
+          "resizeMode": "contain",
+          "backgroundColor": "#080D18",
+          "dark": {
+            "image": "./assets/images/splash-image.png",
+            "backgroundColor": "#080D18"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "owner": "wscott2k8",
+    "backgroundColor": "#080D18",
+    "primaryColor": "#E8B957",
+    "extra": {
+      "eas": {
+        "projectId": "18710e80-2a62-46ac-8d3a-d1711b7d920a"
+      }
+    }
+  }
+}
