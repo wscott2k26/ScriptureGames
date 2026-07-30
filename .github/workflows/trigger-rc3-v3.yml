@@ -1,0 +1,24 @@
+name: Trigger RC3 V3 Certification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trigger-rc3-v3.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the RC3 V3 certification workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run rc3-certification-v3.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "RC3 V3 certification dispatched."
