@@ -1,0 +1,105 @@
+name: Build and Submit RC3
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Certify and Merge RC3
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  signed-builds:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out certified main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Confirm RC3 source is on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/package.json
+          test -f frontend/app.json
+          test -f frontend/eas.json
+          test -f scripts/audit-visual-master.py
+          grep -q 'Cinematic Visual Master' CINEMATIC_VISUAL_MASTER.md
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Verify connected Expo project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas whoami
+          eas project:info --non-interactive
+          npx expo config --type public > /tmp/expo-public-config.txt
+          grep -q '18710e80-2a62-46ac-8d3a-d1711b7d920a' /tmp/expo-public-config.txt
+          grep -q 'com.willywill.scripturegames' /tmp/expo-public-config.txt
+
+      - name: Build Android preview APK
+        id: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --json > ../android-build.json
+          python -m json.tool ../android-build.json
+
+      - name: Build and submit iOS production binary
+        id: ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --auto-submit \
+            --json > ../ios-build.json
+          python -m json.tool ../ios-build.json
+
+      - name: Save signed-build records
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-signed-build-records
+          path: |
+            android-build.json
+            ios-build.json
+          if-no-files-found: error
+          retention-days: 90
