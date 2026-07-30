@@ -1,0 +1,1 @@
+Upload ScriptureGames-Cinematic-Visual-Master-RC3.zip to this branch without extracting or renaming it. Expected SHA-256: 0ac177ef5ff9b408a140ffb623295ae00c09171c366e587706d0b6d81c5592b2
