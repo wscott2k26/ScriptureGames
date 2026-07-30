@@ -1,0 +1,203 @@
+name: RC3 Master Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/rc3-master-release.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: scripture-games-rc3-master-release
+  cancel-in-progress: false
+
+jobs:
+  certify-and-publish-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out canonical repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download and verify exact RC3 source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sg-stage /tmp/sg-download
+          mkdir -p /tmp/sg-stage /tmp/sg-download
+          cd /tmp/sg-download
+          curl --fail --location --retry 8 --retry-all-errors \
+            --output scripture-games-rc3-source.tar.gz \
+            https://scripture-games-rc3-source-host.vercel.app/scripture-games-rc3-source.tar.gz
+          curl --fail --location --retry 8 --retry-all-errors \
+            --output scripture-games-rc3-source.sha256 \
+            https://scripture-games-rc3-source-host.vercel.app/scripture-games-rc3-source.sha256
+          sha256sum --check scripture-games-rc3-source.sha256
+          tar -xzf scripture-games-rc3-source.tar.gz -C /tmp/sg-stage
+          test -f /tmp/sg-stage/frontend/package.json
+          test -f /tmp/sg-stage/frontend/app.json
+          test -f /tmp/sg-stage/frontend/eas.json
+          test -f /tmp/sg-stage/scripts/audit.py
+          test -f /tmp/sg-stage/scripts/audit-visual-master.py
+          test -f /tmp/sg-stage/scripts/generate-rc3-assets.py
+          test -f /tmp/sg-stage/CINEMATIC_VISUAL_MASTER.md
+
+      - name: Install registry-backed dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd /tmp/sg-stage/frontend
+          yarn install --non-interactive
+
+      - name: Verify deterministic visual assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sg-stage
+          find frontend/assets -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/assets-before.sha256
+          python scripts/generate-rc3-assets.py
+          find frontend/assets -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/assets-after.sha256
+          diff -u /tmp/assets-before.sha256 /tmp/assets-after.sha256
+
+      - name: Run four complete certification passes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sg-stage
+          for pass in 1 2 3 4; do
+            echo "========== RC3 MASTER PASS $pass OF 4 =========="
+            python scripts/audit.py
+            python scripts/audit-visual-master.py
+            (
+              cd frontend
+              yarn doctor
+              yarn typecheck
+              yarn lint
+              rm -rf dist-ios dist-android .expo
+              yarn export:ios
+              yarn export:android
+              test -d dist-ios
+              test -d dist-android
+              rm -rf dist-ios dist-android .expo
+            )
+          done
+
+      - name: Clean transient files and publish normal source to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sg-stage/frontend/node_modules
+          rm -rf /tmp/sg-stage/frontend/dist-ios
+          rm -rf /tmp/sg-stage/frontend/dist-android
+          rm -rf /tmp/sg-stage/frontend/.expo
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/sg-stage/. .
+          rm -rf release-patches ci-payload payload
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add -A
+          git commit -m 'Publish four-pass certified RC3 cinematic source'
+          git push origin HEAD:main
+
+  signed-builds-and-ios-submit:
+    needs: certify-and-publish-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out certified main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up connected Expo and EAS identity
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install certified dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Quadruple-check Expo identity and app identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          for pass in 1 2 3 4; do
+            echo "========== EXPO IDENTITY PASS $pass OF 4 =========="
+            eas whoami | tee "/tmp/eas-whoami-$pass.txt"
+            grep -q 'wscott2k8' "/tmp/eas-whoami-$pass.txt"
+            eas project:info --non-interactive | tee "/tmp/eas-project-$pass.txt"
+            npx expo config --type public > "/tmp/expo-config-$pass.txt"
+            grep -q '18710e80-2a62-46ac-8d3a-d1711b7d920a' "/tmp/expo-config-$pass.txt"
+            grep -q 'com.willywill.scripturegames' "/tmp/expo-config-$pass.txt"
+          done
+
+      - name: Build Android preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --json > ../android-build.json
+          python -m json.tool ../android-build.json
+
+      - name: Build and auto-submit iOS production binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --auto-submit \
+            --json > ../ios-build.json
+          python -m json.tool ../ios-build.json
+
+      - name: Upload signed-build records
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-signed-build-records
+          path: |
+            android-build.json
+            ios-build.json
+          if-no-files-found: error
+          retention-days: 90
