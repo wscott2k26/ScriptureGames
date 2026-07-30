@@ -2,15 +2,15 @@ name: RC3 Certification V4
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/rc3-certification-v4.yml'
 
 permissions:
   contents: write
   issues: write
   actions: read
+
+concurrency:
+  group: scripture-games-rc3-v4
+  cancel-in-progress: false
 
 env:
   RC3_SOURCE_BRANCH: rc3-upload
@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - uses: actions/setup-python@v5
         with:
@@ -116,8 +116,13 @@ jobs:
           git config user.email actions@users.noreply.github.com
           git config user.name 'Scripture Games CI'
           git add -A
-          git commit -m 'Publish four-pass certified RC3 source via V4'
-          git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo 'Certified RC3 source already matches main; continuing to signed builds.'
+          else
+            git commit -m 'Publish four-pass certified RC3 source via V4'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
       - name: Report certification blocker
         if: failure()
@@ -129,7 +134,7 @@ jobs:
     name: Android preview and TestFlight submission
     needs: certify-and-publish
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
         with:
@@ -138,7 +143,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
@@ -153,7 +158,7 @@ jobs:
           set -euo pipefail
           npm install --global yarn@1.22.22
           cd frontend
-          yarn install --frozen-lockfile --non-interactive
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
       - name: Verify Expo account and project
         shell: bash
@@ -186,3 +191,11 @@ jobs:
             ios-build.json
           if-no-files-found: error
           retention-days: 90
+
+      - name: Report signed-build blocker
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 signed builds need attention — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
