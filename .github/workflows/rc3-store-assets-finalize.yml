@@ -1,0 +1,201 @@
+name: Finalize RC3 Store Assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/rc3-store-assets-finalize.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: scripture-games-rc3-store-assets
+  cancel-in-progress: false
+
+jobs:
+  finalize-store-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for certified RC3 source and device evidence
+        id: evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 90); do
+            git fetch origin main
+            if git cat-file -e origin/main:frontend/package.json 2>/dev/null; then
+              RUN_JSON="$(gh run list \
+                --repo "$GITHUB_REPOSITORY" \
+                --workflow 'RC3 Device Validation and Screenshots' \
+                --limit 10 \
+                --json databaseId,status,conclusion,headBranch,createdAt)"
+              RUN_ID="$(printf '%s' "$RUN_JSON" | jq -r '[.[] | select(.status=="completed" and .conclusion=="success")][0].databaseId // empty')"
+              if [ -n "$RUN_ID" ]; then
+                echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+                git checkout -B main origin/main
+                exit 0
+              fi
+            fi
+            echo "Waiting for successful device evidence ($attempt/90)..."
+            sleep 20
+          done
+          echo 'No successful device-validation run became available.' >&2
+          exit 1
+
+      - name: Download Android and iOS device evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/device-evidence
+          mkdir -p /tmp/device-evidence/android /tmp/device-evidence/ios
+          gh run download "${{ steps.evidence.outputs.run_id }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name scripture-games-rc3-android-device-evidence \
+            --dir /tmp/device-evidence/android
+          gh run download "${{ steps.evidence.outputs.run_id }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name scripture-games-rc3-ios-simulator-evidence \
+            --dir /tmp/device-evidence/ios
+
+      - name: Set up Python image validation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate and build store screenshot sets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          rm -rf store-assets/app-store store-assets/google-play
+          mkdir -p store-assets/app-store store-assets/google-play
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont, ImageStat
+          import hashlib, json, math
+
+          roots = {
+              'ios': Path('/tmp/device-evidence/ios'),
+              'android': Path('/tmp/device-evidence/android'),
+          }
+          files = {}
+          for key, root in roots.items():
+              found = sorted(root.rglob('*.png'))
+              if len(found) < 6:
+                  raise SystemExit(f'{key}: expected at least six screenshots, found {len(found)}')
+              files[key] = found
+
+          def perceptual_signature(path):
+              im = Image.open(path).convert('L').resize((32, 32))
+              px = list(im.getdata())
+              mean = sum(px) / len(px)
+              return ''.join('1' if p >= mean else '0' for p in px)
+
+          def distance(a, b):
+              return sum(x != y for x, y in zip(a, b))
+
+          report = {'sources': {}, 'outputs': []}
+          for platform, shots in files.items():
+              sigs = []
+              for shot in shots:
+                  im = Image.open(shot).convert('RGB')
+                  if im.width < 600 or im.height < 1000:
+                      raise SystemExit(f'{platform}: screenshot too small: {shot} {im.size}')
+                  stat = ImageStat.Stat(im)
+                  if max(stat.var) < 12:
+                      raise SystemExit(f'{platform}: screenshot appears blank/flat: {shot}')
+                  sig = perceptual_signature(shot)
+                  if any(distance(sig, old) < 18 for old in sigs):
+                      raise SystemExit(f'{platform}: near-duplicate screenshot detected: {shot}')
+                  sigs.append(sig)
+              report['sources'][platform] = [str(p) for p in shots]
+
+          titles = [
+              ('ENTER THE WORD', 'A cinematic biblical competition-adventure'),
+              ('CHOOSE YOUR ORDER', 'Build a player identity shaped by Scripture'),
+              ('FACE TEN GENESIS TRIALS', 'Story decisions, challenges, and progression'),
+              ('TRAIN WITH PURPOSE', 'Topics, verses, puzzles, and daily practice'),
+              ('EXPLORE THE ARCHIVE', 'Fifteen stories across two learning paths'),
+              ('ASK THE BIBLE COMPANION', 'Curated local-first Scripture guidance'),
+              ('RISE THROUGH THE RANKS', 'Manna, achievements, streaks, and rewards'),
+              ('YOUR PROGRESS ENDURES', 'Reliable offline resume and local profiles'),
+          ]
+
+          def font(size, bold=False):
+              choices = [
+                  '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                  '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+              ]
+              for p in choices:
+                  if Path(p).exists(): return ImageFont.truetype(p, size)
+              return ImageFont.load_default()
+
+          def cover(im, size):
+              ratio=max(size[0]/im.width,size[1]/im.height)
+              resized=im.resize((round(im.width*ratio),round(im.height*ratio)),Image.Resampling.LANCZOS)
+              left=(resized.width-size[0])//2; top=(resized.height-size[1])//2
+              return resized.crop((left,top,left+size[0],top+size[1]))
+
+          def build_set(source_files, out_dir, canvas_size, phone_box):
+              out_dir.mkdir(parents=True, exist_ok=True)
+              for index, (title, subtitle) in enumerate(titles, start=1):
+                  src=Image.open(source_files[(index-1)%len(source_files)]).convert('RGB')
+                  canvas=Image.new('RGB', canvas_size, '#080d18')
+                  draw=ImageDraw.Draw(canvas)
+                  # restrained cinematic light and glass frame
+                  for y in range(canvas.height):
+                      t=y/max(1,canvas.height-1)
+                      r=int(8+10*t); g=int(13+14*t); b=int(24+22*t)
+                      draw.line((0,y,canvas.width,y),fill=(r,g,b))
+                  x,y,w,h=phone_box
+                  fitted=cover(src,(w,h))
+                  canvas.paste(fitted,(x,y))
+                  draw.rounded_rectangle((x-8,y-8,x+w+8,y+h+8),radius=42,outline='#f0c76b',width=8)
+                  draw.rounded_rectangle((x-20,y-20,x+w+20,y+h+20),radius=52,outline='#5b4320',width=4)
+                  tf=font(round(canvas.width*0.055),True)
+                  sf=font(round(canvas.width*0.026),False)
+                  draw.text((canvas.width//2,round(canvas.height*0.065)),title,font=tf,fill='#f7df9b',anchor='ma',stroke_width=1,stroke_fill='#3b2508')
+                  draw.text((canvas.width//2,round(canvas.height*0.125)),subtitle,font=sf,fill='#f3f2ed',anchor='ma')
+                  out=out_dir/f'{index:02d}.png'
+                  canvas.save(out,optimize=True)
+                  report['outputs'].append({'path':str(out),'size':canvas_size,'sha256':hashlib.sha256(out.read_bytes()).hexdigest()})
+
+          build_set(files['ios'],Path('store-assets/app-store'),(1290,2796),(85,500,1120,2140))
+          build_set(files['android'],Path('store-assets/google-play'),(1080,1920),(105,330,870,1450))
+          Path('store-assets/STORE_ASSET_QA.json').write_text(json.dumps(report,indent=2))
+          PY
+          test "$(find store-assets/app-store -name '*.png' | wc -l | tr -d ' ')" -eq 8
+          test "$(find store-assets/google-play -name '*.png' | wc -l | tr -d ' ')" -eq 8
+
+      - name: Commit validated store assets to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B main origin/main
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add store-assets
+          git commit -m 'Add validated RC3 App Store and Google Play screenshots'
+          git push origin HEAD:main
+
+      - name: Upload final store assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-final-store-assets
+          path: store-assets
+          if-no-files-found: error
+          retention-days: 90
