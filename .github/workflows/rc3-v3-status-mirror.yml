@@ -1,0 +1,72 @@
+name: RC3 V3 Status Mirror
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rc3-v3-status-mirror.yml'
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for the latest V3 certification result
+        shell: bash
+        run: |
+          set -euo pipefail
+          for cycle in $(seq 1 60); do
+            json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow 'RC3 Certification V3' --limit 1 --json databaseId,status,conclusion,url,headSha,createdAt)"
+            run_id="$(printf '%s' "$json" | jq -r '.[0].databaseId // empty')"
+            status="$(printf '%s' "$json" | jq -r '.[0].status // "missing"')"
+            conclusion="$(printf '%s' "$json" | jq -r '.[0].conclusion // ""')"
+            url="$(printf '%s' "$json" | jq -r '.[0].url // ""')"
+            echo "cycle=$cycle run=$run_id status=$status conclusion=$conclusion"
+            if [ "$status" = 'completed' ]; then
+              printf '%s\n' "$run_id" > /tmp/run_id
+              printf '%s\n' "$conclusion" > /tmp/conclusion
+              printf '%s\n' "$url" > /tmp/url
+              exit 0
+            fi
+            sleep 30
+          done
+          echo 'V3 did not complete within the tracking window.' >&2
+          exit 1
+
+      - name: Record the completed result
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id="$(cat /tmp/run_id)"
+          conclusion="$(cat /tmp/conclusion)"
+          url="$(cat /tmp/url)"
+          git fetch origin main
+          git checkout -B main origin/main
+          cat > V3_CERTIFICATION_STATUS.md <<EOF
+          # RC3 V3 Certification Status
+
+          - Run: $run_id
+          - Conclusion: $conclusion
+          - URL: $url
+          - Recorded: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          EOF
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add V3_CERTIFICATION_STATUS.md
+          git commit -m "Record RC3 V3 certification result: $conclusion"
+          git push origin HEAD:main
+          if [ "$conclusion" != 'success' ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 V3 certification needs attention — run $run_id" --body "Result: $conclusion. Review: $url"
+          fi
