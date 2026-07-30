@@ -63,7 +63,7 @@ jobs:
           test -f "$source_root/scripts/audit-visual-master.py"
           echo "SOURCE_ROOT=$source_root" >> "$GITHUB_ENV"
 
-      - name: Lock connected Expo identity and correct audit scope
+      - name: Lock connected identity and apply verified source corrections
         shell: bash
         run: |
           set -euo pipefail
@@ -72,6 +72,7 @@ jobs:
           from pathlib import Path
 
           root = Path(os.environ['SOURCE_ROOT'])
+
           app_path = root / 'frontend' / 'app.json'
           app = json.loads(app_path.read_text(encoding='utf-8'))
           expo = app['expo']
@@ -93,6 +94,23 @@ jobs:
               'for source in sorted(FRONTEND.rglob("*.tsx")):\n    if "node_modules" in source.parts:\n        continue\n    body = text(source)',
           )
           visual_path.write_text(visual, encoding='utf-8')
+
+          quiz_path = root / 'frontend' / 'app' / '(tabs)' / 'quiz.tsx'
+          quiz = quiz_path.read_text(encoding='utf-8')
+          assert "icon: 'mount'" in quiz
+          quiz_path.write_text(quiz.replace("icon: 'mount'", "icon: 'map'"), encoding='utf-8')
+
+          glass_path = root / 'frontend' / 'src' / 'components' / 'premium' / 'GlassPanel.tsx'
+          glass = glass_path.read_text(encoding='utf-8')
+          old_glass = '<Image pointerEvents="none" source={CAUSTICS} resizeMode="cover" style={styles.caustics} />'
+          assert old_glass in glass
+          glass_path.write_text(glass.replace(old_glass, '<Image source={CAUSTICS} resizeMode="cover" style={styles.caustics} />'), encoding='utf-8')
+
+          material_path = root / 'frontend' / 'src' / 'components' / 'premium' / 'MaterialSurface.tsx'
+          material = material_path.read_text(encoding='utf-8')
+          old_material = '<Image source={TEXTURES[material]} resizeMode="repeat" pointerEvents="none" style={styles.texture} />'
+          assert old_material in material
+          material_path.write_text(material.replace(old_material, '<Image source={TEXTURES[material]} resizeMode="repeat" style={styles.texture} />'), encoding='utf-8')
           PY
 
       - name: Install real dependencies
@@ -295,6 +313,7 @@ jobs:
           git commit -m 'Record RC3 TestFlight submission status'
           git push origin HEAD:main
           gh issue close 3 --repo "$GITHUB_REPOSITORY" --reason completed || true
+          gh issue close 5 --repo "$GITHUB_REPOSITORY" --reason completed || true
 
       - name: Report signed-build failure
         if: failure()
