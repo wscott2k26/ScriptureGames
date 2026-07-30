@@ -1,4 +1,4 @@
-name: Monitor RC3 V3 Retry
+name: Dispatch and Track RC3 V4
 
 on:
   workflow_dispatch:
@@ -8,66 +8,103 @@ on:
       - '.github/workflows/monitor-rc3-v3-retry.yml'
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   issues: write
 
 jobs:
-  monitor:
+  dispatch-and-track:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 360
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Wait for the freshly dispatched V3 run
+      - name: Dispatch RC3 V4 explicitly
+        id: dispatch
         shell: bash
         run: |
           set -euo pipefail
-          for cycle in $(seq 1 240); do
-            json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow rc3-certification-v3.yml --limit 1 --json databaseId,status,conclusion,url,createdAt,headSha)"
-            run_id="$(printf '%s' "$json" | jq -r '.[0].databaseId // empty')"
-            status="$(printf '%s' "$json" | jq -r '.[0].status // "missing"')"
-            conclusion="$(printf '%s' "$json" | jq -r '.[0].conclusion // ""')"
-            url="$(printf '%s' "$json" | jq -r '.[0].url // ""')"
-            created="$(printf '%s' "$json" | jq -r '.[0].createdAt // ""')"
-            echo "cycle=$cycle run=$run_id status=$status conclusion=$conclusion created=$created"
-            if [ "$status" = "completed" ]; then
-              printf '%s\n' "$run_id" > /tmp/run_id
-              printf '%s\n' "$conclusion" > /tmp/conclusion
-              printf '%s\n' "$url" > /tmp/url
-              exit 0
-            fi
-            sleep 60
-          done
-          echo "V3 retry did not complete within four hours." >&2
-          exit 1
+          started="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "started=$started" >> "$GITHUB_OUTPUT"
+          gh workflow run rc3-certification-v4.yml --repo "$GITHUB_REPOSITORY" --ref main
 
-      - name: Record result on current main
+          run_id=""
+          for cycle in $(seq 1 60); do
+            json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow rc3-certification-v4.yml --event workflow_dispatch --limit 10 --json databaseId,status,conclusion,url,createdAt,headSha)"
+            run_id="$(printf '%s' "$json" | jq -r --arg started "$started" '[.[] | select(.createdAt >= $started)] | sort_by(.createdAt) | last | .databaseId // empty')"
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            echo "Waiting for V4 run registration: cycle $cycle"
+            sleep 10
+          done
+
+          if [ -z "$run_id" ]; then
+            echo "GitHub did not register an explicit V4 workflow run." >&2
+            exit 1
+          fi
+
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "V4 run registered: $run_id"
+
+      - name: Wait for V4 to finish
+        id: wait
+        if: steps.dispatch.outputs.run_id != ''
         shell: bash
         run: |
           set -euo pipefail
-          run_id="$(cat /tmp/run_id)"
-          conclusion="$(cat /tmp/conclusion)"
-          url="$(cat /tmp/url)"
+          run_id="${{ steps.dispatch.outputs.run_id }}"
+          set +e
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+          watch_code=$?
+          set -e
+
+          json="$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status,conclusion,url,createdAt,updatedAt)"
+          status="$(printf '%s' "$json" | jq -r '.status')"
+          conclusion="$(printf '%s' "$json" | jq -r '.conclusion // ""')"
+          url="$(printf '%s' "$json" | jq -r '.url')"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "watch_code=$watch_code" >> "$GITHUB_OUTPUT"
+
+      - name: Record the exact V4 result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id="${{ steps.dispatch.outputs.run_id }}"
+          status="${{ steps.wait.outputs.status }}"
+          conclusion="${{ steps.wait.outputs.conclusion }}"
+          url="${{ steps.wait.outputs.url }}"
+
           git fetch origin main
           git checkout -B main origin/main
-          cat > V3_RETRY_STATUS.md <<EOF
-          # RC3 V3 Retry Status
+          cat > V4_EXPLICIT_DISPATCH_STATUS.md <<EOF
+          # RC3 V4 Explicit Dispatch Status
 
-          - Run: $run_id
-          - Conclusion: $conclusion
-          - URL: $url
+          - Run: ${run_id:-not-created}
+          - Status: ${status:-dispatch-failed}
+          - Conclusion: ${conclusion:-not-available}
+          - URL: ${url:-not-available}
           - Recorded: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
           EOF
+
           git config user.email actions@users.noreply.github.com
           git config user.name 'Scripture Games CI'
-          git add V3_RETRY_STATUS.md
-          git commit -m "Record RC3 V3 retry result: $conclusion"
-          git push origin HEAD:main
-          if [ "$conclusion" != "success" ]; then
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 V3 retry needs attention — run $run_id" --body "Result: $conclusion. Review: $url"
+          git add V4_EXPLICIT_DISPATCH_STATUS.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Record RC3 V4 explicit dispatch result: ${conclusion:-dispatch-failed}"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+          if [ "${conclusion:-failure}" != "success" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 V4 explicit run needs attention — ${run_id:-not-created}" --body "Status: ${status:-dispatch-failed}. Conclusion: ${conclusion:-not-available}. Review: ${url:-not-available}" || true
+            exit 1
           fi
