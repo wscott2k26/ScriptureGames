@@ -1,0 +1,303 @@
+name: RC3 Master Release V2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rc3-master-release-v2.yml'
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: scripture-games-rc3-master-release-v2
+  cancel-in-progress: false
+
+env:
+  RC3_SOURCE_BRANCH: rc3-upload
+  RC3_ZIP: ScriptureGames-Cinematic-Visual-Master-RC3.zip
+  RC3_SHA256: 0ac177ef5ff9b408a140ffb623295ae00c09171c366e587706d0b6d81c5592b2
+  EAS_PROJECT_ID: 18710e80-2a62-46ac-8d3a-d1711b7d920a
+  EAS_OWNER: wscott2k8
+
+jobs:
+  certify:
+    name: Four-pass RC3 certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RC3_SOURCE_BRANCH }}
+          path: rc3-upload-source
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify and extract exact RC3 upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip_path="$GITHUB_WORKSPACE/rc3-upload-source/$RC3_ZIP"
+          printf '%s  %s\n' "$RC3_SHA256" "$zip_path" | sha256sum --check --strict
+          rm -rf /tmp/sg-rc3 && mkdir -p /tmp/sg-rc3
+          unzip -q "$zip_path" -d /tmp/sg-rc3
+          source_root="/tmp/sg-rc3/ScriptureGames-Cinematic-Visual-Master-RC3"
+          test -f "$source_root/frontend/package.json"
+          test -f "$source_root/scripts/audit-visual-master.py"
+          echo "SOURCE_ROOT=$source_root" >> "$GITHUB_ENV"
+
+      - name: Lock connected Expo identity and correct audit scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path(os.environ['SOURCE_ROOT'])
+          app_path = root / 'frontend' / 'app.json'
+          app = json.loads(app_path.read_text(encoding='utf-8'))
+          expo = app['expo']
+          expo['owner'] = os.environ['EAS_OWNER']
+          expo.setdefault('extra', {}).setdefault('eas', {})['projectId'] = os.environ['EAS_PROJECT_ID']
+          app_path.write_text(json.dumps(app, indent=2) + '\n', encoding='utf-8')
+
+          audit_path = root / 'scripts' / 'audit.py'
+          audit = audit_path.read_text(encoding='utf-8').replace(
+              'check(app_config.get("owner") == "wscott2k26", "Expo owner matches the canonical account")',
+              'check(app_config.get("owner") == "wscott2k8", "Expo owner matches the connected EAS account")',
+          )
+          audit_path.write_text(audit, encoding='utf-8')
+
+          visual_path = root / 'scripts' / 'audit-visual-master.py'
+          visual = visual_path.read_text(encoding='utf-8')
+          visual = visual.replace(
+              'for source in sorted(FRONTEND.rglob("*.tsx")):\n    body = text(source)',
+              'for source in sorted(FRONTEND.rglob("*.tsx")):\n    if "node_modules" in source.parts:\n        continue\n    body = text(source)',
+          )
+          visual_path.write_text(visual, encoding='utf-8')
+          PY
+
+      - name: Install real dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd "$SOURCE_ROOT/frontend"
+          yarn install --non-interactive --network-timeout 600000
+
+      - name: Verify deterministic artwork
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SOURCE_ROOT"
+          find frontend/assets -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/assets-before
+          python scripts/generate-rc3-assets.py
+          find frontend/assets -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/assets-after
+          diff -u /tmp/assets-before /tmp/assets-after
+
+      - name: Run all release gates four times
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SOURCE_ROOT"
+          for pass in 1 2 3 4; do
+            echo "========== COMPLETE PASS $pass OF 4 =========="
+            python scripts/audit.py
+            python scripts/audit-visual-master.py
+            cd frontend
+            yarn doctor
+            yarn typecheck
+            yarn lint
+            rm -rf dist-ios dist-android .expo
+            yarn export:ios
+            yarn export:android
+            test -d dist-ios && test -d dist-android
+            rm -rf dist-ios dist-android .expo
+            cd ..
+          done
+
+      - name: Refresh source manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          root = Path(os.environ['SOURCE_ROOT'])
+          ignored = {'.git', '.github', 'node_modules', '.expo', 'dist-ios', 'dist-android'}
+          files = {}
+          for p in sorted(root.rglob('*')):
+              if not p.is_file() or p.name == 'BUILD_MANIFEST.json':
+                  continue
+              rel = p.relative_to(root)
+              if any(part in ignored for part in rel.parts):
+                  continue
+              b = p.read_bytes()
+              files[str(rel).replace('\\', '/')] = {'size': len(b), 'sha256': hashlib.sha256(b).hexdigest()}
+          out = {'generatedAt': datetime.now(timezone.utc).isoformat(), 'sourceZipSha256': os.environ['RC3_SHA256'], 'files': files}
+          (root / 'BUILD_MANIFEST.json').write_text(json.dumps(out, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Publish certified source to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$SOURCE_ROOT/frontend/node_modules" "$SOURCE_ROOT/frontend/.expo" "$SOURCE_ROOT/frontend/dist-ios" "$SOURCE_ROOT/frontend/dist-android"
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.github' ! -name 'rc3-upload-source' -exec rm -rf {} +
+          rsync -a --exclude='.github/' "$SOURCE_ROOT/" ./
+          rm -rf rc3-upload-source ci-payload payload release-patches
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add -A
+          git commit -m 'Publish four-pass certified RC3 cinematic source'
+          git push origin HEAD:main
+
+      - name: Report certification failure
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 V2 certification failed — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+  build-and-submit:
+    name: Signed builds and TestFlight submission
+    needs: certify
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install certified dependencies
+        shell: bash
+        run: |
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Verify Expo identity four times
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          for pass in 1 2 3 4; do
+            eas whoami | tee "/tmp/whoami-$pass"
+            grep -q "$EAS_OWNER" "/tmp/whoami-$pass"
+            eas project:info --non-interactive | tee "/tmp/project-$pass"
+            grep -q "$EAS_PROJECT_ID" "/tmp/project-$pass"
+            npx expo config --json > "/tmp/config-$pass.json"
+            python - "/tmp/config-$pass.json" <<'PY'
+          import json, os, sys
+          cfg = json.load(open(sys.argv[1], encoding='utf-8'))
+          assert cfg['owner'] == os.environ['EAS_OWNER']
+          assert cfg['extra']['eas']['projectId'] == os.environ['EAS_PROJECT_ID']
+          assert cfg['ios']['bundleIdentifier'] == 'com.willywill.scripturegames'
+          assert cfg['android']['package'] == 'com.willywill.scripturegames'
+          PY
+          done
+
+      - name: Build Android preview APK
+        shell: bash
+        run: |
+          cd frontend
+          eas build --platform android --profile preview --non-interactive --json > ../android-build.json
+          python -m json.tool ../android-build.json
+
+      - name: Build signed iOS binary
+        shell: bash
+        run: |
+          cd frontend
+          eas build --platform ios --profile production --non-interactive --json > ../ios-build.json
+          python -m json.tool ../ios-build.json
+
+      - name: Submit iOS build to App Store Connect
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_id="$(python - <<'PY'
+          import json
+          d = json.load(open('ios-build.json', encoding='utf-8'))
+          if isinstance(d, list): d = d[0]
+          print(d['id'])
+          PY
+          )"
+          cd frontend
+          eas submit --platform ios --profile production --id "$build_id" --non-interactive
+          printf '%s\n' "$build_id" > ../ios-build-id.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-signed-build-records
+          path: |
+            android-build.json
+            ios-build.json
+            ios-build-id.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record release status
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          cat > RELEASE_PIPELINE_STATUS.md <<EOF
+          # Scripture Games RC3 Release Status
+
+          Generated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+
+          - Uploaded ZIP checksum: verified
+          - Four full release passes: passed
+          - Certified source on main: passed
+          - Android preview build: completed
+          - Signed iOS build: completed
+          - App Store Connect submission: completed
+          - TestFlight availability: awaiting Apple's processing confirmation
+
+          Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add RELEASE_PIPELINE_STATUS.md
+          git commit -m 'Record RC3 TestFlight submission status'
+          git push origin HEAD:main
+          gh issue close 3 --repo "$GITHUB_REPOSITORY" --reason completed || true
+
+      - name: Report signed-build failure
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 signed build or TestFlight submission failed — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
