@@ -1,0 +1,326 @@
+name: RC3 Device Validation and Screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/rc3-device-validation.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: scripture-games-rc3-device-validation
+  cancel-in-progress: false
+
+jobs:
+  android-device-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for certified RC3 source on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 90); do
+            git fetch origin main
+            if git cat-file -e origin/main:frontend/package.json 2>/dev/null; then
+              git checkout -B main origin/main
+              exit 0
+            fi
+            echo "Waiting for certified source ($attempt/90)..."
+            sleep 20
+          done
+          exit 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Build signed Android preview APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform android --profile preview --non-interactive --json > ../android-device-build.json
+          cd ..
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('android-device-build.json').read_text())
+          if isinstance(data, list):
+              data = data[0]
+          urls = []
+          def walk(value):
+              if isinstance(value, dict):
+                  for key, item in value.items():
+                      if isinstance(item, str) and item.startswith('http') and ('apk' in item.lower() or key.lower().endswith('url')):
+                          urls.append(item)
+                      walk(item)
+              elif isinstance(value, list):
+                  for item in value:
+                      walk(item)
+          walk(data)
+          preferred = [u for u in urls if '.apk' in u.lower()]
+          if not preferred:
+              preferred = urls
+          if not preferred:
+              raise SystemExit('No Android artifact URL found in EAS response')
+          Path('/tmp/android-artifact-url.txt').write_text(preferred[0])
+          PY
+          curl --fail --location --retry 6 --retry-all-errors \
+            --output /tmp/scripture-games-rc3.apk \
+            "$(cat /tmp/android-artifact-url.txt)"
+          test -s /tmp/scripture-games-rc3.apk
+
+      - name: Prepare Android interaction script
+        shell: bash
+        run: |
+          cat > /tmp/android-validate.sh <<'SH'
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/store-assets/android"
+          adb install -r /tmp/scripture-games-rc3.apk
+          adb shell pm clear com.willywill.scripturegames || true
+          adb shell monkey -p com.willywill.scripturegames -c android.intent.category.LAUNCHER 1
+          sleep 12
+
+          screenshot() {
+            local name="$1"
+            adb exec-out screencap -p > "$GITHUB_WORKSPACE/store-assets/android/$name.png"
+            test -s "$GITHUB_WORKSPACE/store-assets/android/$name.png"
+          }
+
+          tap_text() {
+            local pattern="$1"
+            adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
+            adb pull /sdcard/window.xml /tmp/window.xml >/dev/null 2>&1 || true
+            PATTERN="$pattern" python - <<'PY' || true
+          import os, re, subprocess, xml.etree.ElementTree as ET
+          from pathlib import Path
+          p=Path('/tmp/window.xml')
+          if not p.exists(): raise SystemExit(0)
+          pat=os.environ['PATTERN'].lower()
+          root=ET.parse(p).getroot()
+          for node in root.iter('node'):
+              hay=(' '.join([node.attrib.get('text',''), node.attrib.get('content-desc','')])).lower()
+              if pat in hay:
+                  m=re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds',''))
+                  if m:
+                      x1,y1,x2,y2=map(int,m.groups())
+                      subprocess.run(['adb','shell','input','tap',str((x1+x2)//2),str((y1+y2)//2)],check=False)
+                      raise SystemExit(0)
+          PY
+            sleep 2
+          }
+
+          screenshot 01-launch
+          for label in 'Begin' 'Enter' 'Continue' 'Explorer' 'Lionguard' 'Confirm' 'Start'; do tap_text "$label"; done
+          screenshot 02-player-entry
+          for label in 'Tournament' 'Journey'; do tap_text "$label"; done
+          screenshot 03-tournament
+          tap_text 'Training'; screenshot 04-training
+          tap_text 'Archive'; screenshot 05-archive
+          tap_text 'Companion'; screenshot 06-companion
+          tap_text 'Command'; screenshot 07-command
+          adb shell am force-stop com.willywill.scripturegames
+          adb shell monkey -p com.willywill.scripturegames -c android.intent.category.LAUNCHER 1
+          sleep 6
+          screenshot 08-resume
+          SH
+          chmod +x /tmp/android-validate.sh
+
+      - name: Run Android emulator validation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: /tmp/android-validate.sh
+
+      - name: Upload Android screenshots and build record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-android-device-evidence
+          path: |
+            store-assets/android/*.png
+            android-device-build.json
+          if-no-files-found: error
+          retention-days: 90
+
+  ios-simulator-validation:
+    runs-on: macos-15
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for certified RC3 source on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 90); do
+            git fetch origin main
+            if git cat-file -e origin/main:frontend/package.json 2>/dev/null; then
+              git checkout -B main origin/main
+              exit 0
+            fi
+            echo "Waiting for certified source ($attempt/90)..."
+            sleep 20
+          done
+          exit 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies and generate iOS project
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+          npx expo prebuild --platform ios --clean --non-interactive
+
+      - name: Build unsigned iPhone simulator application
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          WORKSPACE="$(find ios -maxdepth 1 -name '*.xcworkspace' | head -1)"
+          SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
+          test -n "$WORKSPACE"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios-derived \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          APP_PATH="$(find ios-derived/Build/Products -path '*iphonesimulator/*.app' -type d | head -1)"
+          test -n "$APP_PATH"
+          echo "$APP_PATH" > /tmp/ios-app-path.txt
+
+      - name: Install Maestro
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Boot iPhone simulator and install application
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEVICE_ID="$(xcrun simctl list devices available -j | python -c 'import json,sys; d=json.load(sys.stdin)["devices"]; names=["iPhone 16 Pro Max","iPhone 16 Pro","iPhone 15 Pro Max"]; allv=[x for arr in d.values() for x in arr if x.get("isAvailable") and x.get("name","").startswith("iPhone")]; print(next((x["udid"] for n in names for x in allv if x["name"]==n), allv[0]["udid"]))')"
+          echo "$DEVICE_ID" > /tmp/ios-device-id.txt
+          xcrun simctl boot "$DEVICE_ID" || true
+          open -a Simulator
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" "$(cat /tmp/ios-app-path.txt)"
+
+      - name: Exercise iOS app and capture store screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p store-assets/ios
+          cat > /tmp/ios-flow.yaml <<'YAML'
+          appId: com.willywill.scripturegames
+          ---
+          - launchApp:
+              clearState: true
+          - waitForAnimationToEnd
+          - takeScreenshot: store-assets/ios/01-launch
+          - tapOn:
+              text: '.*Begin.*'
+              optional: true
+          - tapOn:
+              text: '.*Enter.*'
+              optional: true
+          - tapOn:
+              text: '.*Continue.*'
+              optional: true
+          - tapOn:
+              text: '.*Explorer.*'
+              optional: true
+          - tapOn:
+              text: '.*Lionguard.*'
+              optional: true
+          - tapOn:
+              text: '.*Confirm.*'
+              optional: true
+          - tapOn:
+              text: '.*Start.*'
+              optional: true
+          - takeScreenshot: store-assets/ios/02-player-entry
+          - tapOn:
+              text: '.*Tournament.*'
+              optional: true
+          - tapOn:
+              text: '.*Journey.*'
+              optional: true
+          - takeScreenshot: store-assets/ios/03-tournament
+          - tapOn:
+              text: '.*Training.*'
+              optional: true
+          - takeScreenshot: store-assets/ios/04-training
+          - tapOn:
+              text: '.*Archive.*'
+              optional: true
+          - takeScreenshot: store-assets/ios/05-archive
+          - tapOn:
+              text: '.*Companion.*'
+              optional: true
+          - takeScreenshot: store-assets/ios/06-companion
+          - tapOn:
+              text: '.*Command.*'
+              optional: true
+          - takeScreenshot: store-assets/ios/07-command
+          - stopApp
+          - launchApp
+          - waitForAnimationToEnd
+          - takeScreenshot: store-assets/ios/08-resume
+          YAML
+          maestro test /tmp/ios-flow.yaml
+          test "$(find store-assets/ios -name '*.png' | wc -l | tr -d ' ')" -ge 6
+
+      - name: Upload iOS simulator screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-rc3-ios-simulator-evidence
+          path: store-assets/ios/*.png
+          if-no-files-found: error
+          retention-days: 90
