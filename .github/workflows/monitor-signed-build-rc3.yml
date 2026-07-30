@@ -1,0 +1,97 @@
+name: Monitor RC3 Signed Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/monitor-signed-build-rc3.yml'
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find or dispatch the signed-build run
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '20 minutes ago' +'%Y-%m-%dT%H:%M:%SZ')"
+          json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build-submit-rc3.yml --limit 10 --json databaseId,status,conclusion,url,createdAt,event)"
+          run_id="$(printf '%s' "$json" | jq -r --arg cutoff "$cutoff" '[.[] | select(.createdAt >= $cutoff)] | sort_by(.createdAt) | last | .databaseId // empty')"
+
+          if [ -z "$run_id" ]; then
+            gh workflow run build-submit-rc3.yml --repo "$GITHUB_REPOSITORY" --ref main
+            for cycle in $(seq 1 60); do
+              json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build-submit-rc3.yml --event workflow_dispatch --limit 10 --json databaseId,status,conclusion,url,createdAt)"
+              run_id="$(printf '%s' "$json" | jq -r --arg cutoff "$cutoff" '[.[] | select(.createdAt >= $cutoff)] | sort_by(.createdAt) | last | .databaseId // empty')"
+              [ -n "$run_id" ] && break
+              sleep 10
+            done
+          fi
+
+          if [ -z "$run_id" ]; then
+            echo 'No signed-build run was registered.' >&2
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Monitoring signed-build run $run_id"
+
+      - name: Wait for signed build to finish
+        id: wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id="${{ steps.locate.outputs.run_id }}"
+          set +e
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+          watch_code=$?
+          set -e
+          json="$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status,conclusion,url,createdAt,updatedAt)"
+          echo "status=$(printf '%s' "$json" | jq -r '.status')" >> "$GITHUB_OUTPUT"
+          echo "conclusion=$(printf '%s' "$json" | jq -r '.conclusion // ""')" >> "$GITHUB_OUTPUT"
+          echo "url=$(printf '%s' "$json" | jq -r '.url')" >> "$GITHUB_OUTPUT"
+          echo "watch_code=$watch_code" >> "$GITHUB_OUTPUT"
+
+      - name: Record signed-build result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id="${{ steps.locate.outputs.run_id }}"
+          status="${{ steps.wait.outputs.status }}"
+          conclusion="${{ steps.wait.outputs.conclusion }}"
+          url="${{ steps.wait.outputs.url }}"
+          git fetch origin main
+          git checkout -B main origin/main
+          cat > SIGNED_BUILD_MONITOR_STATUS.md <<EOF
+          # Scripture Games RC3 Signed Build Monitor
+
+          - Run: ${run_id:-not-created}
+          - Status: ${status:-unknown}
+          - Conclusion: ${conclusion:-not-available}
+          - URL: ${url:-not-available}
+          - Recorded: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          EOF
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add SIGNED_BUILD_MONITOR_STATUS.md
+          git commit -m "Record RC3 signed-build result: ${conclusion:-unknown}" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
+          if [ "${conclusion:-failure}" != 'success' ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "RC3 signed build monitor needs attention — ${run_id:-not-created}" --body "Status: ${status:-unknown}. Conclusion: ${conclusion:-not-available}. Review: ${url:-not-available}" || true
+            exit 1
+          fi
