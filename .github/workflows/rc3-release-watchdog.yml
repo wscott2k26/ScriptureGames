@@ -1,0 +1,139 @@
+name: RC3 Release Watchdog
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/rc3-release-watchdog.yml'
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: scripture-games-rc3-watchdog
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Monitor and retry release workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflows=(
+            'RC3 Master Release'
+            'RC3 Device Validation and Screenshots'
+            'Finalize RC3 Store Assets'
+          )
+          mkdir -p /tmp/rc3-watchdog
+
+          for cycle in $(seq 1 90); do
+            echo "========== WATCHDOG CYCLE $cycle OF 90 =========="
+            all_success=true
+            for workflow in "${workflows[@]}"; do
+              json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --limit 8 --json databaseId,status,conclusion,url,createdAt 2>/dev/null || echo '[]')"
+              run_id="$(printf '%s' "$json" | jq -r '.[0].databaseId // empty')"
+              status="$(printf '%s' "$json" | jq -r '.[0].status // "missing"')"
+              conclusion="$(printf '%s' "$json" | jq -r '.[0].conclusion // ""')"
+              url="$(printf '%s' "$json" | jq -r '.[0].url // ""')"
+              safe="$(printf '%s' "$workflow" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')"
+              printf '%s|%s|%s|%s|%s\n' "$workflow" "$run_id" "$status" "$conclusion" "$url" > "/tmp/rc3-watchdog/$safe.status"
+
+              if [ "$status" = 'completed' ] && [ "$conclusion" = 'failure' ]; then
+                marker="/tmp/rc3-watchdog/$safe-$run_id.retried"
+                if [ ! -f "$marker" ]; then
+                  echo "Retrying failed jobs for $workflow run $run_id"
+                  gh run rerun "$run_id" --repo "$GITHUB_REPOSITORY" --failed || true
+                  touch "$marker"
+                fi
+                all_success=false
+              elif [ "$status" = 'completed' ] && [ "$conclusion" = 'success' ]; then
+                echo "$workflow is successful."
+              else
+                all_success=false
+              fi
+            done
+
+            if [ "$all_success" = true ]; then
+              echo 'All release workflows succeeded.'
+              break
+            fi
+            sleep 120
+          done
+
+      - name: Build permanent release status report
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '# Scripture Games RC3 Release Pipeline Status'
+            echo
+            echo "Generated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo
+            echo '| Workflow | Status | Conclusion | Run |'
+            echo '|---|---|---|---|'
+            all_success=true
+            for file in /tmp/rc3-watchdog/*.status; do
+              IFS='|' read -r workflow run_id status conclusion url < "$file"
+              if [ "$status" != 'completed' ] || [ "$conclusion" != 'success' ]; then
+                all_success=false
+              fi
+              if [ -n "$url" ]; then run="[#$run_id]($url)"; else run='Unavailable'; fi
+              echo "| $workflow | $status | ${conclusion:-pending} | $run |"
+            done
+            echo
+            if [ "$all_success" = true ]; then
+              echo '## Result: ALL AUTOMATED RELEASE GATES PASSED'
+            else
+              echo '## Result: ONE OR MORE RELEASE GATES REQUIRE ATTENTION'
+            fi
+            echo
+            echo 'Google Play submission is intentionally excluded until a Play Console connection is available. Android build and device evidence remain part of this pipeline.'
+          } > RELEASE_PIPELINE_STATUS.md
+
+      - name: Commit release status report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B main origin/main
+          cp RELEASE_PIPELINE_STATUS.md /tmp/RELEASE_PIPELINE_STATUS.md
+          cp /tmp/RELEASE_PIPELINE_STATUS.md RELEASE_PIPELINE_STATUS.md
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games CI'
+          git add RELEASE_PIPELINE_STATUS.md
+          if git diff --cached --quiet; then
+            echo 'Release status is already current.'
+          else
+            git commit -m 'Record RC3 automated release pipeline status'
+            git push origin HEAD:main
+          fi
+
+      - name: Open issue when automation still needs attention
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -q 'ONE OR MORE RELEASE GATES REQUIRE ATTENTION' RELEASE_PIPELINE_STATUS.md; then
+            existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'RC3 automated release pipeline needs attention in:title' --json number --jq '.[0].number // empty')"
+            if [ -z "$existing" ]; then
+              gh issue create \
+                --repo "$GITHUB_REPOSITORY" \
+                --title 'RC3 automated release pipeline needs attention' \
+                --body-file RELEASE_PIPELINE_STATUS.md
+            fi
+            exit 1
+          fi
