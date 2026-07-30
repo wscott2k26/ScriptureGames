@@ -51,6 +51,39 @@ These are the only default tools for the initial release.
 - **PostHog** — privacy-conscious product analytics for onboarding, completion, retention, and funnel decisions
 - **RevenueCat** — only when subscriptions are ready; not included in the first gameplay proof
 
+## Locked Premium Experience Doctrine
+Every Storm and Me app will use these three experience pillars as part of its design language. Their intensity may vary by product and screen, but none of the three may be ignored.
+
+### 1. Liquid Glassmorphism
+Interactive menus, buttons, overlays, and status surfaces should feel like smooth translucent panels of floating glass with thin luminous borders. Background colors, environments, and 3D story scenes should shift and blur naturally beneath the interface as the user scrolls or transitions.
+
+Implementation rules:
+- Use glass selectively enough to preserve hierarchy and readability
+- Maintain strong contrast, accessible text, and reduced-transparency fallbacks
+- Avoid stacking multiple blurry layers that harm performance
+- Reserve stronger glow for important states, progress, and rewards
+
+### 2. Tactile Maximalism
+Important controls should feel physically touchable through rich materials such as clay, polished metal, gold, carved stone, leather, or other materials suited to the product world. Pressed controls should compress, squish, depress, or rebound through micro-animation and haptic feedback rather than merely changing color or disappearing.
+
+Implementation rules:
+- Every major button must have visible pressed, disabled, loading, and success states
+- Motion must reinforce the action rather than delay it
+- Texture and depth must remain consistent with the app's visual identity
+- Reduced-motion settings must be respected
+
+### 3. Immersive Cinematic Pacing
+Screens should not abruptly snap between unrelated layouts. Major moments should glide, reveal, dissolve, or transition with intentional pacing. Story backgrounds may drift, breathe, or use subtle parallax while text and choices appear progressively and smoothly.
+
+Implementation rules:
+- Cinematic motion is strongest during onboarding, story scenes, milestones, battles, and rewards
+- Routine utility screens remain fast and direct
+- Word-by-word text animation must be skippable and readable
+- Parallax and background motion must be subtle enough to prevent nausea or distraction
+- Loading transitions must never hide excessive real wait time
+
+The goal is not decoration for decoration's sake. The goal is an interface that feels alive, premium, responsive, and emotionally connected to the app's world.
+
 ## Tools Not Approved by Default
 Do not add another builder, backend, automation service, animation engine, analytics platform, or asset subscription unless the existing stack cannot meet a documented requirement.
 
