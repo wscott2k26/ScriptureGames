@@ -1,0 +1,135 @@
+name: Certify and Merge RC3
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/certify-merge-rc3.yml'
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: certify-merge-rc3
+  cancel-in-progress: false
+
+jobs:
+  certify-and-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    env:
+      RC3_BRANCH: rc3-cinematic-visual-master
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for promoted normal RC3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            git fetch origin "$RC3_BRANCH"
+            if git cat-file -e "origin/$RC3_BRANCH:frontend/package.json" 2>/dev/null; then
+              echo "Promoted source is available on attempt $attempt."
+              git checkout -B "$RC3_BRANCH" "origin/$RC3_BRANCH"
+              exit 0
+            fi
+            echo "Waiting for source promotion ($attempt/60)..."
+            sleep 20
+          done
+          echo 'RC3 promotion did not produce frontend/package.json within 20 minutes.' >&2
+          exit 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install audit and app dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Verify deterministic visual assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/generate-rc3-assets.py
+          git diff --exit-code -- frontend/assets
+
+      - name: Run complete certification four times
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pass in 1 2 3 4; do
+            echo "========== RC3 CERTIFICATION PASS $pass OF 4 =========="
+            python scripts/audit.py
+            python scripts/audit-visual-master.py
+            (
+              cd frontend
+              yarn doctor
+              yarn typecheck
+              yarn lint
+              rm -rf dist-ios dist-android
+              yarn export:ios
+              yarn export:android
+              test -d dist-ios
+              test -d dist-android
+              rm -rf dist-ios dist-android .expo
+            )
+          done
+
+      - name: Confirm source stayed clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf frontend/node_modules frontend/dist-ios frontend/dist-android frontend/.expo
+          git status --short
+          git diff --exit-code
+
+      - name: Create or locate RC3 pull request
+        id: pr
+        shell: bash
+        run: |
+          set -euo pipefail
+          PR_NUMBER="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$RC3_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_URL="$(gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --head "$RC3_BRANCH" \
+              --base main \
+              --title 'Scripture Games RC3 Cinematic Visual Master' \
+              --body 'Promotes the complete certified RC3 source after four registry-backed passes covering both visual audits, Expo Doctor, TypeScript, lint, deterministic assets, and iOS/Android exports.')"
+            PR_NUMBER="${PR_URL##*/}"
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Squash merge certified RC3
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr merge "${{ steps.pr.outputs.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash \
+            --subject 'Scripture Games RC3 Cinematic Visual Master' \
+            --body 'Certified through four complete registry-backed passes.'
