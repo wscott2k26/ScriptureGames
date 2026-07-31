@@ -38,7 +38,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
@@ -67,6 +67,10 @@ jobs:
       - name: Audit optional cloud backup
         working-directory: frontend
         run: yarn audit:cloud
+
+      - name: Audit premium faith and Lumi voice
+        working-directory: frontend
+        run: yarn audit:premium
 
       - name: Run content audit
         working-directory: frontend
