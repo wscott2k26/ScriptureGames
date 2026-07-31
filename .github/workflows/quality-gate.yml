@@ -72,6 +72,10 @@ jobs:
         working-directory: frontend
         run: yarn audit:premium
 
+      - name: Test Lumi response engine
+        working-directory: frontend
+        run: yarn test:lumi
+
       - name: Run content audit
         working-directory: frontend
         run: yarn audit:content
