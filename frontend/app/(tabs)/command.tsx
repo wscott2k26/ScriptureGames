@@ -7,9 +7,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { useProfile } from '@/src/profile-context';
 import { api } from '@/src/api';
-import { GENESIS_BACKGROUNDS, getFaction, rankFor } from '@/src/genesis-season';
+import { GENESIS_BACKGROUNDS, GENESIS_TRIALS, getFaction, rankFor } from '@/src/genesis-season';
 import { loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
 import { loadDailyChallengeState, localDateKey, type DailyChallengeState } from '@/src/daily-challenge';
+import { getDailyRhythmSnapshot, loadDailyRhythm, type DailyRhythmState } from '@/src/daily-rhythm';
+import { leagueForWeeklyXp, leagueProgress, xpToNextLeague } from '@/src/weekly-league';
 import { getAchievements } from '@/src/achievements';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
@@ -21,12 +23,23 @@ import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 
 type Activity = { date: string; xp_earned: number; nodes_completed: number };
 
+const EMPTY_RHYTHM: DailyRhythmState = {
+  version: 1,
+  completedDates: [],
+  currentStreak: 0,
+  bestStreak: 0,
+  graceLeaves: 1,
+  graceUsedDates: [],
+  milestoneRewards: [],
+};
+
 export default function CommandCenter() {
   const router = useRouter();
   const { profile, refresh } = useProfile();
   const reducedMotion = useReducedMotionPreference();
   const [season, setSeason] = useState<SeasonProgress | null>(null);
   const [daily, setDaily] = useState<DailyChallengeState | null>(null);
+  const [rhythm, setRhythm] = useState<DailyRhythmState>(EMPTY_RHYTHM);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +49,15 @@ export default function CommandCenter() {
     setLoading(true);
     setError(null);
     try {
-      const [seasonState, dailyState, activityResult] = await Promise.all([
+      const [seasonState, dailyState, rhythmState, activityResult] = await Promise.all([
         loadSeasonProgress(profile.id),
         loadDailyChallengeState(profile.id),
+        loadDailyRhythm(profile.id),
         api.getRecentActivity(profile.id, 7),
       ]);
       setSeason(seasonState);
       setDaily(dailyState?.date === localDateKey() ? dailyState : null);
+      setRhythm(rhythmState);
       setActivity(activityResult.activities || []);
       await refresh();
     } catch {
@@ -63,6 +78,28 @@ export default function CommandCenter() {
   const faction = getFaction(safeSeason.faction);
   const rank = rankFor(safeSeason.rankPoints);
   const dailyDone = Boolean(daily?.rewarded);
+  const rhythmSnapshot = getDailyRhythmSnapshot(rhythm);
+  const weeklyLeague = leagueForWeeklyXp(weekXp);
+  const weeklyLeagueProgress = leagueProgress(weekXp, weeklyLeague);
+  const nextTrial = GENESIS_TRIALS.find((trial) => !safeSeason.completedTrials.includes(trial.id));
+  const leagueAccent = {
+    success: colors.success,
+    info: colors.info,
+    coral: colors.coral,
+    brand: colors.brand,
+  }[weeklyLeague.accent];
+
+  const resumeTournament = () => {
+    if (safeSeason.completedTrials.length >= GENESIS_TRIALS.length) {
+      router.push('/season-victory');
+      return;
+    }
+    if (nextTrial) {
+      router.push({ pathname: '/genesis-trial', params: { id: nextTrial.id } });
+      return;
+    }
+    router.push('/(tabs)/journey');
+  };
 
   return (
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-07']} darkness={0.6}>
@@ -70,7 +107,7 @@ export default function CommandCenter() {
         <ScreenHeader
           eyebrow="PLAYER COMMAND"
           title="Command Center"
-          subtitle="Your progress, daily mission, achievements, and player controls."
+          subtitle="Your next step is waiting—no hunting through menus."
           right={<Text style={styles.avatar}>{profile.avatar}</Text>}
         />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -86,28 +123,73 @@ export default function CommandCenter() {
                   <Text style={styles.rankName}>{rank.name}</Text>
                 </View>
               </View>
-              <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, (safeSeason.completedTrials.length / 10) * 100)}%` }]} /></View>
-              <Text style={styles.progressCopy}>{safeSeason.completedTrials.length} of 10 Genesis gates cleared</Text>
-              <TactileButton compact label={safeSeason.completedTrials.length >= 10 ? 'Enter Victory Hall' : 'Continue Tournament'} onPress={() => router.push(safeSeason.completedTrials.length >= 10 ? '/season-victory' : '/(tabs)/journey')} />
+              <Text style={styles.resumeEyebrow}>CONTINUE WHERE YOU LEFT OFF</Text>
+              <Text style={styles.resumeTitle}>{safeSeason.completedTrials.length >= GENESIS_TRIALS.length ? 'Genesis Victory Hall' : nextTrial?.title || 'Genesis Tournament'}</Text>
+              <Text style={styles.resumeCopy}>{safeSeason.completedTrials.length >= GENESIS_TRIALS.length ? 'Your completed season record is ready.' : nextTrial ? `${nextTrial.chapter} · ${nextTrial.virtue} · Gate ${nextTrial.number}` : 'Open your tournament map and choose a gate.'}</Text>
+              <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, (safeSeason.completedTrials.length / GENESIS_TRIALS.length) * 100)}%` }]} /></View>
+              <Text style={styles.progressCopy}>{safeSeason.completedTrials.length} of {GENESIS_TRIALS.length} Genesis gates cleared</Text>
+              <TactileButton compact label={safeSeason.completedTrials.length >= GENESIS_TRIALS.length ? 'Enter Victory Hall' : `Resume Gate ${nextTrial?.number || 1}`} onPress={resumeTournament} />
             </GlassPanel>
           </Animated.View>
 
           <View style={styles.statsGrid}>
             <StatTile style={styles.stat} value={profile.xp} label="Total XP" icon={<Ionicons name="flash" size={17} color={colors.brand} />} />
             <StatTile style={styles.stat} value={safeSeason.manna} label="Manna" icon={<Ionicons name="diamond" size={17} color={colors.brandSecondary} />} accent={colors.brandSecondary} />
-            <StatTile style={styles.stat} value={profile.streak} label="Day Streak" icon={<Ionicons name="flame" size={17} color={colors.coral} />} accent={colors.coral} />
-            <StatTile style={styles.stat} value={weekXp} label="XP This Week" icon={<Ionicons name="calendar" size={17} color={colors.success} />} accent={colors.success} />
+            <StatTile style={styles.stat} value={rhythmSnapshot.activeStreak} label="Faith Flame" icon={<Ionicons name="flame" size={17} color={colors.coral} />} accent={colors.coral} />
+            <StatTile style={styles.stat} value={rhythm.graceLeaves} label="Grace Leaves" icon={<Ionicons name="leaf" size={17} color={colors.success} />} accent={colors.success} />
           </View>
+
+          <SectionTitle title="Faith Rhythm" />
+          <GlassPanel strong style={styles.rhythmCard}>
+            <View style={styles.rhythmTop}>
+              <View style={styles.rhythmTitleWrap}>
+                <Text style={styles.rhythmEyebrow}>DAILY BREAD RHYTHM</Text>
+                <Text style={styles.rhythmTitle}>🔥 {rhythmSnapshot.activeStreak}-day Faith Flame</Text>
+              </View>
+              <View style={styles.graceChip}><Text style={styles.graceChipText}>🍃 {rhythm.graceLeaves}</Text></View>
+            </View>
+            <View style={styles.weekRow}>
+              {rhythmSnapshot.lastSevenDays.map((day) => (
+                <View key={day.date} style={styles.dayWrap}>
+                  <View style={[styles.dayDot, day.completed && styles.dayDone, day.grace && styles.dayGrace]}>
+                    <Text style={styles.dayIcon}>{day.completed ? '✓' : day.grace ? '🍃' : '·'}</Text>
+                  </View>
+                  <Text style={styles.dayLabel}>{day.date.slice(8)}</Text>
+                </View>
+              ))}
+            </View>
+            <Text style={styles.rhythmCopy}>
+              {rhythmSnapshot.completedToday
+                ? 'Today is covered. Your flame is safe.'
+                : rhythmSnapshot.atRisk
+                  ? 'Your flame is waiting. Complete today and a Grace Leaf will cover the missed day.'
+                  : 'Complete the Daily Bread Run to light today’s mark.'}
+            </Text>
+          </GlassPanel>
 
           <SectionTitle title="Today’s Mission" />
           <FeatureCard
-            title={dailyDone ? 'Daily Trial Complete' : 'Daily Scripture Trial'}
-            description={dailyDone ? `Best score: ${daily?.bestScore}/${daily?.total}. Replays remain open without duplicate rewards.` : 'Five fresh questions. Earn 75 XP and 20 Manna on your first clear today.'}
+            title={dailyDone ? 'Daily Bread Complete' : 'Daily Bread Run'}
+            description={dailyDone ? `Best score: ${daily?.bestScore}/${daily?.total}. Replays remain open without duplicate rewards.` : 'Five rotating Scripture fields, about 3–5 minutes, with no ads or mid-quiz interruptions.'}
             icon={<Ionicons name={dailyDone ? 'checkmark-circle' : 'sunny'} size={27} color={dailyDone ? colors.success : colors.brand} />}
             accent={dailyDone ? colors.success : colors.brand}
             badge={dailyDone ? 'CLEARED' : 'DAILY'}
             onPress={() => router.push('/daily-challenge')}
           />
+
+          <SectionTitle title="Weekly League" action="Standings" onAction={() => router.push('/leaderboard')} />
+          <GlassPanel strong style={[styles.leagueCard, { borderColor: leagueAccent }]}>
+            <View style={styles.leagueTop}>
+              <Text style={styles.leagueIcon}>{weeklyLeague.icon}</Text>
+              <View style={styles.leagueCopy}>
+                <Text style={[styles.leagueName, { color: leagueAccent }]}>{weeklyLeague.name}</Text>
+                <Text style={styles.leagueMeta}>{weekXp} XP earned in the last seven days</Text>
+              </View>
+              <Text style={styles.leagueNext}>{xpToNextLeague(weekXp, weeklyLeague)} XP to rise</Text>
+            </View>
+            <View style={styles.leagueTrack}><View style={[styles.leagueFill, { width: `${weeklyLeagueProgress}%`, backgroundColor: leagueAccent }]} /></View>
+            <Text style={styles.leagueNote}>Friendly family competition only—growth over pressure, always.</Text>
+          </GlassPanel>
 
           <SectionTitle title="Achievement Hall" action="View All" onAction={() => router.push('/achievements')} />
           <GlassPanel style={styles.achievementStrip}>
@@ -121,7 +203,7 @@ export default function CommandCenter() {
           </GlassPanel>
 
           <SectionTitle title="Player Services" />
-          <FeatureCard title="Training Leaderboard" description="Compare XP and streaks across players saved on this device." icon={<Ionicons name="trophy" size={26} color={colors.brand} />} onPress={() => router.push('/leaderboard')} />
+          <FeatureCard title="Weekly Faith League" description="Compare seven-day XP and streaks across players saved on this device." icon={<Ionicons name="trophy" size={26} color={colors.brand} />} onPress={() => router.push('/leaderboard')} />
           <FeatureCard title="Family Hub" description="Create kid profiles and view seven-day learning progress." icon={<Ionicons name="people" size={26} color={colors.brandSecondary} />} accent={colors.brandSecondary} onPress={() => router.push('/family')} />
           <FeatureCard title="Player Settings" description="Edit profile, motion, haptics, cinematic text, privacy, and local data." icon={<Ionicons name="settings" size={26} color={colors.parchment} />} accent={colors.parchment} onPress={() => router.push('/settings')} />
           <FeatureCard title="Beta Access & Release Notes" description="See exactly what is unlocked and what remains before store production." icon={<Ionicons name="shield-checkmark" size={26} color={colors.success} />} accent={colors.success} onPress={() => router.push('/premium')} />
@@ -152,11 +234,39 @@ const styles = StyleSheet.create({
   rankBadge: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'flex-end' },
   rankEyebrow: { color: colors.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
   rankName: { color: colors.brand, fontSize: 14, fontWeight: '900' },
+  resumeEyebrow: { color: colors.brand, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  resumeTitle: { color: colors.onSurface, fontSize: 21, fontWeight: '900' },
+  resumeCopy: { color: colors.muted, fontSize: 12, lineHeight: 18, fontWeight: '800' },
   progressTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.09)', borderRadius: 99, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.brand, borderRadius: 99 },
   progressCopy: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   stat: { width: '48.5%' },
+  rhythmCard: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md },
+  rhythmTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  rhythmTitleWrap: { flex: 1 },
+  rhythmEyebrow: { color: colors.muted, fontSize: 8.5, fontWeight: '900', letterSpacing: 1.2 },
+  rhythmTitle: { color: colors.onSurface, fontSize: 20, fontWeight: '900', marginTop: 3 },
+  graceChip: { borderRadius: 99, borderWidth: 1, borderColor: 'rgba(79,181,138,0.45)', backgroundColor: 'rgba(79,181,138,0.12)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  graceChipText: { color: colors.success, fontWeight: '900' },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
+  dayWrap: { alignItems: 'center', gap: 4, flex: 1 },
+  dayDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(255,255,255,0.035)' },
+  dayDone: { borderColor: colors.success, backgroundColor: 'rgba(79,181,138,0.18)' },
+  dayGrace: { borderColor: colors.brandSecondary, backgroundColor: 'rgba(123,197,215,0.14)' },
+  dayIcon: { color: colors.onSurface, fontSize: 13, fontWeight: '900' },
+  dayLabel: { color: colors.muted, fontSize: 8.5, fontWeight: '800' },
+  rhythmCopy: { color: colors.muted, fontSize: 12, lineHeight: 18, fontWeight: '800' },
+  leagueCard: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md },
+  leagueTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  leagueIcon: { fontSize: 38 },
+  leagueCopy: { flex: 1 },
+  leagueName: { fontSize: 18, fontWeight: '900' },
+  leagueMeta: { color: colors.muted, fontSize: 11, fontWeight: '800', marginTop: 3 },
+  leagueNext: { color: colors.onSurface, fontSize: 10, fontWeight: '900', textAlign: 'right', maxWidth: 70 },
+  leagueTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' },
+  leagueFill: { height: '100%', borderRadius: 99 },
+  leagueNote: { color: colors.muted, fontSize: 10.5, lineHeight: 16, fontStyle: 'italic' },
   achievementStrip: { borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   achievementMini: { width: '23%', alignItems: 'center', gap: 5 },
   locked: { opacity: 0.45 },
