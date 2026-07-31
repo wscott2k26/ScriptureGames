@@ -170,7 +170,7 @@ export default function CommandCenter() {
           <SectionTitle title="Today’s Mission" />
           <FeatureCard
             title={dailyDone ? 'Daily Bread Complete' : 'Daily Bread Run'}
-            description={dailyDone ? `Best score: ${daily?.bestScore}/${daily?.total}. Replays remain open without duplicate rewards.` : 'Five rotating Scripture fields, about 3–5 minutes, with no ads or mid-quiz interruptions.'}
+            description={dailyDone ? `Best score: ${daily?.bestScore}/${daily?.total}. Replays remain open without duplicate rewards.` : 'Daily Scripture Trial: five rotating Scripture fields, about 3–5 minutes, with no ads or mid-quiz interruptions.'}
             icon={<Ionicons name={dailyDone ? 'checkmark-circle' : 'sunny'} size={27} color={dailyDone ? colors.success : colors.brand} />}
             accent={dailyDone ? colors.success : colors.brand}
             badge={dailyDone ? 'CLEARED' : 'DAILY'}
