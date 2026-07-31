@@ -38,14 +38,30 @@ jobs:
         run: |
           set -euo pipefail
           cd frontend
-          eas build:view 6fc21593-67eb-49ca-841f-a8763e3ac63f --json > ../eas-build-diagnostic.json
+          eas build:list --platform android --limit 30 --json --non-interactive > ../eas-build-list.json
           cd ..
-          python -m json.tool eas-build-diagnostic.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          target = '6fc21593-67eb-49ca-841f-a8763e3ac63f'
+          records = json.loads(Path('eas-build-list.json').read_text())
+          if isinstance(records, dict):
+              records = records.get('builds') or records.get('data') or []
+          build = next((item for item in records if item.get('id') == target), None)
+          if build is None:
+              raise SystemExit(f'Build {target} was not returned by build:list')
+          Path('eas-build-diagnostic.json').write_text(json.dumps(build, indent=2))
+          print(json.dumps(build, indent=2))
+          PY
 
       - name: Upload diagnostic record
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: scripture-games-eas-build-diagnostic
-          path: eas-build-diagnostic.json
-          if-no-files-found: error
+          path: |
+            eas-build-list.json
+            eas-build-diagnostic.json
+          if-no-files-found: warn
           retention-days: 30
