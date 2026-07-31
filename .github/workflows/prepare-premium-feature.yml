@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   prepare:
@@ -27,116 +28,14 @@ jobs:
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
-      - name: Generate exact dependency lock and apply premium compatibility patches
+      - name: Apply checked offline Bible narration patch
+        run: python scripts/patch-premium-bible.py
+
+      - name: Lock exact SDK 54 dependencies
         shell: bash
         run: |
           set -euo pipefail
           npm install --global yarn@1.22.22
-          python - <<'PY'
-          from pathlib import Path
-
-          journey = Path('frontend/app/faith-journey.tsx')
-          journey_text = journey.read_text()
-          journey_text = journey_text.replace(
-              "label={complete ? 'Save Reflection' : 'Complete Day'}\n              loading={saving}",
-              "label={saving ? 'Saving…' : complete ? 'Save Reflection' : 'Complete Day'}\n              disabled={saving}",
-          )
-          journey.write_text(journey_text)
-
-          bible = Path('frontend/app/(tabs)/bible.tsx')
-          text = bible.read_text()
-          if "import * as Speech from 'expo-speech';" not in text:
-              text = text.replace(
-                  "import { useCallback, useMemo, useRef, useState } from 'react';",
-                  "import { useCallback, useEffect, useMemo, useRef, useState } from 'react';",
-              )
-              text = text.replace(
-                  "import { Ionicons } from '@expo/vector-icons';\n",
-                  "import { Ionicons } from '@expo/vector-icons';\nimport * as Speech from 'expo-speech';\n",
-              )
-              text = text.replace(
-                  "  const [saving, setSaving] = useState(false);",
-                  "  const [saving, setSaving] = useState(false);\n  const [speakingChapter, setSpeakingChapter] = useState(false);",
-              )
-              text = text.replace(
-                  "  useFocusEffect(useCallback(() => { void load(); }, [load]));\n\n  const book =",
-                  "  useFocusEffect(useCallback(() => { void load(); }, [load]));\n  useEffect(() => () => { void Speech.stop(); }, []);\n\n  const book =",
-              )
-              text = text.replace(
-                  "    if (!profile) return;\n    const nextBook = getBibleBook(location.bookId);",
-                  "    if (!profile) return;\n    await Speech.stop();\n    setSpeakingChapter(false);\n    const nextBook = getBibleBook(location.bookId);",
-              )
-              share_block = """  const shareVerse = async (verse: number, text: string) => {
-    if (!book) return;
-    await Share.share({
-      title: `${book.name} ${chapter}:${verse}`,
-      message: `“${text}”\\n— ${book.name} ${chapter}:${verse} (WEB)`,
-    });
-  };
-"""
-              narration_block = share_block + """
-  const toggleChapterNarration = async () => {
-    if (!book || !verses.length) return;
-    if (speakingChapter) {
-      await Speech.stop();
-      setSpeakingChapter(false);
-      return;
-    }
-    const voices = await Speech.getAvailableVoicesAsync().catch(() => []);
-    const voice = voices.find((item) => item.language.toLowerCase().startsWith('en') && String(item.quality).toLowerCase().includes('enhanced'))
-      || voices.find((item) => item.language.toLowerCase().startsWith('en'));
-    const pieces = verses.map(([number, verseText]) => `${number}. ${verseText}`);
-    const chunks: string[] = [];
-    let current = '';
-    for (const piece of pieces) {
-      if (`${current} ${piece}`.length > 2800 && current) {
-        chunks.push(current.trim());
-        current = piece;
-      } else {
-        current = `${current} ${piece}`;
-      }
-    }
-    if (current.trim()) chunks.push(current.trim());
-    setSpeakingChapter(true);
-    Speech.speak(`${book.name}, chapter ${chapter}.`, {
-      language: 'en-US', voice: voice?.identifier, rate: 0.91, pitch: 1,
-    });
-    chunks.forEach((chunk, index) => {
-      const last = index === chunks.length - 1;
-      Speech.speak(chunk, {
-        language: 'en-US',
-        voice: voice?.identifier,
-        rate: 0.91,
-        pitch: 1,
-        onDone: last ? () => setSpeakingChapter(false) : undefined,
-        onStopped: last ? () => setSpeakingChapter(false) : undefined,
-        onError: () => setSpeakingChapter(false),
-      });
-    });
-  };
-"""
-              if share_block not in text:
-                  raise SystemExit('Could not locate Bible share block for narration patch')
-              text = text.replace(share_block, narration_block)
-              books_button = """              <Pressable accessibilityRole=\"button\" accessibilityLabel=\"Choose a Bible book\" onPress={() => setShowBooks((value) => !value)} style={styles.toolChip}>
-                <Ionicons name=\"library\" size={16} color={colors.brand} />
-                <Text style={styles.toolText}>Books</Text>
-              </Pressable>
-"""
-              listen_button = books_button + """              <Pressable accessibilityRole=\"button\" accessibilityLabel={`${speakingChapter ? 'Stop' : 'Listen to'} ${book.name} chapter ${chapter}`} onPress={() => void toggleChapterNarration()} style={[styles.toolChip, speakingChapter && { borderColor: colors.brand }]}>
-                <Ionicons name={speakingChapter ? 'stop' : 'volume-high'} size={16} color={colors.brand} />
-                <Text style={styles.toolText}>{speakingChapter ? 'Stop Audio' : 'Listen'}</Text>
-              </Pressable>
-"""
-              if books_button not in text:
-                  raise SystemExit('Could not locate Bible Books tool for narration patch')
-              text = text.replace(books_button, listen_button)
-              text = text.replace(
-                  "<Text style={styles.focusReference}>{book.name} {chapter}:{selectedVerse[0]}</Text>",
-                  "<Text style={styles.focusReference}>{currentReference}</Text>",
-              )
-              bible.write_text(text)
-          PY
           cd frontend
           yarn install --non-interactive --network-timeout 600000
 
@@ -146,10 +45,20 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/package.json frontend/yarn.lock frontend/app/faith-journey.tsx 'frontend/app/(tabs)/bible.tsx'
+          git add frontend/package.json frontend/yarn.lock 'frontend/app/(tabs)/bible.tsx'
           if git diff --cached --quiet; then
             echo 'No generated changes.'
             exit 0
           fi
           git commit -m 'Add offline Bible chapter narration and lock premium dependencies'
           git push origin HEAD:feature/premium-faith-journeys-prayer-garden
+
+      - name: Report preparation result
+        if: always()
+        shell: bash
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Scripture Games premium preparation ${RESULT} — run $GITHUB_RUN_ID" \
+            --body "Branch: \`feature/premium-faith-journeys-prayer-garden\`\n\nResult: **$RESULT**\n\nThis workflow does not trigger an EAS build."
