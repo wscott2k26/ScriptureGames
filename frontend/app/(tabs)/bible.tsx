@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 
 import { useProfile } from '@/src/profile-context';
 import {
@@ -73,6 +74,7 @@ export default function BibleCompanionScreen() {
   const [sermonDraft, setSermonDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [speakingChapter, setSpeakingChapter] = useState(false);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -96,6 +98,7 @@ export default function BibleCompanionScreen() {
   }, [profile]);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useEffect(() => () => { void Speech.stop(); }, []);
 
   const book = useMemo(() => getBibleBook(bookId) || BIBLE_LIBRARY[0], [bookId]);
   const verses = useMemo(() => book ? getBibleChapter(book.id, chapter) : [], [book, chapter]);
@@ -107,6 +110,8 @@ export default function BibleCompanionScreen() {
 
   const moveTo = useCallback(async (location: BibleLocation) => {
     if (!profile) return;
+    await Speech.stop();
+    setSpeakingChapter(false);
     const nextBook = getBibleBook(location.bookId);
     if (!nextBook) return;
     const nextChapter = Math.max(1, Math.min(nextBook.chapters.length, location.chapter));
@@ -211,6 +216,52 @@ export default function BibleCompanionScreen() {
     });
   };
 
+  const toggleChapterNarration = async () => {
+    if (!book || !verses.length) return;
+    if (speakingChapter) {
+      await Speech.stop();
+      setSpeakingChapter(false);
+      return;
+    }
+
+    const voices = await Speech.getAvailableVoicesAsync().catch(() => []);
+    const voice = voices.find((item) => item.language.toLowerCase().startsWith('en') && String(item.quality).toLowerCase().includes('enhanced'))
+      || voices.find((item) => item.language.toLowerCase().startsWith('en'));
+    const pieces = verses.map(([number, verseText]) => `${number}. ${verseText}`);
+    const chunks: string[] = [];
+    let current = '';
+
+    for (const piece of pieces) {
+      if (`${current} ${piece}`.length > 2800 && current) {
+        chunks.push(current.trim());
+        current = piece;
+      } else {
+        current = `${current} ${piece}`;
+      }
+    }
+    if (current.trim()) chunks.push(current.trim());
+
+    setSpeakingChapter(true);
+    Speech.speak(`${book.name}, chapter ${chapter}.`, {
+      language: 'en-US',
+      voice: voice?.identifier,
+      rate: 0.91,
+      pitch: 1,
+    });
+    chunks.forEach((chunk, index) => {
+      const last = index === chunks.length - 1;
+      Speech.speak(chunk, {
+        language: 'en-US',
+        voice: voice?.identifier,
+        rate: 0.91,
+        pitch: 1,
+        onDone: last ? () => setSpeakingChapter(false) : undefined,
+        onStopped: last ? () => setSpeakingChapter(false) : undefined,
+        onError: () => setSpeakingChapter(false),
+      });
+    });
+  };
+
   if (!profile) return null;
 
   if (loading) {
@@ -279,6 +330,10 @@ export default function BibleCompanionScreen() {
                 <Ionicons name="library" size={16} color={colors.brand} />
                 <Text style={styles.toolText}>Books</Text>
               </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={`${speakingChapter ? 'Stop' : 'Listen to'} ${book.name} chapter ${chapter}`} onPress={() => void toggleChapterNarration()} style={[styles.toolChip, speakingChapter && { borderColor: colors.brand }]}>
+                <Ionicons name={speakingChapter ? 'stop' : 'volume-high'} size={16} color={colors.brand} />
+                <Text style={styles.toolText}>{speakingChapter ? 'Stop Audio' : 'Listen'}</Text>
+              </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Change Bible text size" onPress={() => void cycleFontSize()} style={styles.toolChip}>
                 <Ionicons name="text" size={16} color={colors.brandSecondary} />
                 <Text style={styles.toolText}>Text: {study?.fontSize || 'standard'}</Text>
@@ -333,7 +388,7 @@ export default function BibleCompanionScreen() {
           {selectedVerse ? (
             <GlassPanel strong style={styles.focusCard}>
               <Text style={styles.focusEyebrow}>FOCUSED VERSE</Text>
-              <Text style={styles.focusReference}>{book.name} {chapter}:{selectedVerse[0]}</Text>
+              <Text style={styles.focusReference}>{currentReference}</Text>
               <Text style={[styles.focusText, { fontSize: fontSize + 2, lineHeight: lineHeight + 3 }]}>{selectedVerse[1]}</Text>
             </GlassPanel>
           ) : null}
