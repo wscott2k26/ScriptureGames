@@ -11,7 +11,7 @@
     "doctor": "expo-doctor",
     "generate:assets": "python ../scripts/generate-rc3-assets.py",
     "generate:bible": "python ../scripts/build-bible.py --output src/bible-data",
-    "audit:content": "python ../scripts/audit.py",
+    "audit:content": "python ../scripts/run-current-audit.py",
     "audit:bible": "node scripts/audit-bible.mjs",
     "audit:cloud": "node scripts/audit-cloud-backup.mjs",
     "audit:premium": "node scripts/audit-premium-faith.mjs",
