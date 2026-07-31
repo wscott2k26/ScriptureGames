@@ -1,0 +1,54 @@
+name: Scripture Games iOS Submission Snapshot
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/release-triggers/scripture-games-ios-submission-snapshot.md'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      SUBMISSION_ID: e8b1975a-425d-4781-a710-2334827b662c
+      BUILD_ID: abed5bf6-4e79-4533-b550-1f56ccdc0a23
+    steps:
+      - name: Query existing EAS submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload=$(jq -n --arg submissionId "$SUBMISSION_ID" '{query:"query SubmissionsByIdQuery($submissionId: ID!) { submissions { byId(submissionId: $submissionId) { id status platform createdAt updatedAt } } }",variables:{submissionId:$submissionId}}')
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $EXPO_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data "$payload" \
+            https://api.expo.dev/graphql > ios-cloud-submission-snapshot.json
+
+          if jq -e '.errors and (.errors | length > 0)' ios-cloud-submission-snapshot.json >/dev/null; then
+            jq '.errors' ios-cloud-submission-snapshot.json >&2
+            exit 1
+          fi
+
+          status=$(jq -r '.data.submissions.byId.status // "UNKNOWN"' ios-cloud-submission-snapshot.json)
+          echo "SUBMISSION_STATUS=$status" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-submission-snapshot
+          path: ios-cloud-submission-snapshot.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report submission status
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Scripture Games build 6 submission — $SUBMISSION_STATUS" \
+            --body "Build ID: \`$BUILD_ID\`\n\nSubmission ID: \`$SUBMISSION_ID\`\n\nEAS submission status: **$SUBMISSION_STATUS**\n\nThis was a read-only query; no new build or submission was created."
