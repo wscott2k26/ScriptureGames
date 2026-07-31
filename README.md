@@ -1,69 +1,87 @@
-# Scripture Games — Release-Hardened App Candidate RC2
+# Scripture Games — Bible & Church Companion 1.0.0
 
-Scripture Games is a premium biblical competition-adventure for iOS and Android. The app combines a complete Genesis tournament season with training games, story and verse archives, a daily challenge, achievements, local family profiles, and a curated on-device Bible companion.
+Scripture Games is a premium, local-first biblical competition-adventure for iOS and Android. It combines a complete Genesis tournament, daily faith practice, Bible training games, family profiles, and a complete offline Bible and church companion.
 
 Built with Expo SDK 54, React Native, TypeScript, Expo Router, Reanimated, and local-first persistence.
 
-## Complete player experience
+## Current release status — July 31, 2026
 
-### Genesis Tournament: Season One
+- Certified source: `33635560b79bf127a1f715aa5844a769421ae1af`
+- App version: `1.0.0`
+- iOS build: `5`
+- Bundle identifier: `com.willywill.scripturegames`
+- Android preview APK: built successfully
+- iOS production binary: built successfully
+- App Store Connect/TestFlight upload: successful
+- Apple processing and physical-device testing: final external release gates
+- Expo included build credits used after this release: 93%; do not rebuild without a real defect or store blocker
 
-- Cinematic first launch, returning-player selection, and player creation
+See `SIGNED_RELEASE_RESULT_20260731.md` for exact build and submission IDs. See `APP_STORE_SUBMISSION_1.0.0.md` for product-page copy, App Review notes, privacy guidance, screenshot plan, physical-device matrix, and final submission checklist.
+
+## Complete offline Bible and Church Companion
+
+- Complete public-domain World English Bible
+- 66 books, 1,189 chapters, and 31,098 verses
+- Offline book and chapter navigation
+- Exact-reference lookup and full-text keyword search
+- Reading history and Continue Where You Left Off
+- Bookmarks and four-color highlights
+- Private verse notes
+- Chapter-linked private sermon notes
+- Native verse sharing
+- Large-text Church Mode
+- Release audit that refuses an incomplete Bible payload
+
+## Daily faith loop
+
+- Daily Bread Run across five rotating Scripture fields
+- Faith Flame daily rhythm
+- Forgiving Grace Leaves for an interrupted day
+- Seed, Lamp, Lion, and Crown seven-day leagues
+- Seven-day XP standings
+- Scripture references and explanations after answers
+- Stronger correct-answer motion and shareable Witness Cards
+
+## Genesis Tournament: Season One
+
+- Cinematic first launch and local player creation
 - Explorer and Scholar reading paths
-- Three original factions: Lionguard, Dovebound, and Torchbearers
+- Lionguard, Dovebound, and Torchbearers factions
 - Ten sequential Genesis trials spanning Genesis 1–50
-- A cinematic briefing and story decision before every trial
-- Five-question randomized trial loop with Scripture references and explanations
-- 62 reviewed Genesis tournament questions
-- Manna, rank points, best scores, first-clear reward protection, and replay handling
-- Locked and unlocked gate progression with local resume
-- Shareable victory records and a final Genesis Champion Hall
+- Briefings and story decisions before every trial
+- Randomized five-question trial loops with Scripture context
+- First-clear reward and replay protection
+- Locked progression, local resume, victory sharing, and Champion Hall
 
-### Full supporting app
+## Supporting experience
 
-- Command Center with player rank, weekly activity, daily mission, and shortcuts
-- Daily Scripture Trial with deterministic five-question challenges and idempotent rewards
-- Achievement Hall with 12 progress-based honors
+- Command Center, daily mission, achievements, and shortcuts
 - Training Hub with 168 questions across 15 topics
-- Story Archive with 15 substantial stories in Explorer and Scholar modes
-- 13 World English Bible Classic memory passages
-- Three multi-round Bible word-puzzle sets
-- Daily devotional with reflection, prayer, and practice
-- Curated local Bible Companion with saved per-player history and safety boundaries
-- Local leaderboard with no fabricated users
-- Family Hub, kid profiles, player switching, and seven-day learning activity
-- Player settings for profile editing, haptics, cinematic text, motion, privacy, and data controls
-- Not-found, loading, empty, error, offline-ready, locked, replay, success, and destructive-confirmation states
+- Story Archive with 15 Explorer and Scholar stories
+- 13 memory passages
+- Three multi-round word-puzzle sets
+- Daily devotional
+- Family Hub, child profiles, player switching, and seven-day activity
+- Local leaderboard containing no fabricated users
+- Reduced-motion, haptic, cinematic-text, privacy, and data controls
 
-## Premium interaction doctrine
+## Privacy model
 
-The full app uses the same three design pillars:
+Scripture Games is local-first and remains usable offline after installation. Profiles, progress, family records, bookmarks, highlights, notes, settings, and activity remain on the device.
 
-1. **Liquid glassmorphism** — layered translucent surfaces with clear contrast and restrained glow.
-2. **Tactile maximalism** — material depth, textured environments, haptic feedback, and compressing controls.
-3. **Immersive cinematic pacing** — drifting environments, fluid scene transitions, and skippable text reveals.
+Version 1.0.0 contains no advertising SDK, analytics SDK, external AI service, active purchase flow, public social wall, or public user-generated content. Remote API mode is disabled in preview and production EAS profiles.
 
-Reduced-motion, haptic, and cinematic-text preferences apply across the experience.
+Support and privacy site: `https://scripture-games-support.vercel.app/`
 
-## Runtime and privacy model
+## Release quality gate
 
-This release candidate is local-first and designed to remain usable offline after installation. Profiles, progress, family records, settings, and companion history are stored on the device. Remote API mode is disabled in preview and production EAS profiles unless intentionally reconfigured.
-
-The build contains no advertising SDK, analytics SDK, active purchase flow, public social wall, or user-generated public content.
-
-## Offline source verification
-
-From the project root:
+From `frontend/`, the protected quality workflow runs:
 
 ```bash
-python scripts/audit.py
-```
-
-After a clean dependency install is possible, run from `frontend/`:
-
-```bash
-yarn install
+yarn generate:bible
+yarn audit:bible
 yarn audit:content
+yarn audit:visual
 yarn doctor
 yarn typecheck
 yarn lint
@@ -71,22 +89,8 @@ yarn export:ios
 yarn export:android
 ```
 
-## Honest release boundary
+The July 31 signed release passed Bible generation and integrity checks, content and visual audits, Expo Doctor, TypeScript, ESLint, iOS export, Android export, Android signing, iOS signing, and App Store Connect upload.
 
-The full local app source has passed repeated offline content, configuration, asset, TypeScript-target, concurrency, corruption-recovery, functional-logic, import, secret, and package-integrity checks. The official support and privacy site is live at https://scripture-games-support.vercel.app/. It is a **release candidate**, not yet Production.
+## Honest remaining boundary
 
-Production still requires a clean registry-backed dependency installation, Expo Doctor, native export, signed EAS builds, physical iPhone and Android testing, store metadata review, and submission through the owner’s Apple and Google accounts.
-
-See `RELEASE_HARDENING_RC2.md`, `RELEASE_HARDENING_RC2_QA.txt`, `FULL_APP_IMPLEMENTATION.md`, and `TESTFLIGHT_READINESS.md`.
-
-## Cinematic Visual Master RC3
-
-The complete front end now enforces Liquid Glassmorphism, Tactile Maximalism, and Immersive Cinematic Pacing through shared production primitives. See `CINEMATIC_VISUAL_MASTER_RC3.md`. Run `yarn validate` from `frontend` for the full local quality gate.
-
-## RC3 visual review files
-
-- `CINEMATIC_VISUAL_MASTER_RC3.md` — implementation and tool map
-- `CINEMATIC_VISUAL_MASTER_RC3_QA.txt` — four-pass verification report
-- `docs/previews/visual-review-board.jpg` — six-screen visual review board
-- `docs/previews/motion-preview.gif` — short pacing, reveal, press, and victory preview
-- `scripts/generate-rc3-assets.py` — deterministic original art and texture generator
+Do not call version 1.0.0 ready for App Review until Apple finishes processing build 5 and the physical-device matrix in `APP_STORE_SUBMISSION_1.0.0.md` passes on an actual iPhone. Android store release remains separate and requires Play Console internal testing and listing completion.
