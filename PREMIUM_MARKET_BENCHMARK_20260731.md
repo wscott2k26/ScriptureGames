@@ -100,7 +100,7 @@ Common competitive features:
 | Typed companion visibility | Composer could be covered by tab bar | Fix now |
 | Press-to-talk | Missing | Add now |
 | Spoken companion replies | Missing | Add now using enhanced device voices |
-| Audio Bible | Missing | Add chapter narration using device voices |
+| Audio Bible | Missing | Defer chapter narration until its own real-device audio test |
 | Professional recorded audio catalog | Expensive and storage-heavy | Defer |
 | Public prayer feed/groups/chat | Moderation, child safety, and privacy burden | Defer |
 | Global real-time multiplayer | Backend, anti-cheat, moderation, and operating cost | Defer |
@@ -130,11 +130,8 @@ Common competitive features:
    - Per-message Listen/Stop control
    - No microphone recording persisted by Scripture Games
 
-4. **Listen to Chapter**
-   - Offline Bible chapter narration through the device voice
-   - Chunked narration for long chapters
-   - No giant audio download or paid narration dependency
-
 ## Honest release boundary
 
 This release makes Lumi a usable typed-and-voice Scripture companion, but its current knowledge engine remains curated and local-first. It must not be marketed as an all-knowing pastor, therapist, emergency service, or unrestricted generative AI. A future generative backend requires source-grounded answers, theological review, crisis handling, cost limits, privacy disclosure, and a server-side secret boundary before release.
+
+Bible chapter narration remains a separate roadmap item so its long-chapter queueing, silent-mode behavior, interruptions, Bluetooth routing, and accessibility controls can receive dedicated physical-device testing rather than being rushed into this native release.
