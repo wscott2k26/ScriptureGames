@@ -358,14 +358,13 @@ export async function restoreCloudBackup(): Promise<string> {
 
 export async function deleteCloudAccount(): Promise<void> {
   const session = await requireSession();
-  try {
-    await request<unknown>('/functions/v1/delete-account', {
-      method: 'POST',
-      token: session.access_token,
-      body: {},
-    });
-  } finally {
-    await saveSession(null);
-  }
-  await AsyncStorage.multiRemove([CLOUD_LAST_BACKUP_KEY, CLOUD_LAST_RESTORE_KEY]);
+  await request<unknown>('/functions/v1/delete-account', {
+    method: 'POST',
+    token: session.access_token,
+    body: {},
+  });
+  await Promise.all([
+    saveSession(null),
+    AsyncStorage.multiRemove([CLOUD_LAST_BACKUP_KEY, CLOUD_LAST_RESTORE_KEY]),
+  ]);
 }
