@@ -14,7 +14,7 @@ jobs:
   inspect-existing-build:
     name: Inspect existing EAS build without rebuilding
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
@@ -27,11 +27,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
 
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install project dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
       - name: Inspect failed Android build
         shell: bash
