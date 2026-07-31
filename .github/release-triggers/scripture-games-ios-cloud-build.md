@@ -1,11 +1,12 @@
-# Scripture Games iOS Cloud TestFlight Trigger
+# Scripture Games Premium Faith + Lumi Voice TestFlight Trigger
 
 Authorized by Will Scott on July 31, 2026.
 
-- Certified cloud feature commit: `a8c36a3f806c09e5a0fb2278e9e2f359497b9eba`
-- Workflow identity-parser fix: `341652ada11661bbb15725101d71a48a07e4cc52`
-- Purpose: one iOS production build and App Store Connect/TestFlight upload for optional cloud-backup testing
-- Retry reason: the first workflow stopped before EAS build because EAS CLI 21.4 printed account details after the username; no build or Expo credit was used
-- Android build: intentionally skipped to conserve Expo credits
+- Certified premium feature merge: `0c195133795f23fb0c4a18e221b1d0b845bf4f6e`
+- Final certified quality run: `30664697724`
+- Expected iOS build number: 7
+- Purpose: one iOS production build and App Store Connect/TestFlight upload for physical-device testing of Faith Journeys, Prayer Garden, visible typed Lumi chat, press-to-talk, spoken replies, and the existing optional cloud backup
+- Public privacy policy verified live: `https://scripture-games-support.vercel.app/privacy/` returned 200 with the July 31, 2026 cloud and voice disclosures
+- Android EAS build: intentionally skipped to conserve Expo credits
 - App Review/public release: not authorized by this trigger
-- Duplicate EAS builds: prohibited unless this actual build fails or device testing identifies a confirmed blocker
+- Duplicate EAS builds: prohibited unless this build fails before producing a usable binary or real-device testing identifies a confirmed native blocker
