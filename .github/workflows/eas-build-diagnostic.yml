@@ -43,7 +43,7 @@ jobs:
           cd frontend
           yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
-      - name: Inspect latest Android build
+      - name: Inspect latest Android build and live phase log
         shell: bash
         run: |
           set -euo pipefail
@@ -57,8 +57,29 @@ jobs:
           if (!records.length) throw new Error('No Android build records returned');
           const build = records[0];
           fs.writeFileSync('eas-build-diagnostic.json', JSON.stringify(build, null, 2));
+          fs.writeFileSync('eas-remote-log-url.txt', (build.logFiles || [])[0] || '');
           console.log(JSON.stringify(build, null, 2));
           NODE
+          if [ -s eas-remote-log-url.txt ]; then
+            curl --fail --location --retry 3 --retry-all-errors \
+              --output eas-remote-build.raw \
+              "$(cat eas-remote-log-url.txt)"
+            node <<'NODE'
+            const fs = require('fs');
+            const zlib = require('zlib');
+            const raw = fs.readFileSync('eas-remote-build.raw');
+            let text;
+            try {
+              text = zlib.brotliDecompressSync(raw).toString('utf8');
+            } catch {
+              text = raw.toString('utf8');
+            }
+            fs.writeFileSync('eas-remote-build.log', text);
+            const lines = text.split(/\r?\n/);
+            console.log('--- LIVE EAS BUILD TAIL ---');
+            console.log(lines.slice(-220).join('\n'));
+            NODE
+          fi
 
       - name: Upload diagnostic record
         uses: actions/upload-artifact@v4
@@ -68,5 +89,6 @@ jobs:
           path: |
             eas-build-list.json
             eas-build-diagnostic.json
+            eas-remote-build.log
           if-no-files-found: warn
           retention-days: 30
