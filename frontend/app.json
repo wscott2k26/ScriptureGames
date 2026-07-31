@@ -2,7 +2,7 @@
   "expo": {
     "name": "Scripture Games",
     "slug": "scripture-games",
-    "description": "A premium biblical competition-adventure. Enter Genesis, face ten cinematic trials, master Scripture, and rise through the ranks.",
+    "description": "A premium biblical competition-adventure with guided faith journeys, private prayer tools, and a voice-enabled Scripture companion.",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -57,6 +57,16 @@
             "image": "./assets/images/splash-image.png",
             "backgroundColor": "#080D18"
           }
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Scripture Games to use the microphone when you choose press-to-talk with Lumi.",
+          "speechRecognitionPermission": "Allow Scripture Games to convert your spoken Bible questions into text for Lumi. Audio is not saved by Scripture Games.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
       ]
     ],
