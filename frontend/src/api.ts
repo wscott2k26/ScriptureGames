@@ -1,9 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { localApi } from './local-api';
+import {
+  formatBibleReference,
+  getBibleBook,
+  getBibleChapter,
+  parseBibleReference,
+  searchBible,
+} from './bible-library';
+import { createLumiReply, type LumiBibleSource } from './lumi-engine';
 
 const PROFILE_KEY = 'scripture_games_profile_id';
 const FAMILY_KEY = 'scripture_games_family_id';
+const LOCAL_DB_KEY = 'scripture_games_local_db_v2';
 const REMOTE_BASE = process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/$/, '');
 const USE_REMOTE = process.env.EXPO_PUBLIC_USE_REMOTE_API === 'true' && Boolean(REMOTE_BASE);
 
@@ -68,8 +77,93 @@ const remoteApi = {
   listTopics: () => remoteReq('/quiz-topics'),
 };
 
+const lumiBibleSource: LumiBibleSource = {
+  lookupReference(input) {
+    const location = parseBibleReference(input);
+    if (!location) return null;
+    const book = getBibleBook(location.bookId);
+    if (!book) return null;
+    const verses = getBibleChapter(book.id, location.chapter);
+    if (!verses.length) return null;
+
+    if (location.verse !== undefined) {
+      const verse = verses.find(([number]) => number === location.verse);
+      if (!verse) return null;
+      return {
+        reference: formatBibleReference(location),
+        text: verse[1],
+      };
+    }
+
+    const excerpt = verses.slice(0, 3);
+    return {
+      reference: `${book.name} ${location.chapter}:1–${excerpt.at(-1)?.[0] || 1}`,
+      text: excerpt.map(([number, text]) => `${number}. ${text}`).join(' '),
+    };
+  },
+  findVerses(query, limit = 3) {
+    return searchBible(query, limit).map((verse) => ({
+      reference: `${verse.bookName} ${verse.chapter}:${verse.verse}`,
+      text: verse.text,
+    }));
+  },
+};
+
+type StoredChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+};
+
+type StoredLocalDb = {
+  chats?: Record<string, StoredChatMessage[]>;
+  [key: string]: unknown;
+};
+
+let lumiHistoryQueue: Promise<void> = Promise.resolve();
+
+function replaceStoredLumiReply(sessionId: string, reply: string): Promise<void> {
+  const task = lumiHistoryQueue.then(async () => {
+    const raw = await AsyncStorage.getItem(LOCAL_DB_KEY);
+    if (!raw) return;
+
+    let db: StoredLocalDb;
+    try {
+      db = JSON.parse(raw) as StoredLocalDb;
+    } catch {
+      return;
+    }
+
+    const chats = db.chats || {};
+    const messages = chats[sessionId];
+    if (!messages?.length) return;
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].role === 'assistant') {
+        messages[index] = { ...messages[index], content: reply };
+        break;
+      }
+    }
+
+    db.chats = chats;
+    await AsyncStorage.setItem(LOCAL_DB_KEY, JSON.stringify(db));
+  });
+  lumiHistoryQueue = task.then(() => undefined, () => undefined);
+  return task;
+}
+
+const enhancedLocalApi = {
+  ...localApi,
+  async chat(profileId: string, sessionId: string, message: string, mode: 'kids' | 'adult') {
+    await localApi.chat(profileId, sessionId, message, mode);
+    const reply = createLumiReply(message, mode, lumiBibleSource);
+    await replaceStoredLumiReply(sessionId, reply);
+    return { reply };
+  },
+};
+
 // Local-first by default so TestFlight builds work without a temporary preview server.
-export const api = USE_REMOTE ? remoteApi : localApi;
+export const api = USE_REMOTE ? remoteApi : enhancedLocalApi;
 
 export const storage = {
   saveProfileId: (id: string) => AsyncStorage.setItem(PROFILE_KEY, id),
