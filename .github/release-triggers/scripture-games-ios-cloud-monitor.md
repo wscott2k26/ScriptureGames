@@ -6,5 +6,6 @@ Monitor the existing EAS resources only:
 - Submission ID: `e8b1975a-425d-4781-a710-2334827b662c`
 - App version/build: `1.0.0 (6)`
 - Source commit: `cfa3fa27fcefe6acaf4b68e691e48919ca993a21`
+- Monitor retry: install Expo project dependencies before `eas build:view`
 
 This monitor must not create or submit another build.
