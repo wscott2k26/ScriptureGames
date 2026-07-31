@@ -1,51 +1,83 @@
 # Scripture Games Privacy Policy
 
-**Effective date: July 30, 2026**
+**Effective date: July 31, 2026**
 
-Scripture Games is designed to provide Bible-learning games, stories, memory activities, devotionals, and family progress tools while collecting as little information as possible.
+Scripture Games provides Bible-learning games, Scripture reading and study, guided Faith Journeys, private prayer tools, family profiles, and a typed-and-voice Bible companion while collecting as little information as reasonably possible.
 
-## Information stored by the app
+## Guest and local-first use
 
-The TestFlight beta stores the following information locally on the user’s device:
+A user can choose **Continue on This Device** and use the app without creating an account. The complete World English Bible and the core Scripture Games experience remain available locally after installation.
 
-- Player name or nickname
-- Selected avatar and kids/adult reading mode
-- Quiz and journey progress
-- Experience points, streaks, badges, and completed activities
-- Optional Family Hub names and optional parent email
-- Companion conversation history entered within the app
+The app may store the following information in its private application storage on the device:
 
-This information is used only to provide app features on that device. No account is required.
+- Player name or nickname, avatar, and kids/adult reading mode
+- Quiz, tournament, daily challenge, achievement, league, and Faith Journey progress
+- Private Faith Journey journal responses
+- Bible bookmarks, highlights, verse notes, sermon notes, reading history, and reader preferences
+- Private Prayer Garden requests, categories, details, and answered-prayer history
+- Optional Family Hub names and optional parent email entered by the user
+- Lumi companion questions and conversation history
+- App settings, voice-reply preference, and accessibility preferences
 
-## Information transmitted or shared
+This local information is used to provide app features. Users should avoid entering passwords, payment information, government identifiers, precise location, or other information they do not want stored with their Scripture Games data.
 
-In the default TestFlight configuration, Scripture Games does not transmit personal information to our servers. The app does not include advertising, analytics, tracking, data-broker, or third-party marketing SDKs. We do not sell or rent personal information.
+## Optional cloud account and backup
 
-The app includes an optional remote-backend mode for future development, but that mode is disabled in the TestFlight beta. If remote sync or third-party AI features are enabled in a later release, this policy and the App Store privacy disclosures will be updated before release.
+Cloud backup is optional. A user who creates a Scripture Games cloud account provides an email address and password to Supabase Auth. Scripture Games stores a user ID so the backup can be associated with the correct account.
+
+When the user deliberately chooses **Back Up This Device**, the app may transmit a Scripture Games snapshot to the production Supabase backend. That snapshot can include the local app information listed above, including user-created prayer entries, journal responses, notes, companion history, family records, and progress. The bundled public-domain Bible text is not uploaded.
+
+The backup table uses row-level security so an authenticated account can access only its own backup. Cloud credentials and authentication session data are excluded from the backup payload. Backup and restore are explicit actions; this release does not silently merge competing device copies.
+
+## Voice input and spoken replies
+
+Lumi provides optional press-to-talk input and spoken replies.
+
+- Scripture Games requests microphone and speech-recognition permission only when the user chooses press-to-talk.
+- Spoken words are converted into text using the speech-recognition service available through the device operating system. Depending on the device and its settings, recognition may be processed on the device or by the operating-system provider’s speech service.
+- Scripture Games does not intentionally save microphone audio recordings.
+- The recognized text becomes the user’s typed Lumi question and may be stored in the local conversation history and included in an optional cloud backup.
+- Spoken replies and Bible chapter narration use voices supplied by the device operating system. Scripture Games does not upload the Bible chapter to its own server to generate the device voice.
+- Typed chat remains available when microphone permission is declined or speech recognition is unavailable.
+
+Users should review their device provider’s privacy settings and policies for speech-recognition processing.
+
+## Advertising, analytics, and sale of data
+
+Scripture Games does not include advertising SDKs, advertising tracking, data-broker SDKs, or third-party marketing analytics in this release. We do not sell or rent personal information.
 
 ## Children and families
 
-Scripture Games is family-friendly. A parent or guardian may create local child profiles through Family Hub. The app does not knowingly collect children’s personal information on a remote server in the default beta configuration. Parents should use nicknames rather than full legal names and should not enter sensitive information in the companion chat.
+Scripture Games is designed for family use, but a parent or guardian should supervise children’s use of cloud backup, Lumi, prayer entries, and journals. Parents should use nicknames rather than full legal names and should not allow a child to enter sensitive personal, medical, safety, school, or contact information.
 
-## Security and device storage
+Lumi is not an emergency service, therapist, medical provider, or substitute for a trusted adult, pastor, counselor, or qualified professional. A child who reports danger or abuse should seek immediate help from a trusted adult or emergency service.
 
-Local app data is stored using the device’s application storage. This storage is not intended for passwords, payment information, medical information, precise location, government identifiers, or other sensitive data. Users should not enter such information into the app.
+## Security
+
+Local app data is stored in the device’s private application storage. Optional cloud backups are stored through Supabase with authenticated ownership and row-level database security. No storage system can be guaranteed completely secure, so users should enter only information appropriate for an app backup.
 
 ## Deleting data
 
-Users can erase locally stored Scripture Games data from either the Tournament player menu or Settings:
+### Delete a cloud account and backup
+
+1. Open **Settings**.
+2. Open **Cloud Backup**.
+3. Choose **Delete Cloud Account**.
+4. Confirm the deletion.
+
+This action removes the Supabase authentication account and its remote Scripture Games backup. Local device data remains until the separate local erase action is used.
+
+### Delete local Scripture Games data
 
 1. Open **Settings** or the Tournament player menu.
 2. Choose **Erase All Scripture Games Data** or **Erase All App Data**.
 3. Confirm the deletion.
 
-Settings also provides **Reset Genesis Season Only**, which removes the selected player’s faction, Manna, rank points, choices, trial scores, and season completion while preserving classic training records.
-
-Deleting the app from the device also removes its local application data, subject to the device platform’s backup and restore behavior.
+Deleting the app also removes local application data, subject to the device platform’s backup and restore behavior.
 
 ## Payments
 
-All TestFlight beta content is unlocked. The beta does not process payments or collect payment information.
+All current TestFlight content is unlocked. This build does not process payments or collect payment information.
 
 ## Changes to this policy
 
