@@ -1,6 +1,6 @@
 # EAS Build Diagnostic Request
 
-Inspect the live phase log for the current Android build created by the guarded Scripture Games signed-release workflow without creating a new EAS build.
+Capture the current raw EAS phase log for the Android build created by the guarded Scripture Games signed-release workflow without creating another build.
 
 - Project: `@wscott2k8/scripture-games`
 - Signed workflow run: `30652847683`
