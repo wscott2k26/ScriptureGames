@@ -73,7 +73,10 @@ jobs:
         run: |
           set -euo pipefail
           cd frontend
-          test "$(eas whoami)" = 'wscott2k8'
+          identity="$(eas whoami)"
+          printf '%s\n' "$identity"
+          account="$(printf '%s\n' "$identity" | head -n 1 | sed -E 's/[[:space:]]+\(authenticated.*$//')"
+          test "$account" = 'wscott2k8'
           eas project:info --non-interactive
 
       - name: Build Android preview APK
