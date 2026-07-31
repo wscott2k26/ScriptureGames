@@ -1,0 +1,51 @@
+name: EAS Build Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/release-triggers/eas-build-diagnostic.md'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-existing-build:
+    name: Inspect existing EAS build without rebuilding
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check out certified main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Inspect failed Android build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build:view 6fc21593-67eb-49ca-841f-a8763e3ac63f --json > ../eas-build-diagnostic.json
+          cd ..
+          python -m json.tool eas-build-diagnostic.json
+
+      - name: Upload diagnostic record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-eas-build-diagnostic
+          path: eas-build-diagnostic.json
+          if-no-files-found: error
+          retention-days: 30
