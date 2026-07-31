@@ -32,3 +32,7 @@ Every release build must generate the Bible from the official public-domain eBib
 - Android export
 
 The app must never represent the empty development fallback as full Bible access.
+
+## Production-tree verification
+
+This record is updated through a pull request created from the already-merged `main` tree. Its only purpose is to force the complete release gate to run once more against production source before this release is treated as closed.
