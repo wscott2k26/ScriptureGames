@@ -74,7 +74,8 @@ jobs:
         run: |
           set -euo pipefail
           cd frontend
-          test "$(eas whoami)" = 'wscott2k8'
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
           eas project:info --non-interactive
 
       - name: Build and submit iOS to TestFlight
