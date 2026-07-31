@@ -245,7 +245,7 @@ export default function CloudAccountScreen() {
               </>
             )}
 
-            {message ? <Text accessibilityRole="status" style={styles.message}>{message}</Text> : null}
+            {message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{message}</Text> : null}
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           </ScrollView>
         </KeyboardAvoidingView>
