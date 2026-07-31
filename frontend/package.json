@@ -12,13 +12,13 @@
     "generate:assets": "python ../scripts/generate-rc3-assets.py",
     "generate:bible": "python ../scripts/build-bible.py --output src/bible-data",
     "audit:content": "python ../scripts/audit.py",
-    "audit:bible": "python ../scripts/audit-bible.py",
+    "audit:bible": "python scripts/audit-bible.py",
     "audit:visual": "python ../scripts/audit-visual-master.py",
     "generate:content": "python ../scripts/generate-content.py",
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn generate:bible && yarn audit:bible",
+    "eas-build-post-install": "yarn audit:bible",
     "validate": "yarn generate:bible && yarn audit:bible && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
