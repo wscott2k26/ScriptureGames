@@ -6,17 +6,20 @@ Built with Expo SDK 54, React Native, TypeScript, Expo Router, Reanimated, local
 
 ## Current release status — July 31, 2026
 
-- Signed local-first TestFlight build: `1.0.0 (5)`
-- Cloud-backup TestFlight candidate: prepared on `feature/optional-cloud-backup-v1-1`
+- Previous local-first TestFlight build: `1.0.0 (5)`
+- Cloud-enabled iOS build: `1.0.0 (6)`
+- EAS build status: **FINISHED**
+- EAS App Store Connect submission status: **FINISHED**
+- Apple/TestFlight processing confirmation: pending
 - Bundle identifier: `com.willywill.scripturegames`
 - Production Supabase cloud backend: deployed and active
 - Optional email/password account, backup, restore, sign-out, and in-app account deletion: implemented
 - Guest/device-only play remains the default
 - Complete Bible remains bundled for offline use
-- Guarded iOS-only TestFlight workflow added to conserve Expo credits
-- Cloud-enabled build is for TestFlight testing only until privacy disclosures and two-device validation pass
+- Android intentionally not rebuilt for this TestFlight update
+- Build 6 is for TestFlight testing only until privacy disclosures and two-device validation pass
 
-See `SIGNED_RELEASE_RESULT_20260731.md` for the build-5 record, `APP_STORE_SUBMISSION_1.0.0.md` for the original store package, and `CLOUD_BACKUP_1.1_READINESS.md` for the cloud TestFlight boundary and device matrix.
+See `IOS_CLOUD_BUILD_6_RESULT_20260731.md` for exact build/submission IDs and the TestFlight matrix. See `SIGNED_RELEASE_RESULT_20260731.md` for the build-5 record, `APP_STORE_SUBMISSION_1.0.0.md` for the original store package, and `CLOUD_BACKUP_1.1_READINESS.md` for the cloud release boundary.
 
 ## Complete offline Bible and Church Companion
 
@@ -104,4 +107,4 @@ yarn export:android
 
 ## Honest remaining boundary
 
-The cloud-enabled build may be uploaded to TestFlight for real-device validation. Do not submit it for public App Review until cloud account creation, backup, cross-device restore, offline behavior, sign-out, and account deletion pass, and the privacy disclosures are updated.
+Build 6 has been uploaded to App Store Connect for TestFlight processing. Do not submit it for public App Review until cloud account creation, backup, cross-device restore, offline behavior, sign-out, and account deletion pass, and the privacy disclosures are updated.
