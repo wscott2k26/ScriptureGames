@@ -2,21 +2,21 @@
 
 Scripture Games is a premium, local-first biblical competition-adventure for iOS and Android. It combines a complete Genesis tournament, daily faith practice, Bible training games, family profiles, and a complete offline Bible and church companion.
 
-Built with Expo SDK 54, React Native, TypeScript, Expo Router, Reanimated, and local-first persistence.
+Built with Expo SDK 54, React Native, TypeScript, Expo Router, Reanimated, local-first persistence, and optional Supabase cloud backup.
 
 ## Current release status — July 31, 2026
 
-- Certified source: `33635560b79bf127a1f715aa5844a769421ae1af`
-- App version: `1.0.0`
-- iOS build: `5`
+- Signed local-first TestFlight build: `1.0.0 (5)`
+- Cloud-backup TestFlight candidate: prepared on `feature/optional-cloud-backup-v1-1`
 - Bundle identifier: `com.willywill.scripturegames`
-- Android preview APK: built successfully
-- iOS production binary: built successfully
-- App Store Connect/TestFlight upload: successful
-- Apple processing and physical-device testing: final external release gates
-- Expo included build credits used after this release: 93%; do not rebuild without a real defect or store blocker
+- Production Supabase cloud backend: deployed and active
+- Optional email/password account, backup, restore, sign-out, and in-app account deletion: implemented
+- Guest/device-only play remains the default
+- Complete Bible remains bundled for offline use
+- Guarded iOS-only TestFlight workflow added to conserve Expo credits
+- Cloud-enabled build is for TestFlight testing only until privacy disclosures and two-device validation pass
 
-See `SIGNED_RELEASE_RESULT_20260731.md` for exact build and submission IDs. See `APP_STORE_SUBMISSION_1.0.0.md` for product-page copy, App Review notes, privacy guidance, screenshot plan, physical-device matrix, and final submission checklist.
+See `SIGNED_RELEASE_RESULT_20260731.md` for the build-5 record, `APP_STORE_SUBMISSION_1.0.0.md` for the original store package, and `CLOUD_BACKUP_1.1_READINESS.md` for the cloud TestFlight boundary and device matrix.
 
 ## Complete offline Bible and Church Companion
 
@@ -31,6 +31,18 @@ See `SIGNED_RELEASE_RESULT_20260731.md` for exact build and submission IDs. See 
 - Native verse sharing
 - Large-text Church Mode
 - Release audit that refuses an incomplete Bible payload
+
+## Optional cloud backup
+
+- Continue on This Device requires no account
+- Scripture Games email/password account is optional
+- Explicit Back Up This Device and Restore Cloud Backup actions
+- Local safety snapshot before restore
+- Local play remains available after sign-out or when offline
+- Cloud payload is limited to Scripture Games app data and excludes cloud credentials
+- Bundled Bible text is not uploaded
+- Row-level security isolates each user’s backup
+- In-app Delete Cloud Account removes the remote backup and authentication account
 
 ## Daily faith loop
 
@@ -67,9 +79,9 @@ See `SIGNED_RELEASE_RESULT_20260731.md` for exact build and submission IDs. See 
 
 ## Privacy model
 
-Scripture Games is local-first and remains usable offline after installation. Profiles, progress, family records, bookmarks, highlights, notes, settings, and activity remain on the device.
+The app remains local-first and usable offline after installation. Cloud backup is optional and requires a user-created account. Before public App Review, the privacy policy and App Store Connect disclosures must describe email authentication and the exact app data stored in the user’s cloud backup.
 
-Version 1.0.0 contains no advertising SDK, analytics SDK, external AI service, active purchase flow, public social wall, or public user-generated content. Remote API mode is disabled in preview and production EAS profiles.
+The app contains no advertising SDK, advertising tracking, or active purchase flow.
 
 Support and privacy site: `https://scripture-games-support.vercel.app/`
 
@@ -80,6 +92,7 @@ From `frontend/`, the protected quality workflow runs:
 ```bash
 yarn generate:bible
 yarn audit:bible
+yarn audit:cloud
 yarn audit:content
 yarn audit:visual
 yarn doctor
@@ -89,8 +102,6 @@ yarn export:ios
 yarn export:android
 ```
 
-The July 31 signed release passed Bible generation and integrity checks, content and visual audits, Expo Doctor, TypeScript, ESLint, iOS export, Android export, Android signing, iOS signing, and App Store Connect upload.
-
 ## Honest remaining boundary
 
-Do not call version 1.0.0 ready for App Review until Apple finishes processing build 5 and the physical-device matrix in `APP_STORE_SUBMISSION_1.0.0.md` passes on an actual iPhone. Android store release remains separate and requires Play Console internal testing and listing completion.
+The cloud-enabled build may be uploaded to TestFlight for real-device validation. Do not submit it for public App Review until cloud account creation, backup, cross-device restore, offline behavior, sign-out, and account deletion pass, and the privacy disclosures are updated.

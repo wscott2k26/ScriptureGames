@@ -1,0 +1,99 @@
+name: Scripture Games iOS Cloud Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/release-triggers/scripture-games-ios-cloud-build.md'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scripture-games-ios-cloud-update
+  cancel-in-progress: false
+
+jobs:
+  ios-testflight:
+    name: Build and submit iOS cloud update
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo 'EXPO_TOKEN is not configured for this repository.' >&2
+            exit 1
+          fi
+
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Validate release source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          yarn generate:bible
+          yarn audit:bible
+          yarn audit:cloud
+          yarn typecheck
+          yarn lint
+
+      - name: Verify Expo identity and linked project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          test "$(eas whoami)" = 'wscott2k8'
+          eas project:info --non-interactive
+
+      - name: Build and submit iOS to TestFlight
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform ios --profile production --non-interactive --auto-submit --json > ../ios-cloud-update-build.json
+
+      - name: Save signed-build record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-cloud-update-record
+          path: ios-cloud-update-build.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact signed-build blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Scripture Games iOS cloud update needs attention — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

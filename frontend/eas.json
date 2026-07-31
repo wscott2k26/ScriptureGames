@@ -16,7 +16,9 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_USE_REMOTE_API": "false"
+        "EXPO_PUBLIC_USE_REMOTE_API": "false",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ejlmjmjeszvegutdmgcq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PYCl3Emi4hq_6ETQO4DlVA_w_safkgw"
       }
     },
     "preview": {
@@ -26,7 +28,9 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_USE_REMOTE_API": "false"
+        "EXPO_PUBLIC_USE_REMOTE_API": "false",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ejlmjmjeszvegutdmgcq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PYCl3Emi4hq_6ETQO4DlVA_w_safkgw"
       },
       "android": {
         "image": "latest",
@@ -40,7 +44,9 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_USE_REMOTE_API": "false"
+        "EXPO_PUBLIC_USE_REMOTE_API": "false",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ejlmjmjeszvegutdmgcq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_PYCl3Emi4hq_6ETQO4DlVA_w_safkgw"
       },
       "android": {
         "image": "latest"

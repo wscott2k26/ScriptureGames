@@ -13,13 +13,14 @@
     "generate:bible": "python ../scripts/build-bible.py --output src/bible-data",
     "audit:content": "python ../scripts/audit.py",
     "audit:bible": "node scripts/audit-bible.mjs",
+    "audit:cloud": "node scripts/audit-cloud-backup.mjs",
     "audit:visual": "python ../scripts/audit-visual-master.py",
     "generate:content": "python ../scripts/generate-content.py",
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn audit:bible",
-    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
+    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud",
+    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",

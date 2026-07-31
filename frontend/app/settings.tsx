@@ -86,7 +86,7 @@ export default function SettingsScreen() {
   return (
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-04']} darkness={0.67}>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader back eyebrow="PLAYER CONTROL" title="Settings" subtitle="Profile, accessibility, feedback, privacy, and local data." />
+        <ScreenHeader back eyebrow="PLAYER CONTROL" title="Settings" subtitle="Profile, cloud backup, accessibility, privacy, and local data." />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.section}>Player Profile</Text>
           <GlassPanel strong style={styles.panel}>
@@ -115,6 +115,24 @@ export default function SettingsScreen() {
             </View>
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
             <TactileButton compact label={saving ? 'Saving…' : saved ? 'Profile Saved' : 'Save Player Profile'} disabled={saving || !name.trim()} onPress={saveProfile} />
+          </GlassPanel>
+
+          <Text style={styles.section}>Cloud Backup</Text>
+          <GlassPanel strong style={styles.cloudPanel}>
+            <View style={styles.cloudHeader}>
+              <View style={styles.cloudIcon}><Ionicons name="cloud-done" size={24} color={colors.brand} /></View>
+              <View style={styles.cloudCopy}>
+                <Text style={styles.infoTitle}>Optional account, offline-first play</Text>
+                <Text style={styles.infoText}>Keep playing as a guest with everything stored on this phone, or create a Scripture Games account to back up and restore profiles, progress, Bible notes, bookmarks, highlights, and settings.</Text>
+              </View>
+            </View>
+            <TactileButton
+              compact
+              variant="glass"
+              label="Manage Cloud Backup"
+              icon={<Ionicons name="cloud-outline" size={18} color={colors.onSurface} />}
+              onPress={() => router.push('/cloud-account')}
+            />
           </GlassPanel>
 
           <Text style={styles.section}>Experience</Text>
@@ -154,8 +172,8 @@ export default function SettingsScreen() {
           <GlassPanel style={styles.infoPanel}>
             <Ionicons name="lock-closed" size={23} color={colors.success} />
             <View style={styles.infoCopy}>
-              <Text style={styles.infoTitle}>Local-first beta</Text>
-              <Text style={styles.infoText}>Profiles, Genesis progress, family records, chat history, and settings stay on this device unless a future cloud mode is deliberately enabled. This build contains no ad tracking and no active payment flow.</Text>
+              <Text style={styles.infoTitle}>Local-first by default</Text>
+              <Text style={styles.infoText}>Guest profiles, progress, family records, chat history, Bible study data, and settings stay on this device. Cloud backup is optional and only runs after the player deliberately creates or signs into an account.</Text>
             </View>
           </GlassPanel>
           <GlassPanel style={styles.infoPanel}>
@@ -215,6 +233,10 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
   section: { color: colors.parchment, fontSize: 18, fontWeight: '900', marginTop: spacing.sm },
   panel: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md },
+  cloudPanel: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md },
+  cloudHeader: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  cloudIcon: { width: 48, height: 48, borderRadius: 17, backgroundColor: colors.brandTertiary, borderWidth: 1, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  cloudCopy: { flex: 1 },
   label: { color: colors.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
   error: { color: colors.error, fontSize: 12, lineHeight: 17, fontWeight: '800' },
   input: { height: 52, borderRadius: radii.md, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: 'rgba(5,9,18,0.62)', color: colors.onSurface, paddingHorizontal: spacing.md, fontSize: 17, fontWeight: '800' },
