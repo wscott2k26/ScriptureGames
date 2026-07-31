@@ -10,19 +10,19 @@ const BOOK_BY_ALIAS = new Map<string, BibleBook>();
 
 const EXTRA_ALIASES: Record<string, string[]> = {
   GEN: ['gen'], EXO: ['exo', 'ex'], LEV: ['lev'], NUM: ['num'], DEU: ['deut', 'dt'],
-  JOS: ['josh'], JDG: ['judg'], RUT: ['ru'], 1SA: ['1sam', 'i samuel'], 2SA: ['2sam', 'ii samuel'],
-  1KI: ['1kgs', 'i kings'], 2KI: ['2kgs', 'ii kings'], 1CH: ['1chr', 'i chronicles'], 2CH: ['2chr', 'ii chronicles'],
+  JOS: ['josh'], JDG: ['judg'], RUT: ['ru'], '1SA': ['1sam', 'i samuel'], '2SA': ['2sam', 'ii samuel'],
+  '1KI': ['1kgs', 'i kings'], '2KI': ['2kgs', 'ii kings'], '1CH': ['1chr', 'i chronicles'], '2CH': ['2chr', 'ii chronicles'],
   EZR: ['ezr'], NEH: ['neh'], EST: ['est'], JOB: ['job'], PSA: ['ps', 'psalm'], PRO: ['prov', 'prv'],
   ECC: ['eccl', 'qoheleth'], SNG: ['song', 'songs', 'song of songs', 'canticles'], ISA: ['isa'], JER: ['jer'],
   LAM: ['lam'], EZK: ['ezek', 'eze'], DAN: ['dan'], HOS: ['hos'], JOL: ['jl'], AMO: ['amos'],
   OBA: ['obad'], JON: ['jon'], MIC: ['mic'], NAM: ['nah'], HAB: ['hab'], ZEP: ['zeph'], HAG: ['hag'],
   ZEC: ['zech'], MAL: ['mal'], MAT: ['matt', 'mt'], MRK: ['mk'], LUK: ['lk'], JHN: ['jn', 'joh'],
-  ACT: ['acts'], ROM: ['rom'], 1CO: ['1cor', 'i corinthians'], 2CO: ['2cor', 'ii corinthians'],
-  GAL: ['gal'], EPH: ['eph'], PHP: ['phil', 'php'], COL: ['col'], 1TH: ['1thess', 'i thessalonians'],
-  2TH: ['2thess', 'ii thessalonians'], 1TI: ['1tim', 'i timothy'], 2TI: ['2tim', 'ii timothy'],
-  TIT: ['tit'], PHM: ['philem'], HEB: ['heb'], JAS: ['jas'], 1PE: ['1pet', 'i peter'],
-  2PE: ['2pet', 'ii peter'], 1JN: ['1jn', 'i john'], 2JN: ['2jn', 'ii john'],
-  3JN: ['3jn', 'iii john'], JUD: ['jud'], REV: ['rev', 'revelations', 'apocalypse'],
+  ACT: ['acts'], ROM: ['rom'], '1CO': ['1cor', 'i corinthians'], '2CO': ['2cor', 'ii corinthians'],
+  GAL: ['gal'], EPH: ['eph'], PHP: ['phil', 'php'], COL: ['col'], '1TH': ['1thess', 'i thessalonians'],
+  '2TH': ['2thess', 'ii thessalonians'], '1TI': ['1tim', 'i timothy'], '2TI': ['2tim', 'ii timothy'],
+  TIT: ['tit'], PHM: ['philem'], HEB: ['heb'], JAS: ['jas'], '1PE': ['1pet', 'i peter'],
+  '2PE': ['2pet', 'ii peter'], '1JN': ['1jn', 'i john'], '2JN': ['2jn', 'ii john'],
+  '3JN': ['3jn', 'iii john'], JUD: ['jud'], REV: ['rev', 'revelations', 'apocalypse'],
 };
 
 for (const book of BIBLE_BOOKS) {
