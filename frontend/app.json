@@ -14,7 +14,8 @@
       "bundleIdentifier": "com.willywill.scripturegames",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Scripture Games accesses your photo library only when you choose to select or share an image. The app does not access your photos without your action."
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
