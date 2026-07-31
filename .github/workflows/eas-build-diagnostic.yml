@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   inspect-existing-build:
-    name: Inspect existing EAS build without rebuilding
+    name: Inspect latest EAS Android build without rebuilding
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -43,38 +43,22 @@ jobs:
           cd frontend
           yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
-      - name: Inspect failed Android build and fetch its log
+      - name: Inspect latest Android build
         shell: bash
         run: |
           set -euo pipefail
           cd frontend
-          eas build:list --platform android --limit 30 --json --non-interactive > ../eas-build-list.json
+          eas build:list --platform android --limit 5 --json --non-interactive > ../eas-build-list.json
           cd ..
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          target = '6fc21593-67eb-49ca-841f-a8763e3ac63f'
-          records = json.loads(Path('eas-build-list.json').read_text())
-          if isinstance(records, dict):
-              records = records.get('builds') or records.get('data') or []
-          build = next((item for item in records if item.get('id') == target), None)
-          if build is None:
-              raise SystemExit(f'Build {target} was not returned by build:list')
-          Path('eas-build-diagnostic.json').write_text(json.dumps(build, indent=2))
-          logs = build.get('logFiles') or []
-          if not logs:
-              raise SystemExit('Build record did not include a remote log URL')
-          Path('eas-remote-log-url.txt').write_text(logs[0])
-          print(json.dumps(build, indent=2))
-          PY
-          curl --fail --location --retry 3 --retry-all-errors \
-            --output eas-remote-build.log \
-            "$(cat eas-remote-log-url.txt)"
-          echo '--- POST-INSTALL FAILURE CONTEXT ---'
-          grep -n -i -E 'post-install|error|failed|audit:bible|python|yarn' eas-remote-build.log | tail -n 160 || true
-          echo '--- END OF REMOTE LOG ---'
-          tail -n 180 eas-remote-build.log
+          node <<'NODE'
+          const fs = require('fs');
+          let records = JSON.parse(fs.readFileSync('eas-build-list.json', 'utf8'));
+          if (!Array.isArray(records)) records = records.builds || records.data || [];
+          if (!records.length) throw new Error('No Android build records returned');
+          const build = records[0];
+          fs.writeFileSync('eas-build-diagnostic.json', JSON.stringify(build, null, 2));
+          console.log(JSON.stringify(build, null, 2));
+          NODE
 
       - name: Upload diagnostic record
         uses: actions/upload-artifact@v4
@@ -84,6 +68,5 @@ jobs:
           path: |
             eas-build-list.json
             eas-build-diagnostic.json
-            eas-remote-build.log
           if-no-files-found: warn
           retention-days: 30
