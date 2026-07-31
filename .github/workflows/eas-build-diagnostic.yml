@@ -12,51 +12,34 @@ permissions:
 
 jobs:
   inspect-existing-build:
-    name: Inspect exact EAS iOS build without rebuilding
+    name: Inspect exact EAS iOS submission without rebuilding
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
-      - name: Check out certified main
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
-
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ env.EXPO_TOKEN }}
-
-      - name: Install project dependencies
+      - name: Query Expo submission record
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global yarn@1.22.22
-          cd frontend
-          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
-
-      - name: Inspect exact iOS build and submission linkage
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd frontend
-          eas build:view 20647cd0-2f76-4cb7-930f-22db46103be1 --json > ../eas-build-diagnostic.json
-          cd ..
-          cat eas-build-diagnostic.json
+          QUERY='query SubmissionStatus($id: ID!) { submissions { byId(submissionId: $id) { id status platform createdAt updatedAt completedAt logFiles iosConfig { ascAppIdentifier } submittedBuild { id status appBuildVersion } } } }'
+          jq -n --arg query "$QUERY" --arg id '73b9722e-ee5d-4f9d-8931-c14273663b5e' '{query:$query,variables:{id:$id}}' > expo-submission-query.json
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${EXPO_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data @expo-submission-query.json \
+            https://api.expo.dev/graphql \
+            > eas-submission-diagnostic.json
+          jq . eas-submission-diagnostic.json
+          if jq -e '.errors and (.errors | length > 0)' eas-submission-diagnostic.json >/dev/null; then
+            exit 1
+          fi
 
       - name: Upload diagnostic record
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: scripture-games-eas-build-diagnostic
-          path: eas-build-diagnostic.json
+          name: scripture-games-eas-submission-diagnostic
+          path: eas-submission-diagnostic.json
           if-no-files-found: warn
           retention-days: 30
