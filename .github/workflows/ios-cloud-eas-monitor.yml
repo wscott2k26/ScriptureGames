@@ -1,0 +1,93 @@
+name: Scripture Games iOS Cloud EAS Monitor
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/release-triggers/scripture-games-ios-cloud-monitor.md'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    name: Monitor existing iOS build and submission
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      BUILD_ID: abed5bf6-4e79-4533-b550-1f56ccdc0a23
+      SUBMISSION_ID: e8b1975a-425d-4781-a710-2334827b662c
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Monitor existing EAS build and auto-submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          for attempt in $(seq 1 360); do
+            eas build:view "$BUILD_ID" --json > ../ios-cloud-eas-status.json
+            build_status=$(jq -r 'if type == "array" then .[0].status else .status end' ../ios-cloud-eas-status.json)
+            submission_status=$(jq -r 'if type == "array" then (.[0].submissions[0].status // "NONE") else (.submissions[0].status // "NONE") end' ../ios-cloud-eas-status.json)
+            echo "Attempt $attempt: build=$build_status submission=$submission_status"
+
+            case "$build_status" in
+              ERRORED|CANCELED)
+                echo "EAS build ended with $build_status" >&2
+                exit 1
+                ;;
+            esac
+
+            case "$submission_status" in
+              ERRORED|CANCELED)
+                echo "EAS submission ended with $submission_status" >&2
+                exit 1
+                ;;
+            esac
+
+            if [ "$build_status" = "FINISHED" ] && [ "$submission_status" = "FINISHED" ]; then
+              exit 0
+            fi
+
+            sleep 30
+          done
+
+          echo 'Timed out while monitoring the existing EAS build/submission.' >&2
+          exit 1
+
+      - name: Save final EAS status record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-cloud-final-status
+          path: ios-cloud-eas-status.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report final monitor result
+        if: always()
+        shell: bash
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Scripture Games build 6 monitor ${RESULT} — run $GITHUB_RUN_ID" \
+            --body "Existing EAS build: \`$BUILD_ID\`\n\nExisting EAS submission: \`$SUBMISSION_ID\`\n\nMonitor result: **$RESULT**\n\nNo new EAS build was triggered by this monitor."
