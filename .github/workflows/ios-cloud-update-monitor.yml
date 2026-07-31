@@ -1,0 +1,38 @@
+name: Scripture Games iOS Cloud Update Monitor
+
+on:
+  workflow_run:
+    workflows:
+      - Scripture Games iOS Cloud Update
+    types:
+      - completed
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  record-result:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record exact iOS cloud update result
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ github.event.workflow_run.conclusion }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          title="Scripture Games iOS cloud update ${RESULT} — run ${RUN_ID}"
+          body=$(cat <<EOF
+          Workflow result: **${RESULT}**
+
+          - Run: ${RUN_URL}
+          - Run ID: \`${RUN_ID}\`
+          - Source commit: \`${HEAD_SHA}\`
+          - Scope: one iOS production build and TestFlight upload; Android intentionally skipped
+          EOF
+          )
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
