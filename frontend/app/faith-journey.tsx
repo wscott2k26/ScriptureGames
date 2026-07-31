@@ -159,8 +159,8 @@ export default function FaithJourneyScreen() {
 
           <View style={styles.actions}>
             <TactileButton
-              label={complete ? 'Save Reflection' : 'Complete Day'}
-              loading={saving}
+              label={saving ? 'Saving…' : complete ? 'Save Reflection' : 'Complete Day'}
+              disabled={saving}
               onPress={() => void save(true)}
             />
             {complete ? <TactileButton variant="stone" label="Mark Incomplete" onPress={() => void save(false)} /> : null}
