@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   inspect-existing-build:
-    name: Inspect latest EAS iOS build without rebuilding
+    name: Inspect exact EAS iOS build without rebuilding
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -43,26 +43,20 @@ jobs:
           cd frontend
           yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
-      - name: Inspect latest iOS build and capture live log
+      - name: Inspect exact iOS build and submission linkage
         shell: bash
         run: |
           set -euo pipefail
           cd frontend
-          eas build:list --platform ios --limit 5 --json --non-interactive > ../eas-build-list.json
+          eas build:view 20647cd0-2f76-4cb7-930f-22db46103be1 --json > ../eas-build-diagnostic.json
           cd ..
-          node -e "const fs=require('fs');let r=JSON.parse(fs.readFileSync('eas-build-list.json','utf8'));if(!Array.isArray(r))r=r.builds||r.data||[];if(!r.length)throw new Error('No iOS build records returned');const b=r[0];fs.writeFileSync('eas-build-diagnostic.json',JSON.stringify(b,null,2));fs.writeFileSync('eas-remote-log-url.txt',(b.logFiles||[])[0]||'');console.log(JSON.stringify(b,null,2));"
-          if [ -s eas-remote-log-url.txt ]; then
-            curl --fail --location --retry 3 --retry-all-errors --output eas-remote-build.raw "$(cat eas-remote-log-url.txt)"
-          fi
+          cat eas-build-diagnostic.json
 
       - name: Upload diagnostic record
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: scripture-games-eas-build-diagnostic
-          path: |
-            eas-build-list.json
-            eas-build-diagnostic.json
-            eas-remote-build.raw
+          path: eas-build-diagnostic.json
           if-no-files-found: warn
           retention-days: 30
