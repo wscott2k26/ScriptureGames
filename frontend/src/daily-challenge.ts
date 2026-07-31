@@ -7,6 +7,7 @@ export type DailyQuestion = {
   answer: number;
   verse?: string;
   difficulty?: number;
+  topic?: string;
 };
 
 export type DailyChallengeState = {
@@ -75,13 +76,16 @@ function shuffleQuestion(question: DailyQuestion, seed: number): DailyQuestion {
 
 export function getDailyChallenge(date = localDateKey()) {
   const daySeed = hashText(date);
-  const topic = TOPICS[daySeed % TOPICS.length];
   const banks = QUIZ_QUESTIONS as unknown as Record<string, readonly DailyQuestion[]>;
-  const pool = banks[topic] || banks.general;
-  const questions = seededShuffle(pool, daySeed)
-    .slice(0, 5)
-    .map((question, index) => shuffleQuestion({ ...question, options: [...question.options] }, daySeed + index * 101));
-  return { date, topic, questions };
+  const start = daySeed % TOPICS.length;
+  const chosenTopics = Array.from({ length: 5 }, (_, index) => TOPICS[(start + index * 5) % TOPICS.length]);
+  const questions = chosenTopics.map((topic, index) => {
+    const pool = banks[topic]?.length ? banks[topic] : banks.general;
+    const questionSeed = hashText(`${date}:${topic}:${index}`);
+    const question = pool[questionSeed % pool.length];
+    return shuffleQuestion({ ...question, topic, options: [...question.options] }, questionSeed + index * 101);
+  });
+  return { date, topic: 'five-field mix', questions };
 }
 
 async function readDailyChallengeState(profileId: string): Promise<DailyChallengeState | null> {

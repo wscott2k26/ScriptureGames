@@ -1,0 +1,91 @@
+name: Scripture Games Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - 'scripts/**'
+      - '.github/workflows/quality-gate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - 'scripts/**'
+      - '.github/workflows/quality-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scripture-games-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Audit, typecheck, lint, and export
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Generate complete offline Bible
+        working-directory: frontend
+        run: yarn generate:bible
+
+      - name: Audit complete Bible library
+        working-directory: frontend
+        run: yarn audit:bible
+
+      - name: Run content audit
+        working-directory: frontend
+        run: yarn audit:content
+
+      - name: Run visual audit
+        working-directory: frontend
+        run: yarn audit:visual
+
+      - name: Run Expo Doctor
+        working-directory: frontend
+        run: yarn doctor
+
+      - name: Run TypeScript
+        working-directory: frontend
+        run: yarn typecheck
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: yarn lint
+
+      - name: Export iOS bundle
+        working-directory: frontend
+        run: yarn export:ios
+
+      - name: Export Android bundle
+        working-directory: frontend
+        run: yarn export:android
