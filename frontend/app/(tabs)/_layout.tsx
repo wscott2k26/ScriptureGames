@@ -68,9 +68,10 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="journey" options={{ title: 'Tournament', tabBarIcon: tabIcon('map') }} />
       <Tabs.Screen name="quiz" options={{ title: 'Training', tabBarIcon: tabIcon('game-controller') }} />
-      <Tabs.Screen name="stories" options={{ title: 'Archive', tabBarIcon: tabIcon('book') }} />
+      <Tabs.Screen name="bible" options={{ title: 'Bible', tabBarIcon: tabIcon('book') }} />
       <Tabs.Screen name="companion" options={{ title: 'Companion', tabBarIcon: tabIcon('chatbubbles') }} />
       <Tabs.Screen name="command" options={{ title: 'Command', tabBarIcon: tabIcon('shield') }} />
+      <Tabs.Screen name="stories" options={{ href: null }} />
     </Tabs>
   );
 }
