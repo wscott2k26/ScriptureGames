@@ -1,0 +1,70 @@
+name: Scripture Games iOS Build 6 Snapshot
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/release-triggers/scripture-games-ios-cloud-snapshot.md'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      BUILD_ID: abed5bf6-4e79-4533-b550-1f56ccdc0a23
+      SUBMISSION_ID: e8b1975a-425d-4781-a710-2334827b662c
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install project dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Capture existing EAS status
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build:view "$BUILD_ID" --json > ../ios-cloud-eas-snapshot.json
+          build_status=$(jq -r 'if type == "array" then .[0].status else .status end' ../ios-cloud-eas-snapshot.json)
+          submission_status=$(jq -r 'if type == "array" then (.[0].submissions[0].status // "NONE") else (.submissions[0].status // "NONE") end' ../ios-cloud-eas-snapshot.json)
+          echo "BUILD_STATUS=$build_status" >> "$GITHUB_ENV"
+          echo "SUBMISSION_STATUS=$submission_status" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-build-6-snapshot
+          path: ios-cloud-eas-snapshot.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report snapshot
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Scripture Games build 6 snapshot — $BUILD_STATUS / $SUBMISSION_STATUS" \
+            --body "Build ID: \`$BUILD_ID\`\n\nSubmission ID: \`$SUBMISSION_ID\`\n\nBuild status: **$BUILD_STATUS**\n\nSubmission status: **$SUBMISSION_STATUS**\n\nThis was a read-only snapshot; no new build or submission was created."
