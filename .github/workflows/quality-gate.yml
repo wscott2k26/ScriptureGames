@@ -49,6 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
           npm install --global yarn@1.22.22
           cd frontend
           yarn install --frozen-lockfile --non-interactive
