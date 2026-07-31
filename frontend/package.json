@@ -10,7 +10,7 @@
     "lint": "expo lint",
     "doctor": "expo-doctor",
     "generate:assets": "python ../scripts/generate-rc3-assets.py",
-    "generate:bible": "python ../scripts/build-bible.py",
+    "generate:bible": "python ../scripts/build-bible.py --output src/bible-data",
     "audit:content": "python ../scripts/audit.py",
     "audit:bible": "python ../scripts/audit-bible.py",
     "audit:visual": "python ../scripts/audit-visual-master.py",
