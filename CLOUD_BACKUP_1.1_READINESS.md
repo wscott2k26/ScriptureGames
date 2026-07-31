@@ -1,19 +1,34 @@
-# Scripture Games Optional Cloud Backup — 1.1 Candidate
+# Scripture Games Optional Cloud Backup — TestFlight Candidate
 
 Last updated: July 31, 2026
 
-## Release boundary
+## Current authorization and boundary
 
-This work lives on `feature/optional-cloud-backup-v1-1`. It must not alter or replace the signed 1.0.0 build 5 while physical-device testing is still underway.
+The cloud-backup implementation lives on `feature/optional-cloud-backup-v1-1`. On July 31, 2026, Will authorized one deliberate iOS production build and App Store Connect/TestFlight upload so the feature can be tested on a real device.
 
-Do not merge this branch or create another EAS build until:
+This authorization is **for TestFlight testing only**. Do not submit the cloud-enabled build for App Review or public release until:
 
-1. Build 5 physical-device testing is complete.
-2. A dedicated production Supabase project is configured.
-3. The migration and account-deletion function are deployed and tested.
-4. The privacy policy and App Store privacy answers are updated.
-5. The full GitHub quality gate passes.
-6. Cloud backup is tested on two separate real devices with a deliberate conflict/restore checklist.
+1. Cloud backup is tested on two separate real devices.
+2. Backup, restore, sign-out, offline use, and in-app account deletion pass.
+3. The privacy policy is updated for cloud accounts and stored user data.
+4. App Store Connect privacy answers are updated from the earlier local-only “no data collected” position.
+5. Required screenshots, review notes, support details, and release metadata are complete.
+
+## Deployed production backend
+
+Production project: Supabase project `kingdom-quest` (`ejlmjmjeszvegutdmgcq`). The Scripture Games cloud objects are namespaced separately from the older Kingdom Quest tables.
+
+Completed July 31, 2026:
+
+- production project restored and verified healthy;
+- `scripture_game_backups` migration applied;
+- optimized row-level security policies applied;
+- anonymous access revoked;
+- `delete-account` Edge Function deployed with JWT verification enabled;
+- public Supabase URL and publishable client key added to EAS development, preview, and production profiles;
+- service-role credentials remain only inside Supabase-managed function secrets;
+- legacy Kingdom Quest RPCs restricted to signed-in users;
+- Scripture Games-specific Supabase performance warnings cleared.
 
 ## Product behavior
 
@@ -32,33 +47,21 @@ The candidate uses Scripture Games email/password accounts through Supabase Auth
 
 Account creation is optional. The app includes an in-app **Delete Cloud Account** action that deletes the remote backup and Supabase authentication account while clearly explaining that local data remains unless the separate local erase action is used.
 
-## Required Supabase deployment
-
-1. Create a dedicated production Supabase project for Scripture Games.
-2. Apply:
-   - `supabase/migrations/20260731150000_scripture_game_cloud_backups.sql`
-3. Deploy:
-   - `supabase/functions/delete-account/index.ts`
-4. Confirm email/password authentication is enabled.
-5. Configure the Auth site URL and password-reset redirect destination.
-6. Add only these public values to the future EAS production environment:
-   - `EXPO_PUBLIC_SUPABASE_URL`
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-7. Never expose `SUPABASE_SERVICE_ROLE_KEY` to Expo, EAS public variables, client source, logs, or GitHub secrets used by mobile code. It belongs only in the Supabase Edge Function environment.
-
 ## Database security
 
 The backup table:
 
 - uses `auth.users(id)` as its owner key;
 - has row-level security enabled;
-- allows authenticated users to select, insert, update, and delete only rows where `auth.uid() = user_id`;
+- allows authenticated users to select, insert, update, and delete only rows where the signed-in user ID matches `user_id`;
 - revokes anonymous access;
 - deletes the backup automatically when the auth user is deleted.
 
+The account-deletion function requires a valid JWT, resolves the signed-in user from that JWT, deletes only that user’s backup, and then deletes that same authentication account.
+
 ## Privacy and App Store impact
 
-Before shipping the account-enabled build, update the privacy policy and App Store Connect disclosures to reflect the exact production behavior. The candidate may process:
+Before public release, update the privacy policy and App Store Connect disclosures to reflect the exact production behavior. The candidate may process:
 
 - email address for account authentication;
 - user ID for backup ownership;
@@ -76,7 +79,7 @@ The app still contains no advertising SDK and no advertising tracking. Do not co
 - Account deletion is available inside Cloud Backup.
 - Deleting a cloud account removes the remote account and backup; deleting local device data remains a separate clearly labeled action in Settings.
 
-## Two-device test matrix
+## Two-device TestFlight matrix
 
 1. Device A: create a guest profile and complete one Genesis trial.
 2. Device A: add a bookmark, highlight, verse note, sermon note, and preference change.
@@ -93,4 +96,4 @@ The app still contains no advertising SDK and no advertising tracking. Do not co
 
 ## Build-credit rule
 
-This branch does not trigger an EAS build. Use GitHub validation, local Expo export checks, and backend tests first. Create one new signed build only after all configuration, policy, and two-device tests are ready for a single deliberate release candidate.
+Use the guarded `.github/workflows/ios-cloud-update.yml` path for one iOS build and TestFlight upload. Do not build Android for this testing request. Do not trigger a second iOS build unless the first build fails or real-device testing identifies a confirmed blocker.
