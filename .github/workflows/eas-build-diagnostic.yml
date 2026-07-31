@@ -43,42 +43,16 @@ jobs:
           cd frontend
           yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
-      - name: Inspect latest Android build and live phase log
+      - name: Inspect latest Android build and capture live log
         shell: bash
         run: |
           set -euo pipefail
           cd frontend
           eas build:list --platform android --limit 5 --json --non-interactive > ../eas-build-list.json
           cd ..
-          node <<'NODE'
-          const fs = require('fs');
-          let records = JSON.parse(fs.readFileSync('eas-build-list.json', 'utf8'));
-          if (!Array.isArray(records)) records = records.builds || records.data || [];
-          if (!records.length) throw new Error('No Android build records returned');
-          const build = records[0];
-          fs.writeFileSync('eas-build-diagnostic.json', JSON.stringify(build, null, 2));
-          fs.writeFileSync('eas-remote-log-url.txt', (build.logFiles || [])[0] || '');
-          console.log(JSON.stringify(build, null, 2));
-          NODE
+          node -e "const fs=require('fs');let r=JSON.parse(fs.readFileSync('eas-build-list.json','utf8'));if(!Array.isArray(r))r=r.builds||r.data||[];if(!r.length)throw new Error('No Android build records returned');const b=r[0];fs.writeFileSync('eas-build-diagnostic.json',JSON.stringify(b,null,2));fs.writeFileSync('eas-remote-log-url.txt',(b.logFiles||[])[0]||'');console.log(JSON.stringify(b,null,2));"
           if [ -s eas-remote-log-url.txt ]; then
-            curl --fail --location --retry 3 --retry-all-errors \
-              --output eas-remote-build.raw \
-              "$(cat eas-remote-log-url.txt)"
-            node <<'NODE'
-            const fs = require('fs');
-            const zlib = require('zlib');
-            const raw = fs.readFileSync('eas-remote-build.raw');
-            let text;
-            try {
-              text = zlib.brotliDecompressSync(raw).toString('utf8');
-            } catch {
-              text = raw.toString('utf8');
-            }
-            fs.writeFileSync('eas-remote-build.log', text);
-            const lines = text.split(/\r?\n/);
-            console.log('--- LIVE EAS BUILD TAIL ---');
-            console.log(lines.slice(-220).join('\n'));
-            NODE
+            curl --fail --location --retry 3 --retry-all-errors --output eas-remote-build.raw "$(cat eas-remote-log-url.txt)"
           fi
 
       - name: Upload diagnostic record
@@ -89,6 +63,6 @@ jobs:
           path: |
             eas-build-list.json
             eas-build-diagnostic.json
-            eas-remote-build.log
+            eas-remote-build.raw
           if-no-files-found: warn
           retention-days: 30
