@@ -46,6 +46,13 @@ forbidText('app/(tabs)/companion.tsx', 'persist: true', 'Lumi must not persist m
 
 requireText('app.json', 'expo-speech-recognition', 'Native speech-recognition config plugin is missing.');
 requireText('app.json', 'Audio is not saved by Scripture Games.', 'Speech permission copy must explain the audio boundary.');
+requireText('app.json', 'NSPrivacyCollectedDataTypeEmailAddress', 'Cloud-account email must be declared in the iOS privacy manifest.');
+requireText('app.json', 'NSPrivacyCollectedDataTypeUserID', 'Cloud-account user ID must be declared in the iOS privacy manifest.');
+requireText('app.json', 'NSPrivacyCollectedDataTypeGameplayContent', 'Cloud-backed game progress must be declared in the iOS privacy manifest.');
+requireText('app.json', 'NSPrivacyCollectedDataTypeOtherUserContent', 'Cloud-backed prayers, journals, notes, and chat must be declared in the iOS privacy manifest.');
+requireText('app.json', 'NSPrivacyCollectedDataTypeSensitiveInfo', 'Potentially sensitive prayer and faith content must be declared in the iOS privacy manifest.');
+requireText('app.json', 'NSPrivacyCollectedDataTypeHealth', 'Health-category prayer content must be declared in the iOS privacy manifest.');
+forbidText('app.json', '"NSPrivacyCollectedDataTypes": []', 'The cloud-enabled app must not ship an empty collected-data manifest.');
 requireText('package.json', '"expo-speech": "~14.0.8"', 'SDK 54 Expo Speech version is not locked.');
 requireText('package.json', '"expo-speech-recognition": "3.1.3"', 'SDK 54 speech-recognition version is not locked.');
 
@@ -59,4 +66,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Premium faith audit passed: 28 guided days, private prayer history, visible typed chat, native press-to-talk, spoken replies, and cloud-safe storage are present.');
+console.log('Premium faith audit passed: 28 guided days, private prayer history, visible typed chat, native press-to-talk, spoken replies, cloud-safe storage, and non-tracking privacy declarations are present.');
