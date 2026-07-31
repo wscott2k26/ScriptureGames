@@ -43,7 +43,7 @@ jobs:
           cd frontend
           yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
-      - name: Inspect failed Android build
+      - name: Inspect failed Android build and fetch its log
         shell: bash
         run: |
           set -euo pipefail
@@ -62,8 +62,19 @@ jobs:
           if build is None:
               raise SystemExit(f'Build {target} was not returned by build:list')
           Path('eas-build-diagnostic.json').write_text(json.dumps(build, indent=2))
+          logs = build.get('logFiles') or []
+          if not logs:
+              raise SystemExit('Build record did not include a remote log URL')
+          Path('eas-remote-log-url.txt').write_text(logs[0])
           print(json.dumps(build, indent=2))
           PY
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output eas-remote-build.log \
+            "$(cat eas-remote-log-url.txt)"
+          echo '--- POST-INSTALL FAILURE CONTEXT ---'
+          grep -n -i -E 'post-install|error|failed|audit:bible|python|yarn' eas-remote-build.log | tail -n 160 || true
+          echo '--- END OF REMOTE LOG ---'
+          tail -n 180 eas-remote-build.log
 
       - name: Upload diagnostic record
         uses: actions/upload-artifact@v4
@@ -73,5 +84,6 @@ jobs:
           path: |
             eas-build-list.json
             eas-build-diagnostic.json
+            eas-remote-build.log
           if-no-files-found: warn
           retention-days: 30
