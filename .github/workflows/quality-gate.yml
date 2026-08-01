@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/complete-bible-journey-upgrade
+      - fix/build-13-acceptance-regressions
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -14,6 +15,7 @@ on:
     branches:
       - main
       - fix/build-13-acceptance-regressions
+      - fix/build-14-global-audio-backgrounds
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -93,6 +95,10 @@ jobs:
       - name: Test Build 13 acceptance corrections
         working-directory: frontend
         run: yarn test:acceptance
+
+      - name: Test Build 14 global audio and backgrounds
+        working-directory: frontend
+        run: yarn test:build14
 
       - name: Audit complete Bible journey source
         working-directory: frontend
