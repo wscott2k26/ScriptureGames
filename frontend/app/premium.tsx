@@ -21,6 +21,7 @@ const PREMIUM_FEATURES = [
 const ALWAYS_FREE = [
   ['Three Full Books', 'Genesis Tournament plus the complete Exodus and Leviticus trial seasons.'],
   ['Complete Bible Reader', 'All 66 public-domain Bible books remain readable offline regardless of Premium status.'],
+  ['Memory Training', 'Keep the 13 memory passages and Scripture practice tools available without Premium.'],
   ['Lumi and Faith Tools', 'Typed Lumi, guarded voice, Faith Journeys, Prayer Garden, and core training remain available.'],
   ['Healthy Faith Rhythm', 'Daily progress, Grace Leaves, and encouraging milestones are never sold as streak repair.'],
 ] as const;
