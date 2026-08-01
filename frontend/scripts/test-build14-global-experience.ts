@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const read = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), 'utf8');
+const appRoot = fileURLToPath(new URL('../app/', import.meta.url));
+
+function listTsxFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return listTsxFiles(path);
+    return entry.isFile() && entry.name.endsWith('.tsx') ? [path] : [];
+  });
+}
 
 const audio = read('src/audio-context.tsx');
 assert.match(audio, /playsInSilentMode:\s*true/, 'App audio must play while an iPhone is in silent mode.');
@@ -33,6 +43,10 @@ const ordinaryScreens = [
 ];
 for (const path of ordinaryScreens) {
   assert.doesNotMatch(read(path), /<CinematicBackdrop[^>]*preserveSource/, `${path} must follow the saved global background.`);
+}
+
+for (const path of listTsxFiles(appRoot)) {
+  assert.doesNotMatch(readFileSync(path, 'utf8'), /sceneId\s*=/, `${path} must not hard-code a non-gameplay peaceful scene.`);
 }
 
 console.log('Build 14 global audio and background regression tests passed.');
