@@ -1,4 +1,4 @@
-name: Monitor Scripture Games EAS Build 12
+name: Diagnose Scripture Games EAS Build 12
 
 on:
   push:
@@ -15,10 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  monitor:
-    name: Record EAS build and TestFlight submission status
+  diagnose:
+    name: Record EAS build query diagnostics
     runs-on: ubuntu-latest
-    timeout-minutes: 220
+    timeout-minutes: 30
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       TARGET_BRANCH: feature/complete-bible-journey-upgrade
@@ -49,52 +49,43 @@ jobs:
           eas-version: latest
           token: ${{ env.EXPO_TOKEN }}
 
-      - name: Record current EAS state
+      - name: Capture project and build query output
         shell: bash
         run: |
-          set -euo pipefail
-          cd frontend
-          eas build:list --platform ios --git-commit-hash "$SOURCE_SHA" --limit 1 --json --non-interactive > /tmp/eas-build-list-start.json 2> /tmp/eas-build-list-start.err
-          cd ..
-          test "$(jq 'length' /tmp/eas-build-list-start.json)" -eq 1
-          test "$(jq -r '.[0].id' /tmp/eas-build-list-start.json)" = "$BUILD_ID"
-
+          set -uo pipefail
           mkdir -p .github/run-status
-          jq '.[0]' /tmp/eas-build-list-start.json > .github/run-status/eas-build-12-start.json
+
+          cd frontend
+          eas whoami > /tmp/eas-whoami.out 2> /tmp/eas-whoami.err
+          whoami_exit=$?
+          eas project:info --non-interactive > /tmp/eas-project-info.out 2> /tmp/eas-project-info.err
+          project_exit=$?
+          eas build:view "$BUILD_ID" --json > /tmp/eas-build-view.out 2> /tmp/eas-build-view.err
+          view_exit=$?
+          eas build:list --platform ios --limit 20 --json --non-interactive > /tmp/eas-build-list.out 2> /tmp/eas-build-list.err
+          list_exit=$?
+          cd ..
+
+          jq -n \
+            --arg buildId "$BUILD_ID" \
+            --arg sourceSha "$SOURCE_SHA" \
+            --argjson whoamiExit "$whoami_exit" \
+            --arg whoamiOut "$(cat /tmp/eas-whoami.out)" \
+            --arg whoamiErr "$(cat /tmp/eas-whoami.err)" \
+            --argjson projectExit "$project_exit" \
+            --arg projectOut "$(cat /tmp/eas-project-info.out)" \
+            --arg projectErr "$(cat /tmp/eas-project-info.err)" \
+            --argjson viewExit "$view_exit" \
+            --arg viewOut "$(cat /tmp/eas-build-view.out)" \
+            --arg viewErr "$(cat /tmp/eas-build-view.err)" \
+            --argjson listExit "$list_exit" \
+            --arg listOut "$(cat /tmp/eas-build-list.out)" \
+            --arg listErr "$(cat /tmp/eas-build-list.err)" \
+            '{buildId:$buildId,sourceSha:$sourceSha,whoami:{exit:$whoamiExit,stdout:$whoamiOut,stderr:$whoamiErr},projectInfo:{exit:$projectExit,stdout:$projectOut,stderr:$projectErr},buildView:{exit:$viewExit,stdout:$viewOut,stderr:$viewErr},buildList:{exit:$listExit,stdout:$listOut,stderr:$listErr}}' \
+            > .github/run-status/eas-build-12-query-diagnostics.json
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/run-status/eas-build-12-start.json
-          git commit -m 'ci: record initial EAS build 12 state' || true
+          git add .github/run-status/eas-build-12-query-diagnostics.json
+          git commit -m 'ci: record EAS Build 12 query diagnostics' || true
           git push origin HEAD:"$TARGET_BRANCH"
-
-      - name: Watch signed build and TestFlight submission
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          for _ in $(seq 1 180); do
-            cd frontend
-            eas build:list --platform ios --git-commit-hash "$SOURCE_SHA" --limit 1 --json --non-interactive > /tmp/eas-build-list.json 2> /tmp/eas-build-list.err
-            cd ..
-            test "$(jq 'length' /tmp/eas-build-list.json)" -eq 1
-            jq '.[0]' /tmp/eas-build-list.json > /tmp/eas-build-12.json
-            test "$(jq -r '.id' /tmp/eas-build-12.json)" = "$BUILD_ID"
-
-            build_status="$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)"
-            submission_status="$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)"
-
-            case "$build_status:$submission_status" in
-              FINISHED:FINISHED|ERRORED:*|CANCELED:*|*:ERRORED|*:CANCELED) break ;;
-            esac
-            sleep 60
-          done
-
-          cp /tmp/eas-build-12.json .github/run-status/eas-build-12-final.json
-          git pull --rebase origin "$TARGET_BRANCH"
-          git add .github/run-status/eas-build-12-final.json
-          git commit -m 'ci: record final EAS build 12 and TestFlight state' || true
-          git push origin HEAD:"$TARGET_BRANCH"
-
-          test "$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)" = 'FINISHED'
-          test "$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)" = 'FINISHED'
