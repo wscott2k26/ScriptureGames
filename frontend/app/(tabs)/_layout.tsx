@@ -71,11 +71,12 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="command" options={{ title: 'Home', tabBarIcon: tabIcon('home') }} />
-      <Tabs.Screen name="journey" options={{ title: 'Journey', tabBarIcon: tabIcon('map') }} />
+      <Tabs.Screen name="bible-journey" options={{ title: 'Journey', tabBarIcon: tabIcon('map') }} />
       <Tabs.Screen name="quiz" options={{ title: 'Games', tabBarIcon: tabIcon('game-controller') }} />
       <Tabs.Screen name="bible" options={{ title: 'Bible', tabBarIcon: tabIcon('book') }} />
       <Tabs.Screen name="companion" options={{ title: 'Lumi', tabBarIcon: tabIcon('chatbubbles') }} />
       <Tabs.Screen name="preferences" options={{ title: 'Settings', tabBarIcon: tabIcon('settings') }} />
+      <Tabs.Screen name="journey" options={{ href: null }} />
       <Tabs.Screen name="stories" options={{ href: null }} />
     </Tabs>
   );
