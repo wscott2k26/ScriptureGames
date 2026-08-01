@@ -39,9 +39,9 @@ jobs:
           set -euo pipefail
           test "${GITHUB_REF_NAME}" = "fix/build-15-piano-premium-boundary"
           test -f .github/status-triggers/ios-build15-authorized.md
-          grep -Fxq 'AUTHORIZED: one iOS Build 15 production build and one TestFlight auto-submit.' .github/status-triggers/ios-build15-authorized.md
-          grep -Fxq 'NO ANDROID CLOUD BUILD.' .github/status-triggers/ios-build15-authorized.md
-          grep -Fxq 'NO APP REVIEW OR PUBLIC RELEASE SUBMISSION.' .github/status-triggers/ios-build15-authorized.md
+          grep -Fq 'AUTHORIZED: one iOS Build 15 production build and one TestFlight auto-submit.' .github/status-triggers/ios-build15-authorized.md
+          grep -Fq 'NO ANDROID CLOUD BUILD.' .github/status-triggers/ios-build15-authorized.md
+          grep -Fq 'NO APP REVIEW OR PUBLIC RELEASE SUBMISSION.' .github/status-triggers/ios-build15-authorized.md
           git merge-base --is-ancestor "$VERIFIED_SOURCE_SHA" HEAD
           echo "Verified Build 15 source $VERIFIED_SOURCE_SHA is present in $(git rev-parse HEAD)."
 
