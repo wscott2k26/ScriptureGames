@@ -23,6 +23,7 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       TARGET_BRANCH: feature/complete-bible-journey-upgrade
       BUILD_ID: e2a4f099-4653-4aaf-bd81-59bb39f2cc09
+      SOURCE_SHA: 67b0a77d84f7752077b884659b9f65dec8d08756
 
     steps:
       - name: Verify protected Expo credential exists
@@ -53,10 +54,13 @@ jobs:
         run: |
           set -euo pipefail
           cd frontend
-          eas build:view "$BUILD_ID" --json > /tmp/eas-build-12-start.json
+          eas build:list --platform ios --git-commit-hash "$SOURCE_SHA" --limit 1 --json --non-interactive > /tmp/eas-build-list-start.json 2> /tmp/eas-build-list-start.err
           cd ..
+          test "$(jq 'length' /tmp/eas-build-list-start.json)" -eq 1
+          test "$(jq -r '.[0].id' /tmp/eas-build-list-start.json)" = "$BUILD_ID"
+
           mkdir -p .github/run-status
-          cp /tmp/eas-build-12-start.json .github/run-status/eas-build-12-start.json
+          jq '.[0]' /tmp/eas-build-list-start.json > .github/run-status/eas-build-12-start.json
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -68,27 +72,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          terminal_build='false'
-          terminal_submission='false'
 
           for _ in $(seq 1 180); do
             cd frontend
-            eas build:view "$BUILD_ID" --json > /tmp/eas-build-12.json
+            eas build:list --platform ios --git-commit-hash "$SOURCE_SHA" --limit 1 --json --non-interactive > /tmp/eas-build-list.json 2> /tmp/eas-build-list.err
             cd ..
+            test "$(jq 'length' /tmp/eas-build-list.json)" -eq 1
+            jq '.[0]' /tmp/eas-build-list.json > /tmp/eas-build-12.json
+            test "$(jq -r '.id' /tmp/eas-build-12.json)" = "$BUILD_ID"
 
             build_status="$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)"
             submission_status="$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)"
 
-            case "$build_status" in
-              FINISHED|ERRORED|CANCELED) terminal_build='true' ;;
+            case "$build_status:$submission_status" in
+              FINISHED:FINISHED|ERRORED:*|CANCELED:*|*:ERRORED|*:CANCELED) break ;;
             esac
-            case "$submission_status" in
-              FINISHED|ERRORED|CANCELED) terminal_submission='true' ;;
-            esac
-
-            if [ "$terminal_build" = 'true' ] && [ "$terminal_submission" = 'true' ]; then
-              break
-            fi
             sleep 60
           done
 
@@ -98,7 +96,5 @@ jobs:
           git commit -m 'ci: record final EAS build 12 and TestFlight state' || true
           git push origin HEAD:"$TARGET_BRANCH"
 
-          build_status="$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)"
-          submission_status="$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)"
-          test "$build_status" = 'FINISHED'
-          test "$submission_status" = 'FINISHED'
+          test "$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)" = 'FINISHED'
+          test "$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)" = 'FINISHED'
