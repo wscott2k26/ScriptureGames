@@ -64,9 +64,10 @@ for (const file of appFiles) {
 const tabsLayout = read('app/(tabs)/_layout.tsx');
 if (!/<Tabs\.Screen\s+name=["']preferences["']/.test(tabsLayout)) fail('Settings is not represented by the persistent preferences tab.');
 if (!appFiles.includes('(tabs)/preferences.tsx')) fail('The visible Settings destination has no app/(tabs)/preferences.tsx route.');
-if (!tabsLayout.includes('detachInactiveScreens={false}')) fail('Tab screens may detach and lose Lumi/Bible working state.');
+if (!tabsLayout.includes('detachInactiveScreens')) fail('Inactive tab screens are not detached from the native view hierarchy.');
+if (!tabsLayout.includes('freezeOnBlur: true')) fail('Inactive tabs are not frozen, allowing hidden animation work and iOS flashing regressions.');
 if (!tabsLayout.includes('popToTopOnBlur: false')) fail('Tab switching is not explicitly configured to preserve each tab stack.');
-if (!/tabBarStyle\s*:\s*\{[^}]*display\s*:\s*['"]none['"]/s.test(tabsLayout)) fail('The old navigator tab bar is still visible instead of the root-level persistent dock.');
+if (/tabBarStyle\s*:\s*\{[^}]*display\s*:\s*['"]none['"]/s.test(tabsLayout)) fail('The native tab bar is hidden; the Build 10 root overlay navigation regression may return.');
 
 const companion = read('app/(tabs)/companion.tsx');
 if (companion.includes('iosCategory:')) fail('Companion still overrides the iOS audio-session category.');
@@ -82,8 +83,8 @@ for (const field of ['musicEnabled', 'soundEffectsEnabled', 'hapticsEnabled', 'm
 
 const rootLayout = read('app/_layout.tsx');
 if (!rootLayout.includes('AudioProvider')) fail('Root layout is missing the app-wide AudioProvider.');
-if (!rootLayout.includes('GlobalNavigationDock')) fail('The main navigation is not mounted above the root navigator.');
-if (!fs.existsSync(path.join(ROOT, 'src/components/navigation/GlobalNavigationDock.tsx'))) fail('The persistent GlobalNavigationDock component is missing.');
+if (rootLayout.includes('GlobalNavigationDock')) fail('Root layout still mounts the full-screen GlobalNavigationDock overlay that caused Build 10 flashing.');
+if (rootLayout.includes('usePathname')) fail('Root layout still subscribes the entire app shell to every pathname change.');
 
 const audioContext = read('src/audio-context.tsx');
 if (!audioContext.includes('configureLumiVoiceAudio')) fail('App audio is not coordinated with Lumi speech recognition.');
@@ -127,4 +128,4 @@ if (failures.length) {
 
 console.log('SCRIPTURE GAMES RUNTIME STABILITY AUDIT — PASS');
 console.log(`Routes scanned: ${appFiles.length}; literal navigation targets scanned: ${literalNavigation.length}.`);
-console.log('Persistent navigation, Settings, Back behavior, route integrity, Lumi draft retention, speech safety, offline audio, preferences, and sacred headers are present.');
+console.log('Native tabs, frozen inactive screens, Settings, Back behavior, route integrity, Lumi draft retention, speech safety, offline audio, preferences, and sacred headers are present.');
