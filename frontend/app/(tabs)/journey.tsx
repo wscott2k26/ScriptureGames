@@ -85,7 +85,7 @@ export default function JourneyScreen() {
 
   if (loading || !season) {
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.4}>
+      <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.4} preserveSource>
         <SafeAreaView style={styles.center}>
           <Text style={styles.loadingMark}>✦</Text>
           <Text style={styles.loadingTitle}>Opening the Genesis arena…</Text>
@@ -95,7 +95,7 @@ export default function JourneyScreen() {
   }
 
   return (
-    <CinematicBackdrop source={nextTrial.background} darkness={0.47}>
+    <CinematicBackdrop source={nextTrial.background} darkness={0.47} preserveSource>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <Pressable

@@ -43,7 +43,7 @@ export default function SeasonVictory() {
 
   if (!profile || !season) {
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5}>
+      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5} preserveSource>
         <SafeAreaView style={styles.center}><Text style={styles.loading}>Preparing the victory hall…</Text></SafeAreaView>
       </CinematicBackdrop>
     );
@@ -65,7 +65,7 @@ export default function SeasonVictory() {
 
   if (!unlocked) {
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5}>
+      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5} preserveSource>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <View style={styles.lockedWrap}>
             <GlassPanel strong style={styles.lockedPanel}>
@@ -81,7 +81,7 @@ export default function SeasonVictory() {
   }
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.35}>
+    <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.35} preserveSource>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {!reducedMotion ? <CelebrationBurst intensity="champion" colors={[colors.brand, '#F9E8B6', colors.brandSecondary, faction?.accent || colors.coral, '#FFFFFF']} /> : null}

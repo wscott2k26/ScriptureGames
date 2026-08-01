@@ -148,7 +148,7 @@ export default function GenesisQuizScreen() {
   if (done) {
     const message = percent >= 80 ? 'Gate Conquered' : percent >= 60 ? 'Gate Opened' : 'Trial Completed';
     return (
-      <CinematicBackdrop source={trial.background} darkness={0.48}>
+      <CinematicBackdrop source={trial.background} darkness={0.48} preserveSource>
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           {percent >= 60 && !reducedMotion && (
@@ -220,7 +220,7 @@ export default function GenesisQuizScreen() {
   }
 
   return (
-    <CinematicBackdrop source={trial.background} darkness={0.5}>
+    <CinematicBackdrop source={trial.background} darkness={0.5} preserveSource>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.quizTopbar}>
