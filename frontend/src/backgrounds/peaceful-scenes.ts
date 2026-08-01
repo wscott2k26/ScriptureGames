@@ -135,7 +135,7 @@ export function resolveRotatingSceneId(
 
   const favorites = [...new Set(favoriteSceneIds)]
     .map(getPeacefulScene)
-    .filter((item): item is PeacefulScene => Boolean(item) && accessibleScene(item, hasPremium));
+    .filter((item): item is PeacefulScene => item !== undefined && accessibleScene(item, hasPremium));
   const pool = favorites.length ? favorites : PEACEFUL_SCENES.filter((item) => accessibleScene(item, hasPremium));
   return pool[dayHash(dateKey) % pool.length]?.id || safeSelected;
 }
