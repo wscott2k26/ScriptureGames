@@ -86,6 +86,8 @@ assert.equal(new Set(photoIds).size, 50, 'All 50 peaceful scene choices must use
 const picker = read('app/background-picker.tsx');
 assert.equal(picker.includes('curated real photos'), true, 'The picker must describe the new real-photo experience.');
 assert.equal(picker.includes('cached on this device'), true, 'The picker must disclose photo caching.');
+assert.equal(picker.includes('usePremiumEntitlement'), true, 'Background locks must use the central Premium entitlement.');
+assert.doesNotMatch(picker, /profile\?\.is_premium/, 'Background locks must not read a stale profile flag directly.');
 assert.doesNotMatch(picker, /not downloaded stock photos/i, 'The old procedural-only claim must be removed.');
 
 const backdrop = read('src/components/premium/PeacefulBackdrop.tsx');
@@ -93,5 +95,8 @@ assert.equal(backdrop.includes("from 'expo-image'"), true, 'Peaceful backgrounds
 assert.equal(backdrop.includes('cachePolicy="disk"'), true, 'Real photos must be cached on device.');
 assert.equal(backdrop.includes('SceneArt'), true, 'Procedural art must remain only as an offline/error fallback.');
 assert.equal(backdrop.includes('getPeacefulPhotoSource'), true, 'The backdrop must resolve the curated photo for each scene.');
+assert.equal(backdrop.includes('usePremiumEntitlement'), true, 'The selected background must use the central Premium entitlement.');
+assert.doesNotMatch(backdrop, /profile\?\.is_premium/, 'The selected background must not read a stale profile flag directly.');
+assert.equal(backdrop.includes("photo.url.replace('w=1600', 'w=600')"), true, 'Picker previews must request smaller photo thumbnails.');
 
 console.log('Build 13 acceptance regression contracts passed.');
