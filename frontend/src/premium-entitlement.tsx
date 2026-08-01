@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { useProfile } from './profile-context';
-import { PREMIUM_PRODUCT_ID } from './premium-entitlement-core';
+import { PREMIUM_PRODUCT_ID, hasValidatedPremiumEntitlement } from './premium-entitlement-core';
 
 export type PremiumEntitlementStatus =
   | 'idle'
@@ -24,7 +24,7 @@ const PremiumEntitlementContext = createContext<PremiumEntitlementContextValue |
 
 export function PremiumEntitlementProvider({ children }: { children: ReactNode }) {
   const { profile, refresh } = useProfile();
-  const hasPremium = Boolean(profile?.is_premium);
+  const hasPremium = hasValidatedPremiumEntitlement(profile);
   const [status, setStatus] = useState<PremiumEntitlementStatus>(hasPremium ? 'active' : 'idle');
   const [message, setMessage] = useState<string | null>(null);
 

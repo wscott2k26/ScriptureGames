@@ -35,7 +35,7 @@ check(catalog.includes("['GEN', 'Genesis'"), 'Genesis is missing from the journe
 check(catalog.includes("['EXO', 'Exodus'"), 'Exodus is missing from the journey catalog.');
 check(catalog.includes("['LEV', 'Leviticus'"), 'Leviticus is missing from the journey catalog.');
 check(catalog.includes("['REV', 'Revelation'"), 'Revelation is missing from the journey catalog.');
-check(catalog.includes("access: offset < 3 ? 'free' : 'premium'"), 'Books 1–3 are not the exact free access boundary.');
+check(catalog.includes("FREE_JOURNEY_BOOK_IDS = new Set(['GEN', 'EXO', 'LEV', 'MAT'])"), 'Genesis, Exodus, Leviticus, and Matthew are not the exact free access boundary.');
 check(catalog.includes('BIBLE_JOURNEY_BOOKS'), 'Canonical Bible Journey export is missing.');
 
 const progressCore = read('src/bible-journey/progress-core.ts');

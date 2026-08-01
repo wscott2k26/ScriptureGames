@@ -24,7 +24,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: 'home',
     eyebrow: 'HOME TAB',
     title: 'Home',
-    description: 'Home is your Command Center. It shows the clearest next action without making you search through menus.',
+    description: 'Home is your dashboard for quick games, Bible reading, Lumi, devotionals, and shortcuts.',
     icon: 'home',
     points: [
       'Resume your latest Genesis gate or other activity.',
@@ -36,12 +36,12 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: 'journey',
     eyebrow: 'JOURNEY TAB',
     title: 'Journey',
-    description: 'Journey is the complete 66-book Bible path.',
+    description: 'Journey is the separate book-by-book mastery path with trials, progress, seals, and Premium book seasons.',
     icon: 'map',
     points: [
       'Start with Genesis and continue in Bible order.',
       'Choose Any Book without damaging your recommended path.',
-      'Genesis, Exodus, and Leviticus are free. Books 4–66 require Premium.',
+      'Genesis, Exodus, Leviticus, and Matthew are free. The remaining 62 Journey books require Premium.',
     ],
   },
   {
@@ -96,7 +96,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: 'premium',
     eyebrow: 'OPTIONAL UPGRADE',
     title: 'Premium',
-    description: 'Premium clearly opens Books 4–66 and the Premium peaceful-photo collection once a validated store entitlement exists.',
+    description: 'Premium clearly opens the remaining 62 Journey books and Premium peaceful-photo collection once a validated store entitlement exists.',
     icon: 'diamond',
     points: [
       'Free progress never silently unlocks Premium books.',

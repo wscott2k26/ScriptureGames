@@ -197,3 +197,11 @@ Build 15 source is ready only when:
 9. Genesis tournament artwork and gameplay remain unchanged.
 10. All focused and full regression gates pass.
 11. No release trigger exists on the branch.
+
+## Post-answer Bible Reference Flow
+
+After an ordinary quiz answer is graded, the feedback panel shows the exact Scripture reference and an **Open in Bible** action. The action is unavailable before grading so the challenge remains honest.
+
+Opening the reference pushes the real Bible tab with the passage selected. The Bible tab shows a **Return to Quiz** control when opened from quiz feedback. Returning uses stack navigation so the active question, selected answer, grading feedback, score, and topic remain intact. Opening the Bible never submits, changes, or advances the answer.
+
+This flow remains offline and uses the bundled World English Bible. Missing or unparsable references hide the action rather than blocking the quiz.

@@ -12,6 +12,8 @@ export type Profile = {
   badges: string[];
   last_active: string;
   is_premium?: boolean;
+  premium_entitlement_source?: 'app-store' | 'play-store';
+  premium_product_id?: string;
   premium_expires_at?: string;
   bonus_awards?: string[];
 };

@@ -90,6 +90,8 @@ const BOOK_SEEDS: readonly BookSeed[] = [
   ['REV', 'Revelation', 'New Testament', 22, 'Jesus victorious and creation made new', '🌈'],
 ] as const;
 
+const FREE_JOURNEY_BOOK_IDS = new Set(['GEN', 'EXO', 'LEV', 'MAT']);
+
 export const BIBLE_JOURNEY_BOOKS: readonly JourneyBook[] = BOOK_SEEDS.map(
   ([id, name, testament, chapterCount, theme, icon], offset) => ({
     id,
@@ -99,7 +101,7 @@ export const BIBLE_JOURNEY_BOOKS: readonly JourneyBook[] = BOOK_SEEDS.map(
     chapterCount,
     theme,
     icon,
-    access: offset < 3 ? 'free' : 'premium',
+    access: FREE_JOURNEY_BOOK_IDS.has(id) ? 'free' : 'premium',
   }),
 );
 

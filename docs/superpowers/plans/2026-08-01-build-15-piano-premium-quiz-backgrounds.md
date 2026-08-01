@@ -628,3 +628,16 @@ List changed files and confirm none match:
 ```
 
 Do not create or run a release workflow without a new explicit user authorization.
+
+### Approved Addendum: Post-answer Bible Reference Flow
+
+**Files:**
+- Modify: `frontend/app/quiz-play.tsx`
+- Modify: `frontend/app/(tabs)/bible.tsx`
+- Test: `frontend/scripts/test-build15-piano-premium.ts`
+
+- [ ] Require the exact source reference and `Open in Bible` only after grading.
+- [ ] Push `/(tabs)/bible` with `reference` and `fromQuiz=1` route parameters.
+- [ ] Resolve the requested reference through the existing offline parser.
+- [ ] Show `Return to Quiz` in the Bible header and use stack back navigation.
+- [ ] Verify quiz state is not reset, submitted, or advanced by the lookup action.
