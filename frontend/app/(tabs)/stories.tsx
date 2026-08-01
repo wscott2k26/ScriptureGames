@@ -14,6 +14,7 @@ import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { FeatureCard, SectionTitle } from '@/src/components/premium/FeatureCard';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { colors, radii, spacing } from '@/src/theme';
 
 type Story = { id: string; title: string; summary: string; image: string; premium?: boolean; character_emoji?: string };
@@ -68,7 +69,7 @@ export default function StoriesScreen() {
                 <Text style={styles.devotionalEyebrow}>TODAY’S DEVOTIONAL</Text>
                 <Text style={styles.devotionalTitle}>{devo.title}</Text>
                 <Text style={styles.devotionalVerse}>“{devo.verse}”</Text>
-                <Text style={styles.devotionalReference}>{devo.reference}</Text>
+                <ScriptureLink reference={devo.reference} compact returnLabel="Return to Stories" />
                 <TactileButton compact label="Read Reflection" onPress={() => router.push('/devotional')} />
               </View>
             </GlassPanel>

@@ -11,7 +11,7 @@ import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
-import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
@@ -94,11 +94,6 @@ export default function QuizPlay() {
 
   const destination = nodeId ? '/(tabs)/journey' : '/(tabs)/quiz';
 
-  const openReference = () => {
-    if (!checked || !question?.verse) return;
-    router.push({ pathname: '/(tabs)/bible', params: { reference: question.verse, fromQuiz: '1' } });
-  };
-
   if (loading || error || !question) {
     return (
       <CinematicBackdrop darkness={0.66}>
@@ -178,18 +173,12 @@ export default function QuizPlay() {
                 <Text style={styles.feedbackTitle}>{correctSelection ? 'Correct' : 'Not quite'}</Text>
                 {!correctSelection ? <Text style={styles.feedbackText}>Correct answer: {question.options[question.answer]}</Text> : null}
                 {question.verse ? (
-                  <>
-                    <Pressable
-                      accessibilityRole="link"
-                      accessibilityLabel={`Open ${question.verse} in Bible`}
-                      testID="quiz-scripture-reference"
-                      onPress={openReference}
-                      style={styles.feedbackReferenceButton}
-                    >
-                      <Text style={styles.feedbackReference}>Source: {question.verse}</Text>
-                    </Pressable>
-                    <TactileButton compact variant="glass" label="Open in Bible" icon={<Ionicons name="book" size={17} color={colors.onSurface} />} onPress={openReference} />
-                  </>
+                  <ScriptureLink
+                    reference={question.verse}
+                    prefix="Source:"
+                    returnLabel="Return to Quiz"
+                    testID="quiz-scripture-reference"
+                  />
                 ) : null}
               </View>
             </GlassPanel>
@@ -220,8 +209,6 @@ const styles = StyleSheet.create({
   feedbackCopy: { flex: 1 },
   feedbackTitle: { color: '#241C14', fontSize: 14, fontWeight: '900' },
   feedbackText: { color: '#665747', fontSize: 12, lineHeight: 18, marginTop: 2 },
-  feedbackReferenceButton: { alignSelf: 'flex-start', marginTop: 5, marginBottom: 6, borderRadius: radii.sm },
-  feedbackReference: { color: colors.brandSecondary, fontSize: 11, fontWeight: '800', textDecorationLine: 'underline' },
   resultCard: { borderRadius: radii.xl, padding: spacing.xl, alignItems: 'center', gap: spacing.md, backgroundColor: 'rgba(249,242,224,0.93)', borderColor: 'rgba(232,185,87,0.62)' },
   resultIcon: { fontSize: 72 },
   resultEyebrow: { color: colors.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },

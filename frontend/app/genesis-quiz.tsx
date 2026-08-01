@@ -24,6 +24,7 @@ import { colors } from '@/src/theme';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { TactileButton } from '@/src/components/premium/TactileButton';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
 import { getFaction, getTrial, type GenesisQuestion } from '@/src/genesis-season';
 import { completeSeasonTrial, loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
@@ -199,7 +200,7 @@ export default function GenesisQuizScreen() {
               <View style={styles.truthCopy}>
                 <Text style={styles.truthLabel}>TRIAL TRUTH</Text>
                 <Text style={styles.truthText}>{question.explanation}</Text>
-                <Text style={styles.truthReference}>{question.reference}</Text>
+                <ScriptureLink reference={question.reference} compact returnLabel="Return to Genesis Results" />
               </View>
             </GlassPanel>
 
@@ -237,7 +238,7 @@ export default function GenesisQuizScreen() {
           <Animated.View key={`question-${index}`} entering={reducedMotion ? undefined : SlideInRight.springify().damping(20)} exiting={reducedMotion ? undefined : SlideOutLeft.duration(180)}>
             <View style={styles.questionMeta}>
               <Text style={styles.questionEyebrow}>TRIAL {trial.number} · {trial.virtue.toUpperCase()}</Text>
-              <Text style={styles.questionReference}>{question.reference}</Text>
+              <ScriptureLink reference={question.reference} compact tone="muted" returnLabel="Return to Genesis Trial" />
             </View>
             <Text style={styles.question}>{question.q}</Text>
             <View style={styles.options}>
@@ -290,7 +291,7 @@ export default function GenesisQuizScreen() {
                 </View>
                 {!isCorrect ? <Text style={styles.correctAnswer}>Correct answer: {question.options[question.answer]}</Text> : null}
                 <Text style={styles.explanation}>{question.explanation}</Text>
-                <Text style={styles.feedbackReference}>{question.reference}</Text>
+                <ScriptureLink reference={question.reference} compact returnLabel="Return to Genesis Trial" />
               </GlassPanel>
             </Animated.View>
           )}
