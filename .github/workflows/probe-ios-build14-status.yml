@@ -1,0 +1,110 @@
+name: Probe Scripture Games iOS Build 14 Status
+
+on:
+  push:
+    branches:
+      - fix/build-14-global-audio-backgrounds
+    paths:
+      - '.github/status-triggers/probe-ios-build14-status.md'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    name: Read current EAS Build 14 status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      BRANCH_NAME: fix/build-14-global-audio-backgrounds
+      EXPECTED_PROJECT_ID: 18710e80-2a62-46ac-8d3a-d1711b7d920a
+
+    steps:
+      - name: Verify Expo credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-14-global-audio-backgrounds
+          fetch-depth: 0
+
+      - name: Set up Node and EAS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Find Build 14 without starting work
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for attempt in $(seq 1 60); do
+            cd frontend
+            eas build:list --platform ios --app-build-version 14 --limit 1 --json --non-interactive > /tmp/build-list.json
+            cd ..
+            if python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('/tmp/build-list.json').read_text())
+          ok = bool(data) and str(data[0].get('appBuildVersion')) == '14' and data[0].get('platform') == 'IOS' and (data[0].get('project') or {}).get('id') == '18710e80-2a62-46ac-8d3a-d1711b7d920a'
+          raise SystemExit(0 if ok else 1)
+          PY
+            then
+              found=1
+              break
+            fi
+            sleep 15
+          done
+          test "$found" = 1
+
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          build = json.loads(Path('/tmp/build-list.json').read_text())[0]
+          result = {
+              'recorded_at': datetime.now(timezone.utc).isoformat(),
+              'build_id': build.get('id'),
+              'build_status': build.get('status'),
+              'platform': build.get('platform'),
+              'distribution': build.get('distribution'),
+              'build_profile': build.get('buildProfile'),
+              'app_version': build.get('appVersion'),
+              'build_number': build.get('appBuildVersion'),
+              'git_commit_hash': build.get('gitCommitHash'),
+              'project_id': (build.get('project') or {}).get('id'),
+              'created_at': build.get('createdAt'),
+              'updated_at': build.get('updatedAt'),
+          }
+          Path('BUILD_14_CURRENT_STATUS.json').write_text(json.dumps(result, indent=2) + '\n')
+          Path('BUILD_14_CURRENT_STATUS.md').write_text(
+              '# Scripture Games Build 14 Current Status\n\n'
+              f"- Recorded: `{result['recorded_at']}`\n"
+              f"- EAS build ID: `{result['build_id']}`\n"
+              f"- Status: `{result['build_status']}`\n"
+              f"- App version/build: `{result['app_version']} ({result['build_number']})`\n"
+              f"- Source commit recorded by EAS: `{result['git_commit_hash']}`\n"
+          )
+          print(json.dumps(result, indent=2))
+          PY
+
+      - name: Commit read-only status result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin "$BRANCH_NAME"
+          git add BUILD_14_CURRENT_STATUS.json BUILD_14_CURRENT_STATUS.md
+          git commit -m 'release: record current iOS Build 14 status'
+          git push origin HEAD:"$BRANCH_NAME"
