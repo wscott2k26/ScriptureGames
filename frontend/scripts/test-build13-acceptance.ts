@@ -66,13 +66,15 @@ const tutorialCore = read('src/tutorial-core.ts');
 assert.equal(tutorialCore.includes('TUTORIAL_STEPS'), true, 'Tutorial steps must live in a reusable data model.');
 assert.equal((tutorialCore.match(/id:/g) || []).length >= 8, true, 'Tutorial must cover at least eight app concepts.');
 
-const scenes = read('src/backgrounds/peaceful-scenes.ts');
-assert.equal(scenes.includes('photoUrl'), true, 'Peaceful scenes must provide real photo sources.');
-assert.equal((scenes.match(/https:\/\/images\.pexels\.com\/photos\//g) || []).length, 50, 'All 50 peaceful scene choices must use real licensed photos.');
+const photos = read('src/backgrounds/peaceful-photo-sources.ts');
+assert.equal(photos.includes('PEACEFUL_PHOTO_SOURCES'), true, 'Peaceful scenes must use a curated real-photo source map.');
+assert.equal((photos.match(/https:\/\/images\.pexels\.com\/photos\//g) || []).length, 50, 'All 50 peaceful scene choices must use real licensed photos.');
+assert.equal((photos.match(/https:\/\/www\.pexels\.com\/photo\//g) || []).length, 50, 'Every real photo must retain its Pexels source page.');
 
 const backdrop = read('src/components/premium/PeacefulBackdrop.tsx');
 assert.equal(backdrop.includes("from 'expo-image'"), true, 'Peaceful backgrounds must render real photos with expo-image.');
 assert.equal(backdrop.includes('cachePolicy="disk"'), true, 'Real photos must be cached on device.');
 assert.equal(backdrop.includes('SceneArt'), true, 'Procedural art must remain only as an offline/error fallback.');
+assert.equal(backdrop.includes('getPeacefulPhotoSource'), true, 'The backdrop must resolve the curated photo for each scene.');
 
 console.log('Build 13 acceptance regression contracts passed.');
