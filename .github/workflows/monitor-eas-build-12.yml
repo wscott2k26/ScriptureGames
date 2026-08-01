@@ -1,0 +1,104 @@
+name: Monitor Scripture Games EAS Build 12
+
+on:
+  push:
+    branches:
+      - feature/complete-bible-journey-upgrade
+    paths:
+      - '.github/status-triggers/query-eas-build-12.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scripture-games-monitor-eas-build-12
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    name: Record EAS build and TestFlight submission status
+    runs-on: ubuntu-latest
+    timeout-minutes: 220
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      TARGET_BRANCH: feature/complete-bible-journey-upgrade
+      BUILD_ID: e2a4f099-4653-4aaf-bd81-59bb39f2cc09
+
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Check out monitoring branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/complete-bible-journey-upgrade
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Record current EAS state
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build:view "$BUILD_ID" --json > /tmp/eas-build-12-start.json
+          cd ..
+          mkdir -p .github/run-status
+          cp /tmp/eas-build-12-start.json .github/run-status/eas-build-12-start.json
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/run-status/eas-build-12-start.json
+          git commit -m 'ci: record initial EAS build 12 state' || true
+          git push origin HEAD:"$TARGET_BRANCH"
+
+      - name: Watch signed build and TestFlight submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          terminal_build='false'
+          terminal_submission='false'
+
+          for _ in $(seq 1 180); do
+            cd frontend
+            eas build:view "$BUILD_ID" --json > /tmp/eas-build-12.json
+            cd ..
+
+            build_status="$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)"
+            submission_status="$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)"
+
+            case "$build_status" in
+              FINISHED|ERRORED|CANCELED) terminal_build='true' ;;
+            esac
+            case "$submission_status" in
+              FINISHED|ERRORED|CANCELED) terminal_submission='true' ;;
+            esac
+
+            if [ "$terminal_build" = 'true' ] && [ "$terminal_submission" = 'true' ]; then
+              break
+            fi
+            sleep 60
+          done
+
+          cp /tmp/eas-build-12.json .github/run-status/eas-build-12-final.json
+          git pull --rebase origin "$TARGET_BRANCH"
+          git add .github/run-status/eas-build-12-final.json
+          git commit -m 'ci: record final EAS build 12 and TestFlight state' || true
+          git push origin HEAD:"$TARGET_BRANCH"
+
+          build_status="$(jq -r '.status // "UNKNOWN"' /tmp/eas-build-12.json)"
+          submission_status="$(jq -r '.submissions[0].status // "NONE"' /tmp/eas-build-12.json)"
+          test "$build_status" = 'FINISHED'
+          test "$submission_status" = 'FINISHED'
