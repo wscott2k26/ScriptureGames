@@ -1,25 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { configureHaptics } from './sfx';
+import {
+  DEFAULT_PREFERENCES,
+  restorePreferences,
+  type AppPreferences,
+  type VoiceReplyMode,
+} from './preferences-core';
+import type { MotionMode } from './motion-intensity';
 
-export type MotionMode = 'system' | 'reduced' | 'full';
+export type { AppPreferences, MotionMode, VoiceReplyMode };
 
-export type AppPreferences = {
-  musicEnabled: boolean;
-  soundEffectsEnabled: boolean;
-  hapticsEnabled: boolean;
-  cinematicTextEnabled: boolean;
-  motionMode: MotionMode;
-};
+export const PERSISTED_EXPERIENCE_PREFERENCE_FIELDS = [
+  'hapticsEnabled',
+  'cinematicTextEnabled',
+  'motionMode',
+] as const;
 
 const STORAGE_KEY = 'scripture_games_preferences_v1';
-const DEFAULTS: AppPreferences = {
-  musicEnabled: true,
-  soundEffectsEnabled: true,
-  hapticsEnabled: true,
-  cinematicTextEnabled: true,
-  motionMode: 'system',
-};
+const freshDefaults = (): AppPreferences => ({ ...DEFAULT_PREFERENCES, favoriteBackgroundIds: [] });
 
 type PreferencesContextValue = {
   preferences: AppPreferences;
@@ -30,19 +29,9 @@ type PreferencesContextValue = {
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
-function restorePreferences(parsed: Partial<AppPreferences>): AppPreferences {
-  return {
-    musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : DEFAULTS.musicEnabled,
-    soundEffectsEnabled: typeof parsed.soundEffectsEnabled === 'boolean' ? parsed.soundEffectsEnabled : DEFAULTS.soundEffectsEnabled,
-    hapticsEnabled: typeof parsed.hapticsEnabled === 'boolean' ? parsed.hapticsEnabled : DEFAULTS.hapticsEnabled,
-    cinematicTextEnabled: typeof parsed.cinematicTextEnabled === 'boolean' ? parsed.cinematicTextEnabled : DEFAULTS.cinematicTextEnabled,
-    motionMode: parsed.motionMode === 'reduced' || parsed.motionMode === 'full' ? parsed.motionMode : 'system',
-  };
-}
-
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [preferences, setPreferences] = useState<AppPreferences>(DEFAULTS);
-  const preferencesRef = useRef<AppPreferences>(DEFAULTS);
+  const [preferences, setPreferences] = useState<AppPreferences>(freshDefaults);
+  const preferencesRef = useRef<AppPreferences>(freshDefaults());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,13 +39,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (!active || !raw) return;
-        const restored = restorePreferences(JSON.parse(raw) as Partial<AppPreferences>);
+        const restored = restorePreferences(JSON.parse(raw) as unknown);
         preferencesRef.current = restored;
         setPreferences(restored);
       })
       .catch(() => {
-        preferencesRef.current = DEFAULTS;
-        setPreferences(DEFAULTS);
+        const defaults = freshDefaults();
+        preferencesRef.current = defaults;
+        setPreferences(defaults);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -69,15 +59,16 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, [preferences.hapticsEnabled]);
 
   const updatePreferences = useCallback(async (patch: Partial<AppPreferences>) => {
-    const next = { ...preferencesRef.current, ...patch };
+    const next = restorePreferences({ ...preferencesRef.current, ...patch });
     preferencesRef.current = next;
     setPreferences(next);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
 
   const resetPreferences = useCallback(async () => {
-    preferencesRef.current = DEFAULTS;
-    setPreferences(DEFAULTS);
+    const defaults = freshDefaults();
+    preferencesRef.current = defaults;
+    setPreferences(defaults);
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, []);
 

@@ -84,6 +84,14 @@ jobs:
         working-directory: frontend
         run: yarn test:navigation
 
+      - name: Test complete Bible journey requirements
+        working-directory: frontend
+        run: yarn test:journey
+
+      - name: Audit complete Bible journey source
+        working-directory: frontend
+        run: yarn audit:journey
+
       - name: Audit runtime stability and navigation
         working-directory: frontend
         run: yarn audit:runtime
