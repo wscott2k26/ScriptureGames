@@ -1,0 +1,38 @@
+name: Scripture Games Lockfile Helper
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  generate-lockfile:
+    if: github.head_ref == 'fix/full-app-stability-4x'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out recovery branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Generate deterministic lockfile
+        run: |
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --non-interactive
+      - name: Upload updated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-updated-yarn-lock
+          path: frontend/yarn.lock
+          if-no-files-found: error
+          retention-days: 1
