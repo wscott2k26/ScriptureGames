@@ -6,7 +6,9 @@ import { useRouter } from 'expo-router';
 import { colors, motion, spacing } from '@/src/theme';
 import { GlassPanel } from './GlassPanel';
 import { TactilePressable } from './TactilePressable';
+import { DoveMark } from './DoveMark';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
+import { goBackOrHome } from '@/src/navigation-fallback';
 
 export function ScreenHeader({
   eyebrow,
@@ -23,15 +25,22 @@ export function ScreenHeader({
 }) {
   const router = useRouter();
   const reducedMotion = useReducedMotionPreference();
+  const handleBack = () => goBackOrHome({
+    canGoBack: () => router.canGoBack(),
+    back: () => router.back(),
+    replace: (href) => router.replace(href as never),
+  });
+
   return (
     <Animated.View entering={reducedMotion ? undefined : FadeInDown.duration(motion.standard)} style={styles.row}>
       {back ? (
-        <TactilePressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} pressScale={0.94} pressDepth={2}>
+        <TactilePressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={10} onPress={handleBack} pressScale={0.94} pressDepth={2}>
           <GlassPanel variant="crystal" style={styles.backButton}>
             <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
           </GlassPanel>
         </TactilePressable>
       ) : null}
+      <DoveMark size={38} />
       <View style={styles.copy}>
         {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
         <Text style={styles.title}>{title}</Text>
@@ -44,9 +53,9 @@ export function ScreenHeader({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   backButton: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1 },
+  copy: { flex: 1, minWidth: 0 },
   eyebrow: { color: colors.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.7, marginBottom: 2 },
   title: { color: colors.onSurface, fontSize: 27, lineHeight: 32, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.52)', textShadowRadius: 8 },
   subtitle: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 3 },

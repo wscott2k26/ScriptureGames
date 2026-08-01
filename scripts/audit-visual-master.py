@@ -86,8 +86,20 @@ contains(
     "systemUltraThinMaterialDark",
 )
 
-tab_layout = APP / "(tabs)/_layout.tsx"
-contains(tab_layout, "BlurView", "experimentalBlurMethod", "tabBarBackground", "intensity={76}")
+global_dock = SRC / "components/navigation/GlobalNavigationDock.tsx"
+contains(
+    global_dock,
+    "BlurView",
+    "experimentalBlurMethod",
+    "LinearGradient",
+    "systemUltraThinMaterialDark",
+    "GLOBAL_DOCK_HEIGHT",
+)
+contains(
+    APP / "(tabs)/_layout.tsx",
+    "detachInactiveScreens={false}",
+    "tabBarStyle: { display: 'none' }",
+)
 
 # ---------------------------------------------------------------------------
 # Pillar 2 — Tactile Maximalism

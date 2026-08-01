@@ -41,7 +41,8 @@ requireText('app/(tabs)/companion.tsx', "from 'expo-speech'", 'Lumi spoken repli
 requireText('app/(tabs)/companion.tsx', "from 'expo-speech-recognition'", 'Lumi voice input must use native speech recognition.');
 requireText('app/(tabs)/companion.tsx', "router.push('/faith-journeys')", 'Faith Journeys must be discoverable from Lumi.');
 requireText('app/(tabs)/companion.tsx', "router.push('/prayer-garden')", 'Prayer Garden must be discoverable from Lumi.');
-requireText('app/(tabs)/companion.tsx', '86 + insets.bottom', 'Lumi composer must clear the floating tab bar.');
+requireText('app/(tabs)/companion.tsx', 'LUMI_DRAFT_PREFIX', 'Lumi must preserve an unsent question while users consult the Bible.');
+forbidText('app/(tabs)/companion.tsx', '86 + insets.bottom', 'Lumi must not reserve space for the removed floating tab bar.');
 forbidText('app/(tabs)/companion.tsx', 'persist: true', 'Lumi must not persist microphone recordings.');
 
 requireText('app.json', 'expo-speech-recognition', 'Native speech-recognition config plugin is missing.');
@@ -66,4 +67,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Premium faith audit passed: 28 guided days, private prayer history, visible typed chat, native press-to-talk, spoken replies, cloud-safe storage, and non-tracking privacy declarations are present.');
+console.log('Premium faith audit passed: 28 guided days, private prayer history, visible typed chat, guarded press-to-talk, spoken replies, persistent drafts, cloud-safe storage, and non-tracking privacy declarations are present.');

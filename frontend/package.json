@@ -15,23 +15,29 @@
     "audit:bible": "node scripts/audit-bible.mjs",
     "audit:cloud": "node scripts/audit-cloud-backup.mjs",
     "audit:premium": "node scripts/audit-premium-faith.mjs",
+    "audit:runtime": "node scripts/audit-runtime-stability.mjs",
     "audit:visual": "python ../scripts/audit-visual-master.py",
     "test:lumi": "node --experimental-strip-types scripts/test-lumi-engine.ts",
+    "test:lumi-voice": "node --experimental-strip-types scripts/test-lumi-voice.ts",
+    "test:navigation": "node --experimental-strip-types scripts/test-navigation-fallback.ts",
     "generate:content": "python ../scripts/generate-content.py",
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi",
-    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
+    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn audit:runtime",
+    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",
     "@expo/vector-icons": "15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "54.0.36",
+    "expo-asset": "~12.0.13",
+    "expo-audio": "~1.1.1",
     "expo-blur": "~15.0.8",
     "expo-constants": "18.0.13",
     "expo-dev-client": "6.0.21",
+    "expo-file-system": "~19.0.23",
     "expo-font": "14.0.12",
     "expo-haptics": "15.0.8",
     "expo-image": "3.0.11",
@@ -73,5 +79,5 @@
   },
   "private": true,
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
-  "description": "A premium local-first biblical competition-adventure with guided faith journeys, a private prayer garden, native voice conversation, a complete ten-trial Genesis season, training games, family profiles, a complete offline Bible reader, and church companion tools."
+  "description": "A premium local-first biblical competition-adventure with guided faith journeys, a private prayer garden, native voice conversation, a complete ten-trial Genesis season, training games, family profiles, a complete offline Bible reader, church companion tools, and optional original music, feedback sounds, haptics, and reduced motion."
 }

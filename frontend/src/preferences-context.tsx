@@ -5,6 +5,8 @@ import { configureHaptics } from './sfx';
 export type MotionMode = 'system' | 'reduced' | 'full';
 
 export type AppPreferences = {
+  musicEnabled: boolean;
+  soundEffectsEnabled: boolean;
   hapticsEnabled: boolean;
   cinematicTextEnabled: boolean;
   motionMode: MotionMode;
@@ -12,6 +14,8 @@ export type AppPreferences = {
 
 const STORAGE_KEY = 'scripture_games_preferences_v1';
 const DEFAULTS: AppPreferences = {
+  musicEnabled: true,
+  soundEffectsEnabled: true,
   hapticsEnabled: true,
   cinematicTextEnabled: true,
   motionMode: 'system',
@@ -26,6 +30,16 @@ type PreferencesContextValue = {
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
+function restorePreferences(parsed: Partial<AppPreferences>): AppPreferences {
+  return {
+    musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : DEFAULTS.musicEnabled,
+    soundEffectsEnabled: typeof parsed.soundEffectsEnabled === 'boolean' ? parsed.soundEffectsEnabled : DEFAULTS.soundEffectsEnabled,
+    hapticsEnabled: typeof parsed.hapticsEnabled === 'boolean' ? parsed.hapticsEnabled : DEFAULTS.hapticsEnabled,
+    cinematicTextEnabled: typeof parsed.cinematicTextEnabled === 'boolean' ? parsed.cinematicTextEnabled : DEFAULTS.cinematicTextEnabled,
+    motionMode: parsed.motionMode === 'reduced' || parsed.motionMode === 'full' ? parsed.motionMode : 'system',
+  };
+}
+
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<AppPreferences>(DEFAULTS);
   const preferencesRef = useRef<AppPreferences>(DEFAULTS);
@@ -36,12 +50,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (!active || !raw) return;
-        const parsed = JSON.parse(raw) as Partial<AppPreferences>;
-        const restored: AppPreferences = {
-          hapticsEnabled: typeof parsed.hapticsEnabled === 'boolean' ? parsed.hapticsEnabled : DEFAULTS.hapticsEnabled,
-          cinematicTextEnabled: typeof parsed.cinematicTextEnabled === 'boolean' ? parsed.cinematicTextEnabled : DEFAULTS.cinematicTextEnabled,
-          motionMode: parsed.motionMode === 'reduced' || parsed.motionMode === 'full' ? parsed.motionMode : 'system',
-        };
+        const restored = restorePreferences(JSON.parse(raw) as Partial<AppPreferences>);
         preferencesRef.current = restored;
         setPreferences(restored);
       })

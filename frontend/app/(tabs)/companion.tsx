@@ -16,10 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
+import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
 import { api } from '@/src/api';
@@ -31,10 +28,17 @@ import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { AnimatedMascot } from '@/src/components/AnimatedMascot';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
+import {
+  abortLumiListening,
+  finishLumiListening,
+  startLumiListening,
+  stopLumiListening,
+} from '@/src/lumi-voice';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 const VOICE_PREF_KEY = 'scripture_games_lumi_voice_replies_v1';
+const LUMI_DRAFT_PREFIX = 'scripture_games_lumi_draft_v1';
 const SUGGESTIONS_KIDS = ['Who was Noah?', 'What is prayer?', 'Tell me about Jesus', 'Why did God make people?'];
 const SUGGESTIONS_ADULT = ['What does John 3:16 mean?', 'How do I read the Bible daily?', 'Explain grace in one paragraph', 'What is the Sermon on the Mount?'];
 const CONTEXT_WORDS = ['Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Matthew', 'Mark', 'Luke', 'John', 'Romans', 'Jesus', 'Yahweh', 'Scripture'];
@@ -45,28 +49,38 @@ export default function CompanionScreen() {
   const { profile } = useProfile();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
   const [sending, setSending] = useState(false);
   const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recognizing, setRecognizing] = useState(false);
+  const [voiceStarting, setVoiceStarting] = useState(false);
   const [voiceReplies, setVoiceReplies] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const sessionId = profile ? `chat-${profile.id}` : 'chat-guest';
+  const draftKey = `${LUMI_DRAFT_PREFIX}:${sessionId}`;
   const scrollRef = useRef<ScrollView | null>(null);
   const enhancedVoiceRef = useRef<string | undefined>(undefined);
 
   useSpeechRecognitionEvent('start', () => {
+    setVoiceStarting(false);
     setRecognizing(true);
     setError(null);
   });
-  useSpeechRecognitionEvent('end', () => setRecognizing(false));
+  useSpeechRecognitionEvent('end', () => {
+    setVoiceStarting(false);
+    setRecognizing(false);
+    void finishLumiListening();
+  });
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript?.trim();
     if (transcript) setInput(transcript.slice(0, 1000));
   });
   useSpeechRecognitionEvent('error', (event) => {
+    setVoiceStarting(false);
     setRecognizing(false);
+    void finishLumiListening();
     if (event.error !== 'aborted' && event.error !== 'no-speech') {
       setError(event.error === 'not-allowed'
         ? 'Microphone and speech-recognition permission are required for press-to-talk. Typed chat still works.'
@@ -88,6 +102,31 @@ export default function CompanionScreen() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    setDraftRestored(false);
+    AsyncStorage.getItem(draftKey)
+      .then((value) => {
+        if (active) setInput((value || '').slice(0, 1000));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setDraftRestored(true);
+      });
+    return () => { active = false; };
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftRestored) return;
+    const timer = setTimeout(() => {
+      const operation = input.length
+        ? AsyncStorage.setItem(draftKey, input.slice(0, 1000))
+        : AsyncStorage.removeItem(draftKey);
+      operation.catch(() => undefined);
+    }, 140);
+    return () => clearTimeout(timer);
+  }, [draftKey, draftRestored, input]);
+
+  useEffect(() => {
     AsyncStorage.getItem(VOICE_PREF_KEY)
       .then((value) => setVoiceReplies(value === 'true'))
       .catch(() => undefined);
@@ -100,7 +139,7 @@ export default function CompanionScreen() {
       .catch(() => undefined);
     return () => {
       void Speech.stop();
-      ExpoSpeechRecognitionModule.abort();
+      void abortLumiListening();
     };
   }, []);
 
@@ -182,23 +221,17 @@ export default function CompanionScreen() {
   };
 
   const toggleListening = async () => {
-    if (recognizing) {
-      ExpoSpeechRecognitionModule.stop();
+    if (recognizing || voiceStarting) {
+      await stopLumiListening();
       return;
     }
+
     await Speech.stop();
     setSpeakingIndex(null);
-    const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
-    if (!available) {
-      setError('Speech recognition is unavailable on this device. Typed chat still works normally.');
-      return;
-    }
-    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-    if (!permission.granted) {
-      setError('Microphone and speech-recognition permission were not granted. Typed chat still works normally.');
-      return;
-    }
-    ExpoSpeechRecognitionModule.start({
+    setVoiceStarting(true);
+    setError(null);
+
+    const result = await startLumiListening({
       lang: 'en-US',
       interimResults: true,
       continuous: false,
@@ -206,13 +239,19 @@ export default function CompanionScreen() {
       maxAlternatives: 1,
       contextualStrings: CONTEXT_WORDS,
       iosTaskHint: 'dictation',
-      iosCategory: {
-        category: 'playAndRecord',
-        categoryOptions: ['defaultToSpeaker', 'allowBluetooth'],
-        mode: 'measurement',
-      },
-      iosVoiceProcessingEnabled: true,
     });
+
+    if (!result.ok) {
+      setVoiceStarting(false);
+      setRecognizing(false);
+      if (result.reason === 'unavailable') {
+        setError('Speech recognition is unavailable on this device. Typed chat still works normally.');
+      } else if (result.reason === 'permission-denied') {
+        setError('Microphone and speech-recognition permission were not granted. Typed chat still works normally.');
+      } else if (result.reason === 'start-failed') {
+        setError('The microphone could not start safely. Typed chat still works, and no audio was saved.');
+      }
+    }
   };
 
   const clearConversation = () => {
@@ -221,9 +260,14 @@ export default function CompanionScreen() {
       {
         text: 'Clear Chat', style: 'destructive', onPress: async () => {
           await Speech.stop();
+          await abortLumiListening();
           await api.clearChat(sessionId);
+          await AsyncStorage.removeItem(draftKey);
           setMessages([greeting()]);
+          setInput('');
           setSpeakingIndex(null);
+          setVoiceStarting(false);
+          setRecognizing(false);
           setError(null);
         },
       },
@@ -232,7 +276,7 @@ export default function CompanionScreen() {
 
   if (!profile) return null;
   const suggestions = profile.mode === 'kids' ? SUGGESTIONS_KIDS : SUGGESTIONS_ADULT;
-  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : 86 + insets.bottom;
+  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : spacing.sm;
 
   return (
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-03']} darkness={0.73}>
@@ -321,6 +365,12 @@ export default function CompanionScreen() {
               </View>
             ) : null}
 
+            {voiceStarting ? (
+              <GlassPanel style={styles.listeningBanner}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.listeningText}>Preparing the microphone safely…</Text>
+              </GlassPanel>
+            ) : null}
             {recognizing ? (
               <GlassPanel style={styles.listeningBanner}>
                 <View style={styles.listeningDot} />
@@ -334,17 +384,20 @@ export default function CompanionScreen() {
             <Pressable
               testID="voice-input-btn"
               accessibilityRole="button"
-              accessibilityLabel={recognizing ? 'Stop voice input' : 'Start voice input'}
+              accessibilityLabel={recognizing ? 'Stop voice input' : voiceStarting ? 'Microphone is preparing' : 'Start voice input'}
+              disabled={voiceStarting}
               onPress={() => void toggleListening()}
-              style={[styles.micButton, recognizing && styles.micButtonLive]}
+              style={[styles.micButton, recognizing && styles.micButtonLive, voiceStarting && styles.micButtonStarting]}
             >
-              <Ionicons name={recognizing ? 'stop' : 'mic'} size={21} color={recognizing ? colors.onBrand : colors.brand} />
+              {voiceStarting
+                ? <ActivityIndicator size="small" color={colors.brand} />
+                : <Ionicons name={recognizing ? 'stop' : 'mic'} size={21} color={recognizing ? colors.onBrand : colors.brand} />}
             </Pressable>
             <TextInput
               testID="chat-input"
               value={input}
               onChangeText={setInput}
-              placeholder={recognizing ? 'Listening…' : 'Type or tap the mic to ask Lumi…'}
+              placeholder={recognizing ? 'Listening…' : voiceStarting ? 'Preparing microphone…' : 'Type or tap the mic to ask Lumi…'}
               placeholderTextColor={colors.muted}
               style={styles.input}
               multiline
@@ -418,6 +471,7 @@ const styles = StyleSheet.create({
   composer: { borderRadius: 0, borderLeftWidth: 0, borderRightWidth: 0, borderBottomWidth: 0, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   micButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: 'rgba(232,185,87,0.10)' },
   micButtonLive: { backgroundColor: colors.coral, borderColor: colors.coral },
+  micButtonStarting: { opacity: 0.72 },
   input: { flex: 1, minHeight: 46, maxHeight: 110, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: 'rgba(4,8,16,0.72)', color: colors.onSurface, paddingHorizontal: spacing.md, paddingVertical: 11, fontSize: 14 },
   sendButton: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.brand, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 9, shadowOffset: { width: 0, height: 5 }, elevation: 8 },
   sendDisabled: { opacity: 0.4 },
