@@ -8,6 +8,7 @@ on:
       - fix/build-13-acceptance-regressions
       - fix/build-14-global-audio-backgrounds
       - fix/build-15-piano-premium-boundary
+      - fix/build-16-scripture-reference-navigation
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -19,6 +20,7 @@ on:
       - fix/build-13-acceptance-regressions
       - fix/build-14-global-audio-backgrounds
       - fix/build-15-piano-premium-boundary
+      - fix/build-16-scripture-reference-navigation
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -106,6 +108,10 @@ jobs:
       - name: Test Build 15 piano and Premium boundary
         working-directory: frontend
         run: yarn test:build15
+
+      - name: Test Build 16 Scripture-reference navigation
+        working-directory: frontend
+        run: yarn test:build16
 
       - name: Audit complete Bible journey source
         working-directory: frontend
