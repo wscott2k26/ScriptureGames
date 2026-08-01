@@ -76,10 +76,21 @@ if (companion.includes('ExpoSpeechRecognitionModule.start(')) fail('Companion st
 if (!companion.includes('startLumiListening')) fail('Companion is not connected to startLumiListening.');
 if (!companion.includes('LUMI_DRAFT_PREFIX')) fail('Lumi does not persist an unsent draft while users consult the Bible.');
 
-const preferences = read('src/preferences-context.tsx');
-for (const field of ['musicEnabled', 'soundEffectsEnabled', 'hapticsEnabled', 'motionMode']) {
-  if (!preferences.includes(field)) fail(`Preferences schema is missing ${field}.`);
+const preferencesContext = read('src/preferences-context.tsx');
+const preferencesCore = read('src/preferences-core.ts');
+const preferencesSchema = `${preferencesContext}\n${preferencesCore}`;
+for (const field of [
+  'musicEnabled',
+  'soundEffectsEnabled',
+  'hapticsEnabled',
+  'motionMode',
+  'backgroundId',
+  'backgroundRotationEnabled',
+  'favoriteBackgroundIds',
+]) {
+  if (!preferencesSchema.includes(field)) fail(`Preferences schema is missing ${field}.`);
 }
+if (!preferencesContext.includes('restorePreferences')) fail('Preferences context does not use the backward-compatible preference normalizer.');
 
 const rootLayout = read('app/_layout.tsx');
 if (!rootLayout.includes('AudioProvider')) fail('Root layout is missing the app-wide AudioProvider.');
