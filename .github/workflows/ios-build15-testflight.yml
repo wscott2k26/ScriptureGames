@@ -1,0 +1,182 @@
+name: Scripture Games Build 15 iOS TestFlight
+
+on:
+  push:
+    branches:
+      - fix/build-15-piano-premium-boundary
+    paths:
+      - '.github/status-triggers/ios-build15-authorized.md'
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+
+concurrency:
+  group: scripture-games-build15-ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  ios-testflight:
+    name: Build 15 iOS production and TestFlight
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      VERIFIED_SOURCE_SHA: 9bcb08ef683fba4091a7ba50f762b9150d751db5
+
+    steps:
+      - name: Check out exact Build 15 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-15-piano-premium-boundary
+          fetch-depth: 0
+
+      - name: Verify one-use authorization and source ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "fix/build-15-piano-premium-boundary"
+          test -f .github/status-triggers/ios-build15-authorized.md
+          grep -Fxq 'AUTHORIZED: one iOS Build 15 production build and one TestFlight auto-submit.' .github/status-triggers/ios-build15-authorized.md
+          grep -Fxq 'NO ANDROID CLOUD BUILD.' .github/status-triggers/ios-build15-authorized.md
+          grep -Fxq 'NO APP REVIEW OR PUBLIC RELEASE SUBMISSION.' .github/status-triggers/ios-build15-authorized.md
+          git merge-base --is-ancestor "$VERIFIED_SOURCE_SHA" HEAD
+          echo "Verified Build 15 source $VERIFIED_SOURCE_SHA is present in $(git rev-parse HEAD)."
+
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo 'EXPO_TOKEN is not configured for this repository.' >&2
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install frozen dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Re-run complete Build 15 source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          yarn generate:bible
+          yarn audit:bible
+          yarn audit:cloud
+          yarn audit:premium
+          yarn test:lumi
+          yarn test:lumi-voice
+          yarn test:navigation
+          yarn test:journey
+          yarn test:acceptance
+          yarn test:build14
+          yarn test:build15
+          yarn audit:journey
+          yarn audit:runtime
+          yarn audit:content
+          yarn audit:visual
+          yarn doctor
+          yarn typecheck
+          yarn lint
+
+      - name: Verify Expo identity and linked project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive
+          npx expo config --type public > /tmp/expo-public-config.txt
+          grep -q '18710e80-2a62-46ac-8d3a-d1711b7d920a' /tmp/expo-public-config.txt
+          grep -q 'com.willywill.scripturegames' /tmp/expo-public-config.txt
+
+      - name: Build exactly one iOS production binary and auto-submit to TestFlight
+        id: ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --auto-submit \
+            --json > ../ios-build15-testflight.json
+          python -m json.tool ../ios-build15-testflight.json
+
+      - name: Save signed-build record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-build15-testflight-record
+          path: ios-build15-testflight.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record successful Build 15 handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > BUILD_15_TESTFLIGHT_HANDOFF_20260801.md <<EOF
+          # Scripture Games Build 15 TestFlight Handoff
+
+          - GitHub release run: $GITHUB_RUN_ID
+          - Verified source ancestor: $VERIFIED_SOURCE_SHA
+          - EAS source commit: $(git rev-parse HEAD)
+          - iOS production build: completed by EAS
+          - Automatic TestFlight submission: requested by EAS
+          - Android cloud build: not run
+          - App Review/public release submission: not run
+          - Recorded UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+          The signed build record is stored in the workflow artifact `scripture-games-ios-build15-testflight-record`.
+          EOF
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games Release Bot'
+          git add BUILD_15_TESTFLIGHT_HANDOFF_20260801.md
+          git commit -m 'docs: record Build 15 TestFlight handoff'
+          git push origin HEAD:fix/build-15-piano-premium-boundary
+
+      - name: Consume one-use launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin fix/build-15-piano-premium-boundary
+          git rm -f .github/workflows/ios-build15-testflight.yml
+          git rm -f .github/status-triggers/ios-build15-authorized.md
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games Release Bot'
+          git commit -m 'chore: consume Build 15 TestFlight launcher'
+          git push origin HEAD:fix/build-15-piano-premium-boundary
+
+      - name: Report exact Build 15 release blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Scripture Games Build 15 iOS TestFlight run needs attention — $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
