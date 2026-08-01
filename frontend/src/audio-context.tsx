@@ -3,7 +3,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayer, type AudioPlayer } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { BUNDLED_AUDIO_BASE64 } from './audio-assets';
+import { SOFT_PIANO_BASE64 } from './audio-soft-piano';
+import { TAP_SOUND_BASE64 } from './audio-tap';
+import { SUCCESS_SOUND_BASE64 } from './audio-success';
+import { ERROR_SOUND_BASE64 } from './audio-error';
 import { configureLumiVoiceAudio } from './lumi-voice';
 import { configureSoundEffects, type SoundCue } from './sfx';
 import { usePreferences } from './preferences-context';
@@ -19,10 +22,10 @@ const AudioContext = createContext<AudioContextValue | null>(null);
 const AUDIO_DIRECTORY = `${FileSystem.cacheDirectory || ''}scripture-games-audio/`;
 
 const AUDIO_DEFINITIONS = [
-  ['piano', 'soft-piano.m4a', BUNDLED_AUDIO_BASE64.soft_piano],
-  ['tap', 'tap.m4a', BUNDLED_AUDIO_BASE64.tap],
-  ['success', 'success.m4a', BUNDLED_AUDIO_BASE64.success],
-  ['error', 'error.m4a', BUNDLED_AUDIO_BASE64.error],
+  ['piano', 'soft-piano.m4a', SOFT_PIANO_BASE64],
+  ['tap', 'tap.m4a', TAP_SOUND_BASE64],
+  ['success', 'success.m4a', SUCCESS_SOUND_BASE64],
+  ['error', 'error.m4a', ERROR_SOUND_BASE64],
 ] as const;
 
 async function materializeBundledAudio(): Promise<AudioFiles> {
