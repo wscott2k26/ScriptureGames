@@ -1,3 +1,4 @@
+// Final Build 15 quality-gate trigger: product behavior is asserted below.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
