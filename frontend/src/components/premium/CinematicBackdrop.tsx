@@ -10,7 +10,9 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
+import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
 import { colors, motion } from '@/src/theme';
 
 const DUST = [
@@ -20,19 +22,23 @@ const DUST = [
   [94, 78, 1, 0.32], [57, 91, 1, 0.35], [5, 77, 1, 0.28], [49, 37, 1, 0.38],
 ] as const;
 
+type CinematicBackdropProps = {
+  source: ImageSourcePropType;
+  children: ReactNode;
+  darkness?: number;
+  accent?: string;
+  testID?: string;
+  preserveSource?: boolean;
+};
+
 export function CinematicBackdrop({
   source,
   children,
   darkness = 0.38,
   accent = colors.brand,
   testID,
-}: {
-  source: ImageSourcePropType;
-  children: ReactNode;
-  darkness?: number;
-  accent?: string;
-  testID?: string;
-}) {
+  preserveSource = false,
+}: CinematicBackdropProps) {
   const reduced = useReducedMotionPreference();
   const drift = useSharedValue(0);
   const breathe = useSharedValue(0);
@@ -76,9 +82,15 @@ export function CinematicBackdrop({
 
   return (
     <View testID={testID} style={styles.root}>
-      <Animated.View style={[StyleSheet.absoluteFill, imageStyle]}>
-        <ImageBackground source={source} style={styles.image} resizeMode="cover" />
-      </Animated.View>
+      {preserveSource ? (
+        <Animated.View style={[StyleSheet.absoluteFill, imageStyle]}>
+          <ImageBackground source={source} style={styles.image} resizeMode="cover" />
+        </Animated.View>
+      ) : (
+        <PeacefulBackdrop darkness={0} style={StyleSheet.absoluteFill}>
+          <View />
+        </PeacefulBackdrop>
+      )}
 
       <LinearGradient
         colors={[`rgba(2,5,13,${Math.min(0.96, darkness + 0.12)})`, `rgba(5,10,22,${Math.max(0.08, darkness - 0.16)})`, 'rgba(3,7,16,0.92)']}
