@@ -1,0 +1,213 @@
+name: Monitor Scripture Games iOS Build 13
+
+on:
+  push:
+    branches:
+      - fix/build-13-acceptance-regressions
+    paths:
+      - '.github/status-triggers/monitor-ios-build13.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scripture-games-ios-build13-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Record EAS Build 13 and TestFlight status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPECTED_PROJECT_ID: 18710e80-2a62-46ac-8d3a-d1711b7d920a
+      EXPECTED_BUILD_NUMBER: '13'
+      BRANCH_NAME: fix/build-13-acceptance-regressions
+
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-13-acceptance-regressions
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Poll Build 13 and its TestFlight submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          terminal=0
+          final_reason='monitor-timeout'
+
+          for attempt in $(seq 1 150); do
+            eas build:list --platform ios --app-build-version "$EXPECTED_BUILD_NUMBER" --limit 1 --json --non-interactive > /tmp/build-list.json
+
+            python - <<'PY' > /tmp/build-state.env
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('/tmp/build-list.json').read_text())
+          if not isinstance(data, list) or not data:
+              print('FOUND=0')
+              raise SystemExit
+
+          build = data[0]
+          project = build.get('project') or {}
+          if project.get('id') != '18710e80-2a62-46ac-8d3a-d1711b7d920a':
+              print('FOUND=0')
+              raise SystemExit
+          if str(build.get('appBuildVersion')) != '13' or build.get('platform') != 'IOS':
+              print('FOUND=0')
+              raise SystemExit
+
+          def emit(name, value):
+              value = '' if value is None else str(value)
+              print(f'{name}={value}')
+
+          emit('FOUND', 1)
+          emit('BUILD_ID', build.get('id'))
+          emit('BUILD_STATUS', build.get('status'))
+          emit('BUILD_CREATED_AT', build.get('createdAt'))
+          emit('BUILD_UPDATED_AT', build.get('updatedAt'))
+          emit('BUILD_GIT_SHA', build.get('gitCommitHash'))
+          PY
+
+            # shellcheck disable=SC1091
+            source /tmp/build-state.env
+            echo "Attempt $attempt: found=${FOUND:-0} build=${BUILD_ID:-none} status=${BUILD_STATUS:-not-found}"
+
+            if [ "${FOUND:-0}" != '1' ]; then
+              sleep 15
+              continue
+            fi
+
+            eas build:view "$BUILD_ID" --json > /tmp/build-view.json
+            python - <<'PY' > /tmp/submission-state.env
+          import json
+          from pathlib import Path
+
+          build = json.loads(Path('/tmp/build-view.json').read_text())
+          submissions = build.get('submissions') or []
+          submission = submissions[0] if submissions else {}
+
+          def emit(name, value):
+              value = '' if value is None else str(value)
+              print(f'{name}={value}')
+
+          emit('SUBMISSION_COUNT', len(submissions))
+          emit('SUBMISSION_ID', submission.get('id'))
+          emit('SUBMISSION_STATUS', submission.get('status'))
+          ios = submission.get('iosConfig') or {}
+          emit('ASC_APP_ID', ios.get('ascAppIdentifier'))
+          PY
+            # shellcheck disable=SC1091
+            source /tmp/submission-state.env
+            echo "Submission: count=${SUBMISSION_COUNT:-0} id=${SUBMISSION_ID:-none} status=${SUBMISSION_STATUS:-not-yet-created}"
+
+            case "${BUILD_STATUS:-}" in
+              ERRORED|CANCELED)
+                terminal=1
+                final_reason="build-${BUILD_STATUS}"
+                break
+                ;;
+              FINISHED)
+                case "${SUBMISSION_STATUS:-}" in
+                  FINISHED)
+                    terminal=1
+                    final_reason='build-and-submission-finished'
+                    break
+                    ;;
+                  ERRORED|CANCELED)
+                    terminal=1
+                    final_reason="submission-${SUBMISSION_STATUS}"
+                    break
+                    ;;
+                esac
+                ;;
+            esac
+
+            sleep 15
+          done
+
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def load(path):
+              try:
+                  return json.loads(Path(path).read_text())
+              except Exception:
+                  return None
+
+          list_data = load('/tmp/build-list.json') or []
+          view_data = load('/tmp/build-view.json') or {}
+          build = view_data or (list_data[0] if list_data else {})
+          submissions = build.get('submissions') or []
+          submission = submissions[0] if submissions else {}
+
+          result = {
+              'recorded_at': datetime.now(timezone.utc).isoformat(),
+              'project_id': (build.get('project') or {}).get('id'),
+              'build_id': build.get('id'),
+              'build_status': build.get('status'),
+              'platform': build.get('platform'),
+              'distribution': build.get('distribution'),
+              'build_profile': build.get('buildProfile'),
+              'app_version': build.get('appVersion'),
+              'build_number': build.get('appBuildVersion'),
+              'git_commit_hash': build.get('gitCommitHash'),
+              'created_at': build.get('createdAt'),
+              'updated_at': build.get('updatedAt'),
+              'submission_id': submission.get('id'),
+              'submission_status': submission.get('status'),
+              'asc_app_id': (submission.get('iosConfig') or {}).get('ascAppIdentifier'),
+              'terminal': os.environ.get('terminal') == '1',
+              'result': os.environ.get('final_reason', 'unknown'),
+          }
+          Path('BUILD_13_LIVE_STATUS.json').write_text(json.dumps(result, indent=2) + '\n')
+          Path('BUILD_13_LIVE_STATUS.md').write_text(
+              '# Scripture Games Build 13 Live Status\n\n'
+              f"- Recorded: `{result['recorded_at']}`\n"
+              f"- Result: `{result['result']}`\n"
+              f"- EAS build ID: `{result['build_id']}`\n"
+              f"- Build status: `{result['build_status']}`\n"
+              f"- App version/build: `{result['app_version']} ({result['build_number']})`\n"
+              f"- Source commit recorded by EAS: `{result['git_commit_hash']}`\n"
+              f"- EAS submission ID: `{result['submission_id']}`\n"
+              f"- Submission status: `{result['submission_status']}`\n"
+              f"- App Store Connect app ID: `{result['asc_app_id']}`\n"
+          )
+          print(json.dumps(result, indent=2))
+          PY
+        env:
+          terminal: ${{ env.terminal }}
+          final_reason: ${{ env.final_reason }}
+
+      - name: Commit terminal status record
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '4189827+github-actions[bot]@users.noreply.github.com'
+          git add BUILD_13_LIVE_STATUS.json BUILD_13_LIVE_STATUS.md
+          git commit -m 'release: record iOS Build 13 TestFlight status'
+          git push origin HEAD:"$BRANCH_NAME"
