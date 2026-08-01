@@ -53,8 +53,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          terminal=0
-          final_reason='monitor-timeout'
+          export FINAL_TERMINAL=0
+          export FINAL_REASON='monitor-timeout'
 
           for attempt in $(seq 1 150); do
             eas build:list --platform ios --app-build-version "$EXPECTED_BUILD_NUMBER" --limit 1 --json --non-interactive > /tmp/build-list.json
@@ -123,20 +123,20 @@ jobs:
 
             case "${BUILD_STATUS:-}" in
               ERRORED|CANCELED)
-                terminal=1
-                final_reason="build-${BUILD_STATUS}"
+                export FINAL_TERMINAL=1
+                export FINAL_REASON="build-${BUILD_STATUS}"
                 break
                 ;;
               FINISHED)
                 case "${SUBMISSION_STATUS:-}" in
                   FINISHED)
-                    terminal=1
-                    final_reason='build-and-submission-finished'
+                    export FINAL_TERMINAL=1
+                    export FINAL_REASON='build-and-submission-finished'
                     break
                     ;;
                   ERRORED|CANCELED)
-                    terminal=1
-                    final_reason="submission-${SUBMISSION_STATUS}"
+                    export FINAL_TERMINAL=1
+                    export FINAL_REASON="submission-${SUBMISSION_STATUS}"
                     break
                     ;;
                 esac
@@ -180,8 +180,8 @@ jobs:
               'submission_id': submission.get('id'),
               'submission_status': submission.get('status'),
               'asc_app_id': (submission.get('iosConfig') or {}).get('ascAppIdentifier'),
-              'terminal': os.environ.get('terminal') == '1',
-              'result': os.environ.get('final_reason', 'unknown'),
+              'terminal': os.environ.get('FINAL_TERMINAL') == '1',
+              'result': os.environ.get('FINAL_REASON', 'unknown'),
           }
           Path('BUILD_13_LIVE_STATUS.json').write_text(json.dumps(result, indent=2) + '\n')
           Path('BUILD_13_LIVE_STATUS.md').write_text(
@@ -198,16 +198,13 @@ jobs:
           )
           print(json.dumps(result, indent=2))
           PY
-        env:
-          terminal: ${{ env.terminal }}
-          final_reason: ${{ env.final_reason }}
 
       - name: Commit terminal status record
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
-          git config user.email '4189827+github-actions[bot]@users.noreply.github.com'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add BUILD_13_LIVE_STATUS.json BUILD_13_LIVE_STATUS.md
           git commit -m 'release: record iOS Build 13 TestFlight status'
           git push origin HEAD:"$BRANCH_NAME"
