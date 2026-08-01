@@ -1,1 +1,0 @@
-Monitor the already-triggered Build 17 source patch only. No source writes or Expo actions are permitted.
