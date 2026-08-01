@@ -1,0 +1,233 @@
+name: Apply Build 13 Acceptance Fixes
+
+on:
+  push:
+    branches:
+      - fix/build-13-acceptance-regressions
+    paths:
+      - '.github/status-triggers/apply-build13-acceptance-fixes.md'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/build-13-acceptance-regressions
+          fetch-depth: 0
+
+      - name: Apply guarded source corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          def replace(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}: {old[:90]!r}')
+              target.write_text(text.replace(old, new))
+
+          # Lumi composer: reserve the actual floating tab bar height.
+          replace(
+              'frontend/app/(tabs)/companion.tsx',
+              "import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';\n",
+              "import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';\nimport { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';\n",
+          )
+          replace(
+              'frontend/app/(tabs)/companion.tsx',
+              "  const insets = useSafeAreaInsets();\n",
+              "  const insets = useSafeAreaInsets();\n  const tabBarHeight = useBottomTabBarHeight();\n",
+          )
+          replace(
+              'frontend/app/(tabs)/companion.tsx',
+              "  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : spacing.sm;\n",
+              "  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : tabBarHeight + spacing.sm;\n",
+          )
+
+          # Bible Journey hub: central entitlement and unmistakable Premium copy.
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "import { useProfile } from '@/src/profile-context';\n",
+              "import { useProfile } from '@/src/profile-context';\nimport { usePremiumEntitlement } from '@/src/premium-entitlement';\n",
+          )
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "import { BIBLE_JOURNEY_BOOKS, getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';\n",
+              "import { BIBLE_JOURNEY_BOOKS, getJourneyBook } from '@/src/bible-journey/catalog';\nimport { canOpenJourneyBook } from '@/src/bible-journey/access';\n",
+          )
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "  const hasPremium = Boolean(profile?.is_premium);\n",
+              "  const { hasPremium } = usePremiumEntitlement();\n",
+          )
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "    if (!isBookFree(bookId) && !hasPremium) {\n",
+              "    if (!canOpenJourneyBook(bookId, hasPremium)) {\n",
+          )
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "            <Text style={styles.subtitle}>Begin with Genesis and unlock the Bible in order, or choose any available book whenever you want.</Text>\n",
+              "            <Text style={styles.subtitle}>Begin with Genesis and continue in Bible order, or choose any available book. Completing free content never bypasses a Premium lock.</Text>\n",
+          )
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "              <Text style={styles.accessText}>{hasPremium ? 'All 66 Bible books are available on this player profile.' : 'Play Genesis, Exodus, and Leviticus. Numbers through Revelation unlock with Premium.'}</Text>\n",
+              "              <Text style={styles.accessText}>{hasPremium ? 'All 66 Bible books are available on this player profile.' : 'Play Genesis, Exodus, and Leviticus free. Numbers through Revelation require Premium. Completing a free book never unlocks Premium books.'}</Text>\n",
+          )
+          replace(
+              'frontend/app/(tabs)/bible-journey.tsx',
+              "            {!hasPremium ? <TactileButton compact variant=\"glass\" label=\"See Premium\" onPress={() => router.push('/premium')} /> : null}\n",
+              "            {!hasPremium ? <TactileButton compact variant=\"glass\" label=\"View Premium\" onPress={() => router.push('/premium')} /> : null}\n",
+          )
+
+          # Book library: central entitlement, clear labels, visible Premium route.
+          replace(
+              'frontend/app/book-library.tsx',
+              "import { useProfile } from '@/src/profile-context';\n",
+              "import { useProfile } from '@/src/profile-context';\nimport { usePremiumEntitlement } from '@/src/premium-entitlement';\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';\n",
+              "import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';\nimport { TactileButton } from '@/src/components/premium/TactileButton';\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "import { BIBLE_JOURNEY_BOOKS, isBookFree, type JourneyBook, type JourneyTestament } from '@/src/bible-journey/catalog';\n",
+              "import { BIBLE_JOURNEY_BOOKS, type JourneyBook, type JourneyTestament } from '@/src/bible-journey/catalog';\nimport { canOpenJourneyBook, getJourneyAccessLabel } from '@/src/bible-journey/access';\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "  const hasPremium = Boolean(profile?.is_premium);\n",
+              "  const { hasPremium } = usePremiumEntitlement();\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "    if (!isBookFree(book.id) && !hasPremium) {\n",
+              "    if (!canOpenJourneyBook(book, hasPremium)) {\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "          {error ? <Text style={styles.error}>{error}</Text> : null}\n\n",
+              "          {error ? <Text style={styles.error}>{error}</Text> : null}\n\n          <GlassPanel strong style={styles.premiumPanel}>\n            <View style={styles.premiumCopy}>\n              <Text style={styles.premiumTitle}>Free books and Premium books</Text>\n              <Text style={styles.premiumText}>Genesis, Exodus, and Leviticus are FREE. Every card from Numbers through Revelation is labeled PREMIUM REQUIRED until a validated Premium entitlement is active.</Text>\n            </View>\n            {!hasPremium ? <TactileButton compact label=\"View Premium Options\" onPress={() => router.push('/premium')} /> : <Text style={styles.premiumActive}>PREMIUM ACTIVE</Text>}\n          </GlassPanel>\n\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "                    const locked = !isBookFree(book.id) && !hasPremium;\n",
+              "                    const locked = !canOpenJourneyBook(book, hasPremium);\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "                              <Text style={[styles.meta, locked && styles.premium]}>{locked ? 'Premium' : isBookFree(book.id) ? 'Free' : 'Unlocked'}</Text>\n",
+              "                              <Text style={[styles.meta, locked && styles.premium]}>{getJourneyAccessLabel(book, hasPremium)}</Text>\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "          <Text style={styles.footer}>Genesis, Exodus, and Leviticus are free. Premium opens Numbers through Revelation.</Text>\n",
+              "          <Text style={styles.footer}>Completing chapters or free books never unlocks Books 4–66. Those books remain Premium-only until a validated entitlement is active.</Text>\n",
+          )
+          replace(
+              'frontend/app/book-library.tsx',
+              "  error: { color: colors.coral, fontSize: 12, lineHeight: 18 },\n",
+              "  error: { color: colors.coral, fontSize: 12, lineHeight: 18 },\n  premiumPanel: { borderRadius: radii.lg, padding: spacing.md, gap: spacing.md },\n  premiumCopy: { gap: 4 },\n  premiumTitle: { color: colors.onSurface, fontSize: 16, fontWeight: '900' },\n  premiumText: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },\n  premiumActive: { color: colors.success, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },\n",
+          )
+
+          # Book season.
+          replace(
+              'frontend/app/book-season.tsx',
+              "import { useProfile } from '@/src/profile-context';\n",
+              "import { useProfile } from '@/src/profile-context';\nimport { usePremiumEntitlement } from '@/src/premium-entitlement';\n",
+          )
+          replace(
+              'frontend/app/book-season.tsx',
+              "import { getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';\n",
+              "import { getJourneyBook } from '@/src/bible-journey/catalog';\nimport { canOpenJourneyBook } from '@/src/bible-journey/access';\n",
+          )
+          replace(
+              'frontend/app/book-season.tsx',
+              "  const hasPremium = Boolean(profile?.is_premium);\n  const locked = Boolean(catalogBook && !isBookFree(catalogBook.id) && !hasPremium);\n",
+              "  const { hasPremium } = usePremiumEntitlement();\n  const locked = Boolean(catalogBook && !canOpenJourneyBook(catalogBook, hasPremium));\n",
+          )
+
+          # Book trial.
+          replace(
+              'frontend/app/book-trial.tsx',
+              "import { useProfile } from '@/src/profile-context';\n",
+              "import { useProfile } from '@/src/profile-context';\nimport { usePremiumEntitlement } from '@/src/premium-entitlement';\n",
+          )
+          replace(
+              'frontend/app/book-trial.tsx',
+              "import { getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';\n",
+              "import { getJourneyBook } from '@/src/bible-journey/catalog';\nimport { canOpenJourneyBook } from '@/src/bible-journey/access';\n",
+          )
+          replace(
+              'frontend/app/book-trial.tsx',
+              "  const hasPremium = Boolean(profile?.is_premium);\n  const locked = Boolean(catalogBook && !isBookFree(catalogBook.id) && !hasPremium);\n",
+              "  const { hasPremium } = usePremiumEntitlement();\n  const locked = Boolean(catalogBook && !canOpenJourneyBook(catalogBook, hasPremium));\n",
+          )
+
+          # Book victory.
+          replace(
+              'frontend/app/book-victory.tsx',
+              "import { useProfile } from '@/src/profile-context';\n",
+              "import { useProfile } from '@/src/profile-context';\nimport { usePremiumEntitlement } from '@/src/premium-entitlement';\n",
+          )
+          replace(
+              'frontend/app/book-victory.tsx',
+              "import { getJourneyBook, getNextJourneyBook, isBookFree } from '@/src/bible-journey/catalog';\n",
+              "import { getJourneyBook, getNextJourneyBook } from '@/src/bible-journey/catalog';\nimport { canOpenJourneyBook } from '@/src/bible-journey/access';\n",
+          )
+          replace(
+              'frontend/app/book-victory.tsx',
+              "  const hasPremium = Boolean(profile?.is_premium);\n",
+              "  const { hasPremium } = usePremiumEntitlement();\n",
+          )
+          replace(
+              'frontend/app/book-victory.tsx',
+              "  if (!isBookFree(catalogBook.id) && !hasPremium) {\n",
+              "  if (!canOpenJourneyBook(catalogBook, hasPremium)) {\n",
+          )
+          replace(
+              'frontend/app/book-victory.tsx',
+              "    if (!isBookFree(nextBook.id) && !hasPremium) {\n",
+              "    if (!canOpenJourneyBook(nextBook, hasPremium)) {\n",
+          )
+
+          # Home entry points.
+          replace(
+              'frontend/app/(tabs)/command.tsx',
+              "          <FeatureCard title=\"Beta Access & Release Notes\" description=\"See exactly what is unlocked and what remains before store production.\" icon={<Ionicons name=\"shield-checkmark\" size={26} color={colors.success} />} accent={colors.success} onPress={() => router.push('/premium')} />\n",
+              "          <FeatureCard title=\"App Tour & Tutorial\" description=\"Learn what Home, Journey, Games, Bible, Lumi, Settings, and Premium mean. Replay the tour anytime.\" icon={<Ionicons name=\"compass\" size={26} color={colors.info} />} accent={colors.info} onPress={() => router.push('/tutorial')} />\n          <FeatureCard title=\"View Premium Options\" description=\"See the three free books, the Premium-required books, and honest purchase or restore status.\" icon={<Ionicons name=\"diamond\" size={26} color={colors.success} />} accent={colors.success} onPress={() => router.push('/premium')} />\n",
+          )
+
+          # Settings entry points.
+          replace(
+              'frontend/app/(tabs)/preferences.tsx',
+              "          <Text style={styles.section}>Account, Privacy & Data</Text>\n",
+              "          <Text style={styles.section}>Help & Access</Text>\n          <GlassPanel style={styles.infoPanel}>\n            <Ionicons name=\"help-circle\" size={24} color={colors.info} />\n            <View style={styles.infoCopy}>\n              <Text style={styles.infoTitle}>Learn the app or review Premium</Text>\n              <Text style={styles.infoText}>The optional tour explains every bottom tab and major system. Premium options clearly show which books are free and which require a validated entitlement.</Text>\n            </View>\n          </GlassPanel>\n          <View style={styles.actions}>\n            <TactileButton label=\"App Tour & Tutorial\" icon={<Ionicons name=\"compass-outline\" size={19} color={colors.onSurface} />} variant=\"glass\" onPress={() => router.push('/tutorial')} />\n            <TactileButton label=\"View Premium Options\" icon={<Ionicons name=\"diamond-outline\" size={19} color={colors.onSurface} />} variant=\"glass\" onPress={() => router.push('/premium')} />\n          </View>\n\n          <Text style={styles.section}>Account, Privacy & Data</Text>\n",
+          )
+
+          # Normalize package JSON to remove accidental duplicate keys while preserving scripts.
+          package_path = Path('frontend/package.json')
+          package = json.loads(package_path.read_text())
+          package_path.write_text(json.dumps(package, indent=2) + '\n')
+          PY
+
+      - name: Commit guarded corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend
+          git commit -m 'fix: restore Lumi composer, clarify Premium, and expose tutorial'
+          git push origin HEAD:fix/build-13-acceptance-regressions
