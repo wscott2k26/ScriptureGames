@@ -206,7 +206,8 @@ export default function CommandCenter() {
           <FeatureCard title="Weekly Faith League" description="Compare seven-day XP and streaks across players saved on this device." icon={<Ionicons name="trophy" size={26} color={colors.brand} />} onPress={() => router.push('/leaderboard')} />
           <FeatureCard title="Family Hub" description="Create kid profiles and view seven-day learning progress." icon={<Ionicons name="people" size={26} color={colors.brandSecondary} />} accent={colors.brandSecondary} onPress={() => router.push('/family')} />
           <FeatureCard title="Player Settings" description="Edit profile, motion, haptics, cinematic text, privacy, and local data." icon={<Ionicons name="settings" size={26} color={colors.parchment} />} accent={colors.parchment} onPress={() => router.push('/settings')} />
-          <FeatureCard title="Beta Access & Release Notes" description="See exactly what is unlocked and what remains before store production." icon={<Ionicons name="shield-checkmark" size={26} color={colors.success} />} accent={colors.success} onPress={() => router.push('/premium')} />
+          <FeatureCard title="App Tour & Tutorial" description="Learn what Home, Journey, Games, Bible, Lumi, Settings, and Premium mean. Replay the tour anytime." icon={<Ionicons name="compass" size={26} color={colors.info} />} accent={colors.info} onPress={() => router.push('/tutorial')} />
+          <FeatureCard title="View Premium Options" description="See the three free books, the Premium-required books, and honest purchase or restore status." icon={<Ionicons name="diamond" size={26} color={colors.success} />} accent={colors.success} onPress={() => router.push('/premium')} />
 
           {error ? (
             <GlassPanel style={styles.errorPanel}>

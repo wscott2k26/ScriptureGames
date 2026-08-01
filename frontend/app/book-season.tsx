@@ -5,6 +5,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { colors, radii, spacing } from '@/src/theme';
 import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
@@ -13,7 +14,8 @@ import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
 import { getBibleBook } from '@/src/bible-library';
-import { getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';
+import { getJourneyBook } from '@/src/bible-journey/catalog';
+import { canOpenJourneyBook } from '@/src/bible-journey/access';
 import { buildBookTrials } from '@/src/bible-journey/questions';
 import { loadBibleJourneyProgress, type BibleJourneyProgress } from '@/src/bible-journey/progress';
 
@@ -26,8 +28,8 @@ export default function BookSeasonScreen() {
   const catalogBook = useMemo(() => getJourneyBook(String(bookId || '')), [bookId]);
   const bibleBook = useMemo(() => catalogBook ? getBibleBook(catalogBook.id) : undefined, [catalogBook]);
   const trials = useMemo(() => catalogBook && bibleBook ? buildBookTrials(bibleBook, catalogBook) : [], [bibleBook, catalogBook]);
-  const hasPremium = Boolean(profile?.is_premium);
-  const locked = Boolean(catalogBook && !isBookFree(catalogBook.id) && !hasPremium);
+  const { hasPremium } = usePremiumEntitlement();
+  const locked = Boolean(catalogBook && !canOpenJourneyBook(catalogBook, hasPremium));
 
   const load = useCallback(async () => {
     if (!profile) return;

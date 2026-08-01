@@ -5,6 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { usePreferences } from '@/src/preferences-context';
 import { colors, radii, spacing } from '@/src/theme';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
@@ -30,10 +31,10 @@ const CATEGORIES: readonly PeacefulSceneCategory[] = [
 export default function BackgroundPickerScreen() {
   const router = useRouter();
   const { profile } = useProfile();
+  const { hasPremium } = usePremiumEntitlement();
   const { preferences, updatePreferences } = usePreferences();
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
-  const hasPremium = Boolean(profile?.is_premium);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -71,12 +72,12 @@ export default function BackgroundPickerScreen() {
     <PeacefulBackdrop darkness={0.5}>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader back eyebrow="PEACEFUL ATMOSPHERES" title="Choose Your Background" subtitle="Fifty original offline scenes for study, prayer, and play." />
+        <ScreenHeader back eyebrow="PEACEFUL ATMOSPHERES" title="Choose Your Background" subtitle="Fifty curated real photos for study, prayer, and play." />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <GlassPanel strong style={styles.currentCard}>
             <Text style={styles.currentLabel}>CURRENT EXPERIENCE</Text>
             <Text style={styles.currentTitle}>{PEACEFUL_SCENES.find((scene) => scene.id === preferences.backgroundId)?.name || 'Cross on the Hill'}</Text>
-            <Text style={styles.currentText}>The default is a cross on a beautiful hill. Your selection stays on this device and works offline.</Text>
+            <Text style={styles.currentText}>The default is a real cross-on-a-hill photo. A selected photo downloads once and is cached on this device; the artistic fallback appears if a photo is not cached and the device is offline.</Text>
             <View style={styles.actionRow}>
               <TactileButton
                 compact
@@ -174,7 +175,7 @@ export default function BackgroundPickerScreen() {
             </GlassPanel>
           ) : null}
 
-          <Text style={styles.footer}>These are original procedural scene designs bundled with Scripture Games—not downloaded stock photos.</Text>
+          <Text style={styles.footer}>These are curated real photos from Pexels. Selected photos are cached on this device, and Scripture Games keeps an artistic offline/error fallback.</Text>
         </ScrollView>
       </SafeAreaView>
     </PeacefulBackdrop>

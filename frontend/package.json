@@ -22,12 +22,13 @@
     "test:lumi-voice": "node --experimental-strip-types scripts/test-lumi-voice.ts",
     "test:navigation": "node --experimental-strip-types scripts/test-navigation-fallback.ts",
     "test:journey": "node --experimental-strip-types scripts/test-bible-journey.ts && node --experimental-strip-types scripts/test-bible-journey-questions.ts && node --experimental-strip-types scripts/test-bible-journey-routes.ts && node --experimental-strip-types scripts/test-bible-journey-premium-scenes.ts && node --experimental-strip-types scripts/test-bible-journey-mastery.ts",
+    "test:acceptance": "node --experimental-strip-types scripts/test-build13-acceptance.ts",
     "generate:content": "python ../scripts/generate-content.py",
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn audit:journey && yarn audit:runtime",
-    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn audit:journey && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
+    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn test:acceptance && yarn audit:journey && yarn audit:runtime",
+    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn test:acceptance && yarn audit:journey && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",

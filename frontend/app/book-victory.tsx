@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { colors, radii, spacing } from '@/src/theme';
 import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
@@ -12,7 +13,8 @@ import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { CelebrationBurst } from '@/src/components/premium/CelebrationBurst';
-import { getJourneyBook, getNextJourneyBook, isBookFree } from '@/src/bible-journey/catalog';
+import { getJourneyBook, getNextJourneyBook } from '@/src/bible-journey/catalog';
+import { canOpenJourneyBook } from '@/src/bible-journey/access';
 import { completeBibleJourneyBook, loadBibleJourneyProgress, type BibleJourneyProgress } from '@/src/bible-journey/progress';
 
 export default function BookVictoryScreen() {
@@ -24,7 +26,7 @@ export default function BookVictoryScreen() {
   const [progress, setProgress] = useState<BibleJourneyProgress | null>(null);
   const [sealed, setSealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasPremium = Boolean(profile?.is_premium);
+  const { hasPremium } = usePremiumEntitlement();
 
   useEffect(() => {
     if (!profile || !catalogBook || catalogBook.id === 'GEN') return;
@@ -69,7 +71,7 @@ export default function BookVictoryScreen() {
     return fallback('This victory record could not be opened.', 'Genesis uses its original Victory Hall. Choose another book from the library.');
   }
 
-  if (!isBookFree(catalogBook.id) && !hasPremium) {
+  if (!canOpenJourneyBook(catalogBook, hasPremium)) {
     return (
       <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.72}>
         <SafeAreaView style={styles.center}>
@@ -122,7 +124,7 @@ export default function BookVictoryScreen() {
       router.replace('/book-library');
       return;
     }
-    if (!isBookFree(nextBook.id) && !hasPremium) {
+    if (!canOpenJourneyBook(nextBook, hasPremium)) {
       router.replace('/premium');
       return;
     }
