@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - main
+      - fix/build-13-acceptance-regressions
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -87,6 +88,10 @@ jobs:
       - name: Test complete Bible journey requirements
         working-directory: frontend
         run: yarn test:journey
+
+      - name: Test Build 13 acceptance corrections
+        working-directory: frontend
+        run: yarn test:acceptance
 
       - name: Audit complete Bible journey source
         working-directory: frontend
