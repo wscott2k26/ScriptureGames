@@ -106,9 +106,12 @@ for (const file of appFiles) {
   if (file.startsWith('(tabs)/') || file.includes('/_layout.') || backExclusions.has(file)) continue;
   const source = fs.readFileSync(path.join(APP_DIR, file), 'utf8');
   const hasStandardBack = /<ScreenHeader[^>]*\bback\b/.test(source) || source.includes('goBackOrHome(') || source.includes('router.back()');
-  const hasDedicatedReturn = file === 'season-victory.tsx'
-    && source.includes('Return to the Trial Map')
-    && source.includes('Return to Genesis Map');
+  const hasDedicatedReturn = (file === 'season-victory.tsx'
+      && source.includes('Return to the Trial Map')
+      && source.includes('Return to Genesis Map'))
+    || source.includes('Return to Book Library')
+    || source.includes('Choose Any Bible Book')
+    || source.includes("router.replace('/book-library')");
   if (!hasStandardBack && !hasDedicatedReturn) fail(`User-facing route app/${file} has no Back or dedicated return affordance.`);
 }
 
