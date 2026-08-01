@@ -1,0 +1,180 @@
+name: Authorized Scripture Games iOS Build 14
+
+on:
+  push:
+    branches:
+      - fix/build-14-global-audio-backgrounds
+    paths:
+      - '.github/status-triggers/ios-build14-authorized.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scripture-games-ios-build14-once
+  cancel-in-progress: false
+
+jobs:
+  build-and-submit:
+    name: Validate, build, and submit authorized iOS Build 14
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPECTED_SOURCE_SHA: c45bfefcc5de8f1ee4b50ee6b1a809e1cf96ccb7
+      AUTHORIZED_BRANCH: fix/build-14-global-audio-backgrounds
+      EXPECTED_PROJECT_ID: 18710e80-2a62-46ac-8d3a-d1711b7d920a
+      EXPECTED_ASC_APP_ID: '6795368257'
+      EXPECTED_BUILD_NUMBER: '14'
+
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Check out authorized Build 14 source
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-14-global-audio-backgrounds
+          fetch-depth: 0
+
+      - name: Verify one-time authorization and pinned app source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$AUTHORIZED_BRANCH"
+          git merge-base --is-ancestor "$EXPECTED_SOURCE_SHA" HEAD
+          git diff --exit-code "$EXPECTED_SOURCE_SHA"..HEAD -- frontend backend scripts support-site
+          grep -Fxq 'AUTHORIZED: one iOS Build 14 and one TestFlight auto-submit on 2026-08-01.' .github/status-triggers/ios-build14-authorized.md
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Revalidate authorized Build 14 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          yarn generate:bible
+          yarn audit:bible
+          yarn audit:cloud
+          yarn audit:premium
+          yarn test:lumi
+          yarn test:lumi-voice
+          yarn test:navigation
+          yarn test:journey
+          yarn test:acceptance
+          yarn test:build14
+          yarn audit:journey
+          yarn audit:runtime
+          yarn audit:content
+          yarn audit:visual
+          yarn doctor
+          yarn typecheck
+          yarn lint
+
+      - name: Verify Expo identity and linked project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive | tee /tmp/eas-project.txt
+          grep -Fq '@wscott2k8/scripture-games' /tmp/eas-project.txt
+          grep -Fq "$EXPECTED_PROJECT_ID" /tmp/eas-project.txt
+
+      - name: Build and submit exactly one iOS Build 14
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform ios --profile production --non-interactive --auto-submit --json > ../ios-build14-once.json
+
+      - name: Validate signed-build record
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('ios-build14-once.json')
+          payload = json.loads(path.read_text())
+          if not isinstance(payload, list) or len(payload) != 1:
+              raise SystemExit(f'Expected exactly one build record, received: {type(payload).__name__} / {len(payload) if isinstance(payload, list) else "n/a"}')
+
+          build = payload[0]
+          expected = {
+              'platform': 'IOS',
+              'distribution': 'STORE',
+              'buildProfile': 'production',
+              'appVersion': '1.0.0',
+              'appBuildVersion': '14',
+          }
+          for key, value in expected.items():
+              if str(build.get(key)) != value:
+                  raise SystemExit(f'{key} mismatch: expected {value!r}, received {build.get(key)!r}')
+
+          project = build.get('project') or {}
+          if project.get('id') != '18710e80-2a62-46ac-8d3a-d1711b7d920a':
+              raise SystemExit(f'Unexpected EAS project: {project}')
+          if build.get('isForIosSimulator') is not False:
+              raise SystemExit('Build 14 must target physical iOS devices, not the simulator.')
+
+          submissions = build.get('submissions') or []
+          if len(submissions) != 1:
+              raise SystemExit(f'Expected exactly one TestFlight submission, received {len(submissions)}')
+          ios_config = submissions[0].get('iosConfig') or {}
+          if str(ios_config.get('ascAppIdentifier')) != '6795368257':
+              raise SystemExit(f'Unexpected App Store Connect app: {ios_config}')
+
+          summary = {
+              'build_id': build.get('id'),
+              'submission_id': submissions[0].get('id'),
+              'app_version': build.get('appVersion'),
+              'build_number': build.get('appBuildVersion'),
+              'platform': build.get('platform'),
+              'build_profile': build.get('buildProfile'),
+              'git_commit_hash': build.get('gitCommitHash'),
+              'created_at': build.get('createdAt'),
+          }
+          Path('ios-build14-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Save Build 14 records
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-build14-testflight-record
+          path: |
+            ios-build14-once.json
+            ios-build14-summary.json
+          if-no-files-found: error
+          retention-days: 90
