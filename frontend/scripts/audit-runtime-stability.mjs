@@ -6,14 +6,8 @@ const ROOT = path.resolve(process.cwd());
 const APP_DIR = path.join(ROOT, 'app');
 const failures = [];
 
-function fail(message) {
-  failures.push(message);
-}
-
-function read(relativePath) {
-  return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
-}
-
+function fail(message) { failures.push(message); }
+function read(relativePath) { return fs.readFileSync(path.join(ROOT, relativePath), 'utf8'); }
 function walk(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(directory, entry.name);
@@ -68,21 +62,11 @@ for (const file of appFiles) {
 }
 
 const tabsLayout = read('app/(tabs)/_layout.tsx');
-if (!/<Tabs\.Screen\s+name=["']preferences["']/.test(tabsLayout)) {
-  fail('Settings is not represented by the persistent preferences tab.');
-}
-if (!appFiles.includes('(tabs)/preferences.tsx')) {
-  fail('The visible Settings destination has no app/(tabs)/preferences.tsx route.');
-}
-if (!tabsLayout.includes('detachInactiveScreens={false}')) {
-  fail('Tab screens may detach and lose Lumi/Bible working state.');
-}
-if (!tabsLayout.includes('popToTopOnBlur: false')) {
-  fail('Tab switching is not explicitly configured to preserve each tab stack.');
-}
-if (!/tabBarStyle\s*:\s*\{[^}]*display\s*:\s*['"]none['"]/s.test(tabsLayout)) {
-  fail('The old navigator tab bar is still visible instead of the root-level persistent dock.');
-}
+if (!/<Tabs\.Screen\s+name=["']preferences["']/.test(tabsLayout)) fail('Settings is not represented by the persistent preferences tab.');
+if (!appFiles.includes('(tabs)/preferences.tsx')) fail('The visible Settings destination has no app/(tabs)/preferences.tsx route.');
+if (!tabsLayout.includes('detachInactiveScreens={false}')) fail('Tab screens may detach and lose Lumi/Bible working state.');
+if (!tabsLayout.includes('popToTopOnBlur: false')) fail('Tab switching is not explicitly configured to preserve each tab stack.');
+if (!/tabBarStyle\s*:\s*\{[^}]*display\s*:\s*['"]none['"]/s.test(tabsLayout)) fail('The old navigator tab bar is still visible instead of the root-level persistent dock.');
 
 const companion = read('app/(tabs)/companion.tsx');
 if (companion.includes('iosCategory:')) fail('Companion still overrides the iOS audio-session category.');
@@ -99,41 +83,36 @@ for (const field of ['musicEnabled', 'soundEffectsEnabled', 'hapticsEnabled', 'm
 const rootLayout = read('app/_layout.tsx');
 if (!rootLayout.includes('AudioProvider')) fail('Root layout is missing the app-wide AudioProvider.');
 if (!rootLayout.includes('GlobalNavigationDock')) fail('The main navigation is not mounted above the root navigator.');
+if (!fs.existsSync(path.join(ROOT, 'src/components/navigation/GlobalNavigationDock.tsx'))) fail('The persistent GlobalNavigationDock component is missing.');
 
-if (!fs.existsSync(path.join(ROOT, 'src/components/navigation/GlobalNavigationDock.tsx'))) {
-  fail('The persistent GlobalNavigationDock component is missing.');
-}
+const audioContext = read('src/audio-context.tsx');
+if (!audioContext.includes('configureLumiVoiceAudio')) fail('App audio is not coordinated with Lumi speech recognition.');
+if (!audioContext.includes('setIsAudioActiveAsync(false)')) fail('Lumi microphone does not safely release app playback audio.');
+if (!audioContext.includes('shouldPlayInBackground: false')) fail('Ambient piano must remain foreground-only.');
+if (!audioContext.includes('piano.volume = 0.12')) fail('Soft piano is not capped at a gentle volume.');
 
 const screenHeader = read('src/components/premium/ScreenHeader.tsx');
 if (!screenHeader.includes('DoveMark')) fail('Shared ScreenHeader is missing the sacred DoveMark.');
 if (!screenHeader.includes('goBackOrHome')) fail('Shared ScreenHeader Back does not use a safe history fallback.');
 
-const settingsSource = read('app/settings.tsx');
+const settingsSource = read('app/(tabs)/preferences.tsx');
 for (const copy of ['Soft Piano', 'Sound Effects', 'Haptic Feedback', 'Motion Off']) {
-  if (!settingsSource.includes(copy)) fail(`Settings is missing the ${copy} control/copy.`);
+  if (!settingsSource.includes(copy)) fail(`Visible Settings is missing the ${copy} control/copy.`);
 }
 
-const backExclusions = new Set([
-  '_layout.tsx',
-  'index.tsx',
-  'onboarding.tsx',
-  'faction-select.tsx',
-  '+not-found.tsx',
-  '+html.tsx',
-]);
+const backExclusions = new Set(['_layout.tsx', 'index.tsx', 'onboarding.tsx', 'faction-select.tsx', '+not-found.tsx', '+html.tsx']);
 for (const file of appFiles) {
   if (file.startsWith('(tabs)/') || file.includes('/_layout.') || backExclusions.has(file)) continue;
   const source = fs.readFileSync(path.join(APP_DIR, file), 'utf8');
-  const hasBack = /<ScreenHeader[^>]*\bback\b/.test(source)
-    || source.includes('goBackOrHome(')
-    || source.includes('router.back()');
+  const hasBack = /<ScreenHeader[^>]*\bback\b/.test(source) || source.includes('goBackOrHome(') || source.includes('router.back()');
   if (!hasBack) fail(`User-facing route app/${file} has no Back affordance.`);
 }
 
 const packageJson = JSON.parse(read('package.json'));
 if (!packageJson.dependencies?.['expo-audio']) fail('expo-audio is not installed for safe local music/SFX playback.');
-for (const asset of ['soft-piano.m4a', 'tap.m4a', 'success.m4a', 'error.m4a']) {
-  if (!fs.existsSync(path.join(ROOT, 'assets/audio', asset))) fail(`Missing local audio asset assets/audio/${asset}.`);
+if (!packageJson.dependencies?.['expo-file-system']) fail('expo-file-system is not directly locked for offline audio materialization.');
+for (const asset of ['audio-soft-piano.ts', 'audio-tap.ts', 'audio-success.ts', 'audio-error.ts']) {
+  if (!fs.existsSync(path.join(ROOT, 'src', asset))) fail(`Missing bundled offline audio module src/${asset}.`);
 }
 
 if (failures.length) {
@@ -145,4 +124,4 @@ if (failures.length) {
 
 console.log('SCRIPTURE GAMES RUNTIME STABILITY AUDIT — PASS');
 console.log(`Routes scanned: ${appFiles.length}; literal navigation targets scanned: ${literalNavigation.length}.`);
-console.log('Persistent navigation, Settings, Back behavior, route integrity, Lumi draft retention, speech safety, preferences, audio assets, and sacred headers are present.');
+console.log('Persistent navigation, Settings, Back behavior, route integrity, Lumi draft retention, speech safety, offline audio, preferences, and sacred headers are present.');
