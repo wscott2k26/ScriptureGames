@@ -19,7 +19,7 @@ function fixtureBook(id: string, name: string, chapterCount: number, versesPerCh
 }
 
 for (const [book, catalogId] of [
-  [fixtureBook('EXO', 'Exodus', 6, 8), 'EXO'],
+  [fixtureBook('EXO', 'Exodus', 40, 8), 'EXO'],
   [fixtureBook('JUD', 'Jude', 1, 25), 'JUD'],
 ] as const) {
   const catalog = getJourneyBook(catalogId);
