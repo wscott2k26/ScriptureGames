@@ -72,13 +72,17 @@ jobs:
         working-directory: frontend
         run: yarn audit:premium
 
-      - name: Audit runtime stability and navigation
-        working-directory: frontend
-        run: yarn audit:runtime
-
       - name: Test Lumi response engine
         working-directory: frontend
         run: yarn test:lumi
+
+      - name: Test Lumi microphone crash regressions
+        working-directory: frontend
+        run: yarn test:lumi-voice
+
+      - name: Audit runtime stability and navigation
+        working-directory: frontend
+        run: yarn audit:runtime
 
       - name: Run content audit
         working-directory: frontend
