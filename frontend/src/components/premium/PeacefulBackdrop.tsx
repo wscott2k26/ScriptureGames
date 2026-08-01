@@ -3,7 +3,7 @@ import { StyleSheet, View, type ViewStyle, type StyleProp } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { usePreferences } from '@/src/preferences-context';
 import { getPeacefulPhotoSource } from '@/src/backgrounds/peaceful-photo-sources';
 import {
@@ -75,18 +75,19 @@ function SceneArt({ scene }: { scene: PeacefulScene }) {
   );
 }
 
-function PhotoScene({ scene }: { scene: PeacefulScene }) {
+function PhotoScene({ scene, preview = false }: { scene: PeacefulScene; preview?: boolean }) {
   const photo = getPeacefulPhotoSource(scene.id);
+  const photoUrl = photo ? (preview ? photo.url.replace('w=1600', 'w=600') : photo.url) : undefined;
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => setFailed(false), [photo?.url]);
+  useEffect(() => setFailed(false), [photoUrl]);
 
   return (
     <>
       <LinearGradient colors={scene.colors as [string, string, string]} style={StyleSheet.absoluteFill} />
-      {photo && !failed ? (
+      {photoUrl && !failed ? (
         <Image
-          source={{ uri: photo.url }}
+          source={{ uri: photoUrl }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           contentPosition="center"
@@ -105,16 +106,15 @@ function PhotoScene({ scene }: { scene: PeacefulScene }) {
 export function PeacefulScenePreview({ scene, style }: PreviewProps) {
   return (
     <View accessibilityLabel={scene.accessibilityLabel} style={[styles.preview, style]}>
-      <PhotoScene scene={scene} />
+      <PhotoScene scene={scene} preview />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(4,8,15,${Math.min(0.28, scene.darkness * 0.35)})` }]} />
     </View>
   );
 }
 
 export function PeacefulBackdrop({ children, sceneId, darkness, style }: Props) {
-  const { profile } = useProfile();
+  const { hasPremium } = usePremiumEntitlement();
   const { preferences } = usePreferences();
-  const hasPremium = Boolean(profile?.is_premium);
   const resolvedId = sceneId || resolveRotatingSceneId(
     preferences.backgroundId,
     preferences.backgroundRotationEnabled,
