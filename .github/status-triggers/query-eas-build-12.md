@@ -1,3 +1,3 @@
-# Monitor Scripture Games EAS Build 12
+# Diagnose Scripture Games EAS Build 12
 
-Retry 2 uses `eas build:list` filtered by the authorized trigger commit and verifies the exact Build 12 ID. It cannot launch another build and consumes no additional Expo build credit.
+Retry 3 preserves the exact EAS project, build-view, and build-list output. It cannot launch another build or submission and consumes no Expo build credit.
