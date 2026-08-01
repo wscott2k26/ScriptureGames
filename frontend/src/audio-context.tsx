@@ -42,6 +42,16 @@ async function materializeBundledAudio(): Promise<AudioFiles> {
   return Object.fromEntries(entries) as AudioFiles;
 }
 
+async function ensureAudioSession() {
+  await setAudioModeAsync({
+    allowsRecording: false,
+    playsInSilentMode: true,
+    shouldPlayInBackground: false,
+    interruptionMode: 'mixWithOthers',
+  });
+  await setIsAudioActiveAsync(true);
+}
+
 function replay(player: AudioPlayer) {
   void player.seekTo(0)
     .then(() => player.play())
@@ -67,7 +77,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void materializeBundledAudio()
+    void ensureAudioSession()
+      .then(() => materializeBundledAudio())
       .then((files) => {
         if (!active) return;
         piano.replace({ uri: files.piano });
@@ -96,8 +107,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const resumeMusic = useCallback(async () => {
     if (!readyRef.current || !musicEnabledRef.current || appState.current !== 'active') return;
     try {
-      await setIsAudioActiveAsync(true);
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false, shouldPlayInBackground: false });
+      await ensureAudioSession();
       piano.play();
     } catch {
       // Ambient music is optional and must never crash the app.
@@ -124,7 +134,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     configureSoundEffects(preferences.soundEffectsEnabled
       ? (cue) => {
           if (!readyRef.current || appState.current !== 'active') return;
-          replay(players[cue]);
+          void ensureAudioSession()
+            .then(() => replay(players[cue]))
+            .catch(() => {
+              // Sound effects remain optional if the device rejects audio activation.
+            });
         }
       : null);
     return () => configureSoundEffects(null);
@@ -137,7 +151,6 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         try { await setIsAudioActiveAsync(false); } catch { /* Speech still gets a chance. */ }
       },
       resumeAfterVoice: async () => {
-        try { await setIsAudioActiveAsync(true); } catch { /* Optional audio. */ }
         await resumeMusic();
       },
     });
@@ -146,7 +159,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   const previewSound = useCallback((cue: Exclude<SoundCue, 'tap'>) => {
     if (!preferences.soundEffectsEnabled || !readyRef.current) return;
-    replay(cue === 'success' ? success : error);
+    void ensureAudioSession()
+      .then(() => replay(cue === 'success' ? success : error))
+      .catch(() => {
+        // Preview audio is optional and never blocks Settings.
+      });
   }, [error, preferences.soundEffectsEnabled, success]);
 
   const value = useMemo(() => ({ ready, previewSound }), [previewSound, ready]);
