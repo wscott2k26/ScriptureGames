@@ -68,11 +68,20 @@ for (const file of appFiles) {
 }
 
 const tabsLayout = read('app/(tabs)/_layout.tsx');
-if (!/<Tabs\.Screen\s+name=["']settings["']/.test(tabsLayout)) {
-  fail('Settings is not a visible persistent tab.');
+if (!/<Tabs\.Screen\s+name=["']preferences["']/.test(tabsLayout)) {
+  fail('Settings is not represented by the persistent preferences tab.');
 }
-if (!appFiles.includes('(tabs)/settings.tsx')) {
-  fail('The visible Settings tab has no app/(tabs)/settings.tsx route.');
+if (!appFiles.includes('(tabs)/preferences.tsx')) {
+  fail('The visible Settings destination has no app/(tabs)/preferences.tsx route.');
+}
+if (!tabsLayout.includes('detachInactiveScreens={false}')) {
+  fail('Tab screens may detach and lose Lumi/Bible working state.');
+}
+if (!tabsLayout.includes('popToTopOnBlur: false')) {
+  fail('Tab switching is not explicitly configured to preserve each tab stack.');
+}
+if (!/tabBarStyle\s*:\s*\{[^}]*display\s*:\s*['"]none['"]/s.test(tabsLayout)) {
+  fail('The old navigator tab bar is still visible instead of the root-level persistent dock.');
 }
 
 const companion = read('app/(tabs)/companion.tsx');
@@ -80,6 +89,7 @@ if (companion.includes('iosCategory:')) fail('Companion still overrides the iOS 
 if (/iosVoiceProcessingEnabled\s*:\s*true/.test(companion)) fail('Companion still enables crash-prone iOS voice processing.');
 if (companion.includes('ExpoSpeechRecognitionModule.start(')) fail('Companion starts the native recognizer directly instead of using the guarded Lumi voice helper.');
 if (!companion.includes('startLumiListening')) fail('Companion is not connected to startLumiListening.');
+if (!companion.includes('LUMI_DRAFT_PREFIX')) fail('Lumi does not persist an unsent draft while users consult the Bible.');
 
 const preferences = read('src/preferences-context.tsx');
 for (const field of ['musicEnabled', 'soundEffectsEnabled', 'hapticsEnabled', 'motionMode']) {
@@ -88,19 +98,23 @@ for (const field of ['musicEnabled', 'soundEffectsEnabled', 'hapticsEnabled', 'm
 
 const rootLayout = read('app/_layout.tsx');
 if (!rootLayout.includes('AudioProvider')) fail('Root layout is missing the app-wide AudioProvider.');
+if (!rootLayout.includes('GlobalNavigationDock')) fail('The main navigation is not mounted above the root navigator.');
+
+if (!fs.existsSync(path.join(ROOT, 'src/components/navigation/GlobalNavigationDock.tsx'))) {
+  fail('The persistent GlobalNavigationDock component is missing.');
+}
 
 const screenHeader = read('src/components/premium/ScreenHeader.tsx');
 if (!screenHeader.includes('DoveMark')) fail('Shared ScreenHeader is missing the sacred DoveMark.');
 if (!screenHeader.includes('goBackOrHome')) fail('Shared ScreenHeader Back does not use a safe history fallback.');
 
-const settingsCandidates = ['app/(tabs)/settings.tsx', 'app/settings.tsx'];
-const settingsPath = settingsCandidates.find((candidate) => fs.existsSync(path.join(ROOT, candidate)));
-const settingsSource = settingsPath ? read(settingsPath) : '';
+const settingsSource = read('app/settings.tsx');
 for (const copy of ['Soft Piano', 'Sound Effects', 'Haptic Feedback', 'Motion Off']) {
   if (!settingsSource.includes(copy)) fail(`Settings is missing the ${copy} control/copy.`);
 }
 
 const backExclusions = new Set([
+  '_layout.tsx',
   'index.tsx',
   'onboarding.tsx',
   'faction-select.tsx',
@@ -131,4 +145,4 @@ if (failures.length) {
 
 console.log('SCRIPTURE GAMES RUNTIME STABILITY AUDIT — PASS');
 console.log(`Routes scanned: ${appFiles.length}; literal navigation targets scanned: ${literalNavigation.length}.`);
-console.log('Settings, Back navigation, route integrity, speech safety, preferences, audio assets, and sacred headers are present.');
+console.log('Persistent navigation, Settings, Back behavior, route integrity, Lumi draft retention, speech safety, preferences, audio assets, and sacred headers are present.');
