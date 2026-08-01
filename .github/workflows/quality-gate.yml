@@ -37,39 +37,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-build17-visual-allowlist:
-    if: github.event_name == 'pull_request' && github.head_ref == 'fix/build-17-universal-scripture-links'
-    name: Register ScriptureLink interaction primitive
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    steps:
-      - name: Check out exact Build 17 branch
-        uses: actions/checkout@v4
-        with:
-          ref: fix/build-17-universal-scripture-links
-          fetch-depth: 0
-
-      - name: Apply guarded allowlist patch
-        run: python scripts/allow-scripture-link-visual-primitive.py
-
-      - name: Verify visual audit
-        run: python scripts/audit-visual-master.py
-
-      - name: Commit verified audit update and consume patch script
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.email actions@users.noreply.github.com
-          git config user.name 'Scripture Games Source Bot'
-          git rm -f scripts/allow-scripture-link-visual-primitive.py
-          git add scripts/audit-visual-master.py
-          git commit -m 'test: register ScriptureLink interaction primitive'
-          git push origin HEAD:fix/build-17-universal-scripture-links
-
   validate:
-    if: github.event_name != 'pull_request' || github.head_ref != 'fix/build-17-universal-scripture-links'
     name: Audit, typecheck, lint, and export
     runs-on: ubuntu-latest
     timeout-minutes: 45
