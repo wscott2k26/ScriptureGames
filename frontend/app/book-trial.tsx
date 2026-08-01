@@ -7,10 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '@/src/profile-context';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
-import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
-import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
+import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
+import { MasteryAnswerFeedback } from '@/src/components/premium/MasteryAnswerFeedback';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
 import { getBibleBook } from '@/src/bible-library';
@@ -42,7 +42,7 @@ export default function BookTrialScreen() {
   if (!profile) return null;
 
   const fallback = (title: string, description: string, premium = false) => (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.72}>
+    <PeacefulBackdrop darkness={0.62}>
       <SafeAreaView style={styles.center}>
         <GlassPanel strong style={styles.fallbackCard}>
           <Ionicons name={premium ? 'lock-closed' : 'warning'} size={42} color={premium ? colors.brand : colors.coral} />
@@ -52,7 +52,7 @@ export default function BookTrialScreen() {
           <TactileButton variant="glass" label="Return to Book Library" onPress={() => router.replace('/book-library')} />
         </GlassPanel>
       </SafeAreaView>
-    </CinematicBackdrop>
+    </PeacefulBackdrop>
   );
 
   if (!catalogBook || !bibleBook || !trial) {
@@ -108,7 +108,7 @@ export default function BookTrialScreen() {
   if (done && completedRef.current) {
     const nextRoute = trial.number === 5 ? '/book-victory' : '/book-season';
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.61}>
+      <PeacefulBackdrop darkness={0.48}>
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <ScrollView contentContainerStyle={styles.resultScroll} showsVerticalScrollIndicator={false}>
@@ -134,12 +134,12 @@ export default function BookTrialScreen() {
             <TactileButton variant="glass" label="Choose Another Bible Book" onPress={() => router.replace('/book-library')} />
           </ScrollView>
         </SafeAreaView>
-      </CinematicBackdrop>
+      </PeacefulBackdrop>
     );
   }
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.7}>
+    <PeacefulBackdrop darkness={0.58}>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topbar}>
@@ -172,13 +172,15 @@ export default function BookTrialScreen() {
                   onPress={() => { setSelected(optionIndex); sfx.tap(); }}
                   style={styles.optionPressable}
                 >
-                  <MaterialSurface material={right ? 'gold' : wrong ? 'danger' : chosen ? 'bronze' : 'stone'} style={styles.optionSurface}>
-                    <View style={[styles.optionLetter, right && styles.optionLetterRight, wrong && styles.optionLetterWrong]}>
-                      <Text style={styles.optionLetterText}>{String.fromCharCode(65 + optionIndex)}</Text>
-                    </View>
-                    <Text style={styles.optionText}>{option}</Text>
-                    {right ? <Ionicons name="checkmark-circle" size={23} color={colors.success} /> : wrong ? <Ionicons name="close-circle" size={23} color={colors.coral} /> : null}
-                  </MaterialSurface>
+                  <MasteryAnswerFeedback state={right ? 'correct' : wrong ? 'wrong' : chosen ? 'selected' : 'idle'}>
+                    <MaterialSurface material={right ? 'gold' : wrong ? 'danger' : chosen ? 'bronze' : 'stone'} style={styles.optionSurface}>
+                      <View style={[styles.optionLetter, right && styles.optionLetterRight, wrong && styles.optionLetterWrong]}>
+                        <Text style={styles.optionLetterText}>{String.fromCharCode(65 + optionIndex)}</Text>
+                      </View>
+                      <Text style={styles.optionText}>{option}</Text>
+                      {right ? <Ionicons name="checkmark-circle" size={23} color={colors.success} /> : wrong ? <Ionicons name="close-circle" size={23} color={colors.coral} /> : null}
+                    </MaterialSurface>
+                  </MasteryAnswerFeedback>
                 </Pressable>
               );
             })}
@@ -204,7 +206,7 @@ export default function BookTrialScreen() {
           <TactileButton variant="glass" label="Return to Book Trials" onPress={() => router.replace({ pathname: '/book-season', params: { bookId: catalogBook.id } })} />
         </ScrollView>
       </SafeAreaView>
-    </CinematicBackdrop>
+    </PeacefulBackdrop>
   );
 }
 
