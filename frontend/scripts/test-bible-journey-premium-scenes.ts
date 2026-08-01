@@ -12,8 +12,9 @@ import { DEFAULT_PREFERENCES, restorePreferences } from '../src/preferences-core
 import { resolveMotionIntensity } from '../src/motion-intensity.ts';
 
 assert.equal(PREMIUM_PRODUCT_ID, 'com.willywill.scripturegames.premium');
+const freeJourneyBookIds = new Set(['GEN', 'EXO', 'LEV', 'MAT']);
 for (const book of BIBLE_JOURNEY_BOOKS) {
-  assert.equal(canAccessJourneyBook(book.id, false), book.index <= 3, `${book.name} has the wrong free/Premium access rule.`);
+  assert.equal(canAccessJourneyBook(book.id, false), freeJourneyBookIds.has(book.id), `${book.name} has the wrong free/Premium access rule.`);
   assert.equal(canAccessJourneyBook(book.id, true), true, `Premium must unlock ${book.name}.`);
 }
 assert.equal(canAccessJourneyBook('missing', true), false);
