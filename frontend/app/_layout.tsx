@@ -8,6 +8,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { ProfileProvider, useProfile } from '@/src/profile-context';
 import { PreferencesProvider } from '@/src/preferences-context';
+import { AudioProvider } from '@/src/audio-context';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 import { GlobalNavigationDock, GLOBAL_DOCK_HEIGHT } from '@/src/components/navigation/GlobalNavigationDock';
 import { colors } from '@/src/theme';
@@ -65,9 +66,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.shell}>
       <SafeAreaProvider>
         <PreferencesProvider>
-          <ProfileProvider>
-            <AppShell />
-          </ProfileProvider>
+          <AudioProvider>
+            <ProfileProvider>
+              <AppShell />
+            </ProfileProvider>
+          </AudioProvider>
         </PreferencesProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
