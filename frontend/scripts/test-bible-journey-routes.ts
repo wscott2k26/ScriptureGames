@@ -73,4 +73,54 @@ assert.equal(genesisVictory.includes("params: { bookId: 'EXO' }"), true, 'Genesi
 assert.equal(genesisVictory.includes('Replay the Final Genesis Trial'), true, 'Existing Genesis replay action must remain.');
 assert.equal(genesisVictory.includes('Return to Genesis Map'), true, 'Existing Genesis map action must remain.');
 
-console.log('Bible journey route contract tests passed.');
+const settings = read('app/(tabs)/preferences.tsx');
+for (const token of [
+  'Choose Peaceful Background',
+  "router.push('/background-picker')",
+  'Daily Background Rotation',
+  'Motion Off',
+  'Gentle Motion',
+  'Full Experience',
+  'Faith Rhythm',
+  'Grace Leaves',
+  'Soft Piano',
+  'Sound Effects',
+  'Haptic Feedback',
+]) assert.equal(settings.includes(token), true, `Settings must include ${token}.`);
+
+const picker = read('app/background-picker.tsx');
+for (const token of [
+  'PEACEFUL_SCENES',
+  'Cross on the Hill',
+  'Random Rotation',
+  'favorites',
+  "router.push('/premium')",
+  'Show All 50',
+]) assert.equal(picker.includes(token), true, `Background picker must include ${token}.`);
+
+const rootLayout = read('app/_layout.tsx');
+assert.equal(rootLayout.includes('PremiumEntitlementProvider'), true, 'Root layout must provide Premium entitlement state below ProfileProvider.');
+
+const entitlement = read('src/premium-entitlement.tsx');
+for (const token of [
+  'PREMIUM_PRODUCT_ID',
+  'hasPremium',
+  'purchase',
+  'restore',
+  'store-unavailable',
+  'refresh',
+]) assert.equal(entitlement.includes(token), true, `Premium entitlement boundary must include ${token}.`);
+assert.doesNotMatch(entitlement, /is_premium\s*:\s*true/, 'The client must never fake a Premium profile flag.');
+assert.doesNotMatch(entitlement, /AsyncStorage/, 'Production Premium access must not be granted through a local flag.');
+
+const premium = read('app/premium.tsx');
+for (const token of [
+  'Genesis, Exodus, and Leviticus',
+  'Numbers through Revelation',
+  'Unlock Complete Bible Journey',
+  'Restore Purchase',
+  'usePremiumEntitlement',
+  'No charge was attempted',
+]) assert.equal(premium.includes(token), true, `Premium screen must include ${token}.`);
+
+console.log('Bible journey route, Settings, and Premium contracts passed.');
