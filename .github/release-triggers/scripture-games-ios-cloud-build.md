@@ -1,14 +1,13 @@
-# Scripture Games Full-App Stability Recovery TestFlight Trigger
+# Scripture Games Build 10 Blinking Recovery TestFlight Trigger
 
 Authorized by Will Scott on August 1, 2026.
 
-- Certified stability recovery merge: `173eb4e66df2a41658901c6404ba03867be61e84`
-- Final certified quality run: `30683768951`
-- Expected corrected iOS build number: 10
-- Confirmed defects fixed: Lumi microphone native crash risk, unstable home/detail navigation, hidden Settings access, missing Back affordances, obscured Lumi composer, and lost unsent Lumi questions when consulting the Bible
-- Premium controls included: persistent bottom navigation, visible Settings, safe Back fallback, Motion Off/reduced motion, original soft piano, feedback sounds, haptics, sacred dove headers, and user-disableable experience controls
-- Verification passed: complete 31,098-verse Bible, cloud security, premium features, Lumi answer behavior, microphone crash regressions, Back navigation, 62 literal route targets, 1,472 content checks, 211 visual checks, Expo Doctor, TypeScript, ESLint, iOS export, and Android export
-- Purpose: one iOS production build and App Store Connect/TestFlight upload for Will and Tracy to perform fresh physical-device testing
+- Certified blinking-recovery merge: `ce95b5505f44580b66ff0cc800df09920f9cc776`
+- Regression fixed: Build 10 root-level full-screen navigation overlay and unfrozen, always-mounted inactive tabs causing repeated iOS redraws/blinking
+- Recovery: restored native Expo Router tabs, detached and froze inactive screens, removed pathname-wide root rerenders, preserved visible Settings
+- Expected corrected iOS build number: 11
+- Features retained: grounded Lumi answers, guarded Lumi microphone, offline Bible, cloud backup, Settings, Back fallback, motion controls, optional music/SFX/haptics, and sacred headers
+- Purpose: one iOS production build with automatic App Store Connect/TestFlight submission for immediate physical-device validation
 - Android EAS build: intentionally skipped to conserve Expo credits
 - App Review/public release: not authorized by this trigger
-- Duplicate EAS builds: prohibited unless build 10 fails before producing a usable binary or physical-device testing identifies a confirmed native blocker
+- Duplicate EAS builds: prohibited unless build 11 fails before producing a usable binary or physical-device testing identifies a confirmed blocker
