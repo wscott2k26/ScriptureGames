@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { PEACEFUL_SCENES } from '../src/backgrounds/peaceful-scenes.ts';
+import { PEACEFUL_PHOTO_SOURCES } from '../src/backgrounds/peaceful-photo-sources.ts';
+
 const root = resolve(import.meta.dirname, '..');
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
 
@@ -45,6 +48,7 @@ const settings = read('app/(tabs)/preferences.tsx');
 assert.equal(settings.includes("router.push('/tutorial')"), true, 'Settings must let users replay the tutorial.');
 assert.equal(settings.includes('App Tour & Tutorial'), true, 'Settings must label the tutorial clearly.');
 assert.equal(settings.includes("router.push('/premium')"), true, 'Settings must expose Premium options.');
+assert.equal(settings.includes('download once'), true, 'Settings must explain real-photo caching honestly.');
 
 assert.equal(existsSync(resolve(root, 'app/tutorial.tsx')), true, 'A guided tutorial route must exist.');
 const tutorial = read('app/tutorial.tsx');
@@ -66,10 +70,23 @@ const tutorialCore = read('src/tutorial-core.ts');
 assert.equal(tutorialCore.includes('TUTORIAL_STEPS'), true, 'Tutorial steps must live in a reusable data model.');
 assert.equal((tutorialCore.match(/id:/g) || []).length >= 8, true, 'Tutorial must cover at least eight app concepts.');
 
-const photos = read('src/backgrounds/peaceful-photo-sources.ts');
-assert.equal(photos.includes('PEACEFUL_PHOTO_SOURCES'), true, 'Peaceful scenes must use a curated real-photo source map.');
-assert.equal((photos.match(/https:\/\/images\.pexels\.com\/photos\//g) || []).length, 50, 'All 50 peaceful scene choices must use real licensed photos.');
-assert.equal((photos.match(/https:\/\/www\.pexels\.com\/photo\//g) || []).length, 50, 'Every real photo must retain its Pexels source page.');
+const photoIds = PEACEFUL_SCENES.map((scene) => {
+  const source = PEACEFUL_PHOTO_SOURCES[scene.id];
+  assert.ok(source, `Missing real photo source for ${scene.id}.`);
+  assert.equal(source.provider, 'Pexels');
+  const match = source.url.match(/photos\/(\d+)\//);
+  assert.ok(match, `Photo URL for ${scene.id} must include a Pexels photo ID.`);
+  assert.equal(source.sourcePage.includes(match[1]), true, `Source page for ${scene.id} must match its photo ID.`);
+  return match[1];
+});
+assert.equal(PEACEFUL_SCENES.length, 50, 'The picker must retain exactly 50 peaceful scenes.');
+assert.equal(Object.keys(PEACEFUL_PHOTO_SOURCES).length, 50, 'The real-photo map must contain exactly 50 entries.');
+assert.equal(new Set(photoIds).size, 50, 'All 50 peaceful scene choices must use different real photos.');
+
+const picker = read('app/background-picker.tsx');
+assert.equal(picker.includes('curated real photos'), true, 'The picker must describe the new real-photo experience.');
+assert.equal(picker.includes('cached on this device'), true, 'The picker must disclose photo caching.');
+assert.doesNotMatch(picker, /not downloaded stock photos/i, 'The old procedural-only claim must be removed.');
 
 const backdrop = read('src/components/premium/PeacefulBackdrop.tsx');
 assert.equal(backdrop.includes("from 'expo-image'"), true, 'Peaceful backgrounds must render real photos with expo-image.');
