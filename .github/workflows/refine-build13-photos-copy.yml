@@ -31,60 +31,40 @@ jobs:
               text = target.read_text()
               count = text.count(old)
               if count != 1:
-                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:100]!r}')
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:120]!r}')
               target.write_text(text.replace(old, new))
 
           photo = 'frontend/src/backgrounds/peaceful-photo-sources.ts'
-          replacements = [
-            ("url: 'https://images.pexels.com/photos/33359021/pexels-photo-33359021.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/historic-stone-courtyard-in-bethlehem-33359021/',",
-             "url: 'https://images.pexels.com/photos/5677543/pexels-photo-5677543.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/stone-cave-in-green-forest-5677543/',"),
-            ("url: 'https://images.pexels.com/photos/16241863/pexels-photo-16241863.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/a-meadow-at-sunrise-16241863/',",
-             "url: 'https://images.pexels.com/photos/14327179/pexels-photo-14327179.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/pool-below-waterfall-in-forest-14327179/',"),
-            ("url: 'https://images.pexels.com/photos/15072081/pexels-photo-15072081.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/lake-and-forest-landscape-15072081/',",
-             "url: 'https://images.pexels.com/photos/15846818/pexels-photo-15846818.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/sunrise-over-the-mountains-in-the-desert-15846818/',"),
-            ("url: 'https://images.pexels.com/photos/2745258/pexels-photo-2745258.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/lake-near-forest-2745258/',",
-             "url: 'https://images.pexels.com/photos/36773986/pexels-photo-36773986.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/snowy-mountain-reflecting-on-serene-lake-at-sunrise-36773986/',"),
-            ("url: 'https://images.pexels.com/photos/5115675/pexels-photo-5115675.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/view-of-a-hill-at-sunrise-5115675/',",
-             "url: 'https://images.pexels.com/photos/9151829/pexels-photo-9151829.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/sunrise-over-meadow-9151829/',"),
-            ("url: 'https://images.pexels.com/photos/15072081/pexels-photo-15072081.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/lake-and-forest-landscape-15072081/',",
-             "url: 'https://images.pexels.com/photos/5525508/pexels-photo-5525508.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/forest-path-in-autumn-5525508/',"),
-            ("url: 'https://images.pexels.com/photos/31085367/pexels-photo-31085367.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/tranquil-beach-pathway-at-sunrise-31085367/',",
-             "url: 'https://images.pexels.com/photos/34613440/pexels-photo-34613440.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/vibrant-spring-flowers-in-sunlit-garden-34613440/',"),
-            ("url: 'https://images.pexels.com/photos/6477400/pexels-photo-6477400.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/jerusalem-cityscape-with-the-dome-of-the-rock-israel-6477400/',",
-             "url: 'https://images.pexels.com/photos/26841207/pexels-photo-26841207.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/starry-night-sky-26841207/',"),
-            ("url: 'https://images.pexels.com/photos/36997691/pexels-photo-36997691.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/scenic-mountain-lake-view-with-lush-forest-36997691/',",
-             "url: 'https://images.pexels.com/photos/1121888/pexels-photo-1121888.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/landscape-photography-of-mountains-with-rainbow-1121888/',"),
-            ("url: 'https://images.pexels.com/photos/30284227/pexels-photo-30284227.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/panoramic-view-of-jerusalem-cityscape-30284227/',",
-             "url: 'https://images.pexels.com/photos/15082931/pexels-photo-15082931.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/full-moon-behind-clouds-15082931/',"),
+          entries = [
+            ("  'garden-tomb': {\n    url: 'https://images.pexels.com/photos/33359021/pexels-photo-33359021.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/historic-stone-courtyard-in-bethlehem-33359021/',",
+             "  'garden-tomb': {\n    url: 'https://images.pexels.com/photos/5677543/pexels-photo-5677543.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/stone-cave-in-green-forest-5677543/',"),
+            ("  'quiet-waterfall': {\n    url: 'https://images.pexels.com/photos/16241863/pexels-photo-16241863.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/a-meadow-at-sunrise-16241863/',",
+             "  'quiet-waterfall': {\n    url: 'https://images.pexels.com/photos/14327179/pexels-photo-14327179.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/pool-below-waterfall-in-forest-14327179/',"),
+            ("  'desert-mountain': {\n    url: 'https://images.pexels.com/photos/15072081/pexels-photo-15072081.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/lake-and-forest-landscape-15072081/',",
+             "  'desert-mountain': {\n    url: 'https://images.pexels.com/photos/15846818/pexels-photo-15846818.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/sunrise-over-the-mountains-in-the-desert-15846818/',"),
+            ("  'snowy-peace': {\n    url: 'https://images.pexels.com/photos/2745258/pexels-photo-2745258.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/lake-near-forest-2745258/',",
+             "  'snowy-peace': {\n    url: 'https://images.pexels.com/photos/36773986/pexels-photo-36773986.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/snowy-mountain-reflecting-on-serene-lake-at-sunrise-36773986/',"),
+            ("  'meadow-prayer': {\n    url: 'https://images.pexels.com/photos/5115675/pexels-photo-5115675.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/view-of-a-hill-at-sunrise-5115675/',",
+             "  'meadow-prayer': {\n    url: 'https://images.pexels.com/photos/9151829/pexels-photo-9151829.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/sunrise-over-meadow-9151829/',"),
+            ("  'autumn-trail': {\n    url: 'https://images.pexels.com/photos/15072081/pexels-photo-15072081.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/lake-and-forest-landscape-15072081/',",
+             "  'autumn-trail': {\n    url: 'https://images.pexels.com/photos/5525508/pexels-photo-5525508.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/forest-path-in-autumn-5525508/',"),
+            ("  'spring-garden': {\n    url: 'https://images.pexels.com/photos/31085367/pexels-photo-31085367.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/tranquil-beach-pathway-at-sunrise-31085367/',",
+             "  'spring-garden': {\n    url: 'https://images.pexels.com/photos/34613440/pexels-photo-34613440.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/vibrant-spring-flowers-in-sunlit-garden-34613440/',"),
+            ("  'starlit-promise': {\n    url: 'https://images.pexels.com/photos/6477400/pexels-photo-6477400.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/jerusalem-cityscape-with-the-dome-of-the-rock-israel-6477400/',",
+             "  'starlit-promise': {\n    url: 'https://images.pexels.com/photos/26841207/pexels-photo-26841207.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/starry-night-sky-26841207/',"),
+            ("  'rainbow-valley': {\n    url: 'https://images.pexels.com/photos/36997691/pexels-photo-36997691.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/scenic-mountain-lake-view-with-lush-forest-36997691/',",
+             "  'rainbow-valley': {\n    url: 'https://images.pexels.com/photos/1121888/pexels-photo-1121888.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/landscape-photography-of-mountains-with-rainbow-1121888/',"),
+            ("  'moonlit-peace': {\n    url: 'https://images.pexels.com/photos/30284227/pexels-photo-30284227.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/panoramic-view-of-jerusalem-cityscape-30284227/',",
+             "  'moonlit-peace': {\n    url: 'https://images.pexels.com/photos/15082931/pexels-photo-15082931.jpeg?auto=compress&cs=tinysrgb&w=1600',\n    sourcePage: 'https://www.pexels.com/photo/full-moon-behind-clouds-15082931/',"),
           ]
-          for old, new in replacements:
+          for old, new in entries:
               replace(photo, old, new)
 
-          replace(
-              'frontend/app/background-picker.tsx',
-              'Fifty original offline scenes for study, prayer, and play.',
-              'Fifty curated real photos for study, prayer, and play.',
-          )
-          replace(
-              'frontend/app/background-picker.tsx',
-              'The default is a cross on a beautiful hill. Your selection stays on this device and works offline.',
-              'The default is a real cross-on-a-hill photo. A selected photo downloads once and is cached on this device; the artistic fallback appears if a photo is not cached and the device is offline.',
-          )
-          replace(
-              'frontend/app/background-picker.tsx',
-              'These are original procedural scene designs bundled with Scripture Games—not downloaded stock photos.',
-              'These are curated real photos from Pexels. Selected photos are cached on this device, and Scripture Games keeps an artistic offline/error fallback.',
-          )
-          replace(
-              'frontend/app/(tabs)/preferences.tsx',
-              'Choose from 50 original offline scenes, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings.',
-              'Choose from 50 curated real photos, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings. Photos download once when viewed and are cached on this device.',
-          )
-          replace(
-              'frontend/app/(tabs)/preferences.tsx',
-              'All music, feedback sounds, Bible content, and peaceful backgrounds are bundled for offline use.',
-              'Music, feedback sounds, and Bible content are bundled offline. Peaceful photos are cached after loading, with an artistic fallback when a photo is unavailable.',
-          )
+          replace('frontend/app/background-picker.tsx', 'Fifty original offline scenes for study, prayer, and play.', 'Fifty curated real photos for study, prayer, and play.')
+          replace('frontend/app/background-picker.tsx', 'The default is a cross on a beautiful hill. Your selection stays on this device and works offline.', 'The default is a real cross-on-a-hill photo. A selected photo downloads once and is cached on this device; the artistic fallback appears if a photo is not cached and the device is offline.')
+          replace('frontend/app/background-picker.tsx', 'These are original procedural scene designs bundled with Scripture Games—not downloaded stock photos.', 'These are curated real photos from Pexels. Selected photos are cached on this device, and Scripture Games keeps an artistic offline/error fallback.')
+          replace('frontend/app/(tabs)/preferences.tsx', 'Choose from 50 original offline scenes, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings.', 'Choose from 50 curated real photos, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings. Photos download once when viewed and are cached on this device.')
+          replace('frontend/app/(tabs)/preferences.tsx', 'All music, feedback sounds, Bible content, and peaceful backgrounds are bundled for offline use.', 'Music, feedback sounds, and Bible content are bundled offline. Peaceful photos are cached after loading, with an artistic fallback when a photo is unavailable.')
           PY
 
       - name: Commit refinements
