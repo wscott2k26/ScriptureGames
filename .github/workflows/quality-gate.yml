@@ -80,6 +80,10 @@ jobs:
         working-directory: frontend
         run: yarn test:lumi-voice
 
+      - name: Test Back navigation fallback
+        working-directory: frontend
+        run: yarn test:navigation
+
       - name: Audit runtime stability and navigation
         working-directory: frontend
         run: yarn audit:runtime
