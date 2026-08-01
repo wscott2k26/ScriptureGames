@@ -6,10 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
 import { colors, radii, spacing } from '@/src/theme';
-import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
+import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { TactileButton } from '@/src/components/premium/TactileButton';
-import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
 import { BIBLE_JOURNEY_BOOKS, getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';
 import { getSequentialBookId, type BibleJourneyProgress } from '@/src/bible-journey/progress-core';
@@ -74,7 +73,7 @@ export default function BibleJourneyHub() {
   if (!profile) return null;
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.58}>
+    <PeacefulBackdrop darkness={0.5}>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -155,7 +154,7 @@ export default function BibleJourneyHub() {
           <Text style={styles.footer}>Progress is stored locally and the Bible Journey is designed for offline play.</Text>
         </ScrollView>
       </SafeAreaView>
-    </CinematicBackdrop>
+    </PeacefulBackdrop>
   );
 }
 
