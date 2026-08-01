@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const read = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), 'utf8');
-const appRoot = fileURLToPath(new URL('../app/', import.meta.url));
+const root = process.cwd();
+const read = (path: string) => readFileSync(join(root, path), 'utf8');
+const appRoot = join(root, 'app');
 
 function listTsxFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
