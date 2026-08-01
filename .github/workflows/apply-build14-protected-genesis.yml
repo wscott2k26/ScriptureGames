@@ -1,0 +1,67 @@
+name: Apply Build 14 Protected Genesis Backdrops
+
+on:
+  push:
+    branches:
+      - fix/build-14-global-audio-backgrounds
+    paths:
+      - '.github/status-triggers/apply-build14-protected-genesis.md'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/build-14-global-audio-backgrounds
+          fetch-depth: 0
+
+      - name: Apply exact protected backdrop edits
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          edits = {
+              'frontend/app/(tabs)/journey.tsx': [
+                  ('<CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.4}>', '<CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.4} preserveSource>'),
+                  ('<CinematicBackdrop source={nextTrial.background} darkness={0.47}>', '<CinematicBackdrop source={nextTrial.background} darkness={0.47} preserveSource>'),
+              ],
+              'frontend/app/genesis-trial.tsx': [
+                  ('<CinematicBackdrop source={trial.background} darkness={0.32}>', '<CinematicBackdrop source={trial.background} darkness={0.32} preserveSource>'),
+              ],
+              'frontend/app/genesis-quiz.tsx': [
+                  ('<CinematicBackdrop source={trial.background} darkness={0.48}>', '<CinematicBackdrop source={trial.background} darkness={0.48} preserveSource>'),
+                  ('<CinematicBackdrop source={trial.background} darkness={0.5}>', '<CinematicBackdrop source={trial.background} darkness={0.5} preserveSource>'),
+              ],
+              'frontend/app/season-victory.tsx': [
+                  ("<CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5}>", "<CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5} preserveSource>"),
+                  ("<CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.35}>", "<CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.35} preserveSource>"),
+              ],
+          }
+
+          for filename, replacements in edits.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in replacements:
+                  count = text.count(old)
+                  expected = 2 if filename.endswith('season-victory.tsx') and "darkness={0.5}" in old else 1
+                  if count != expected:
+                      raise SystemExit(f'{filename}: expected {expected} exact occurrence(s) of {old!r}, found {count}')
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+
+      - name: Commit guarded edits
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/app/'(tabs)'/journey.tsx frontend/app/genesis-trial.tsx frontend/app/genesis-quiz.tsx frontend/app/season-victory.tsx
+          git commit -m 'fix: preserve Genesis tournament artwork with global themes'
+          git push origin HEAD:fix/build-14-global-audio-backgrounds
