@@ -13,6 +13,7 @@ import {
   recordJourneyTrialResult,
   syncGenesisCompletion,
 } from '../src/bible-journey/progress-core.ts';
+import { createJourneyProgressStore } from '../src/bible-journey/progress-store.ts';
 
 assert.equal(BIBLE_JOURNEY_BOOKS.length, 66, 'The journey must expose exactly 66 canonical books.');
 assert.equal(new Set(BIBLE_JOURNEY_BOOKS.map((book) => book.id)).size, 66, 'Every journey book id must be unique.');
@@ -140,4 +141,39 @@ assert.equal(getJourneyBook('missing'), undefined);
   assert.equal(finished.progress.completedBookIds.length, 66);
 }
 
-console.log('Bible journey catalog and progress tests passed.');
+{
+  const memory = new Map<string, string>();
+  const storage = {
+    getItem: async (key: string) => memory.get(key) ?? null,
+    setItem: async (key: string, value: string) => { memory.set(key, value); },
+    removeItem: async (key: string) => { memory.delete(key); },
+  };
+  const store = createJourneyProgressStore(storage);
+  const profileId = 'player-1';
+
+  const initial = await store.load(profileId);
+  assert.equal(getSequentialBookId(initial), 'GEN');
+
+  const [trialOne, trialTwo] = await Promise.all([
+    store.recordTrial(profileId, 'EXO', 'trial-1', 3, 5, '2026-08-01T18:00:00.000Z'),
+    store.recordTrial(profileId, 'EXO', 'trial-2', 4, 5, '2026-08-01T18:01:00.000Z'),
+  ]);
+  assert.equal(trialOne.progress.books.EXO.completedTrials.includes('trial-1'), true);
+  assert.equal(trialTwo.progress.books.EXO.completedTrials.includes('trial-2'), true);
+  const afterConcurrentWrites = await store.load(profileId);
+  assert.deepEqual(afterConcurrentWrites.books.EXO.completedTrials.sort(), ['trial-1', 'trial-2']);
+
+  const completed = await store.completeBook(profileId, 'GEN', '2026-08-01T18:02:00.000Z');
+  assert.equal(completed.firstCompletion, true);
+  assert.equal(getSequentialBookId(await store.load(profileId)), 'EXO');
+
+  memory.set('scripture_games_bible_journey_v1_corrupt-player', '{broken-json');
+  const recovered = await store.load('corrupt-player');
+  assert.equal(getSequentialBookId(recovered), 'GEN');
+  assert.equal(memory.get('scripture_games_bible_journey_corrupt_backup_corrupt-player'), '{broken-json');
+
+  await store.reset(profileId);
+  assert.equal(memory.has('scripture_games_bible_journey_v1_player-1'), false);
+}
+
+console.log('Bible journey catalog, progress, and storage tests passed.');
