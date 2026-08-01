@@ -37,7 +37,7 @@ export default function PreferencesScreen() {
             <View style={styles.backgroundCopy}>
               <Text style={styles.backgroundLabel}>CURRENT BACKGROUND</Text>
               <Text style={styles.backgroundTitle}>{currentScene?.name || 'Cross on the Hill'}</Text>
-              <Text style={styles.backgroundText}>Choose from 50 original offline scenes, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings.</Text>
+              <Text style={styles.backgroundText}>Choose from 50 curated real photos, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings. Photos download once when viewed and are cached on this device.</Text>
             </View>
             <TactileButton
               label="Choose Peaceful Background"
@@ -161,7 +161,7 @@ export default function PreferencesScreen() {
             <TactileButton label="Privacy Policy" icon={<Ionicons name="lock-closed-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => void Linking.openURL('https://scripture-games-support.vercel.app/privacy/')} />
             <TactileButton label="Restore All Defaults" variant="stone" onPress={() => void resetPreferences()} />
           </View>
-          <Text style={styles.footer}>All music, feedback sounds, Bible content, and peaceful backgrounds are bundled for offline use.</Text>
+          <Text style={styles.footer}>Music, feedback sounds, and Bible content are bundled offline. Peaceful photos are cached after loading, with an artistic fallback when a photo is unavailable.</Text>
         </ScrollView>
       </SafeAreaView>
     </PeacefulBackdrop>

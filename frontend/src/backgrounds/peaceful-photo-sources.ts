@@ -126,8 +126,8 @@ export const PEACEFUL_PHOTO_SOURCES: Readonly<Record<string, PeacefulPhotoSource
     provider: 'Pexels',
   },
   'garden-tomb': {
-    url: 'https://images.pexels.com/photos/33359021/pexels-photo-33359021.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/historic-stone-courtyard-in-bethlehem-33359021/',
+    url: 'https://images.pexels.com/photos/5677543/pexels-photo-5677543.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/stone-cave-in-green-forest-5677543/',
     provider: 'Pexels',
   },
   'ocean-evening': {
@@ -151,8 +151,8 @@ export const PEACEFUL_PHOTO_SOURCES: Readonly<Record<string, PeacefulPhotoSource
     provider: 'Pexels',
   },
   'quiet-waterfall': {
-    url: 'https://images.pexels.com/photos/16241863/pexels-photo-16241863.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/a-meadow-at-sunrise-16241863/',
+    url: 'https://images.pexels.com/photos/14327179/pexels-photo-14327179.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/pool-below-waterfall-in-forest-14327179/',
     provider: 'Pexels',
   },
   'seaside-clouds': {
@@ -186,8 +186,8 @@ export const PEACEFUL_PHOTO_SOURCES: Readonly<Record<string, PeacefulPhotoSource
     provider: 'Pexels',
   },
   'desert-mountain': {
-    url: 'https://images.pexels.com/photos/15072081/pexels-photo-15072081.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/lake-and-forest-landscape-15072081/',
+    url: 'https://images.pexels.com/photos/15846818/pexels-photo-15846818.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/sunrise-over-the-mountains-in-the-desert-15846818/',
     provider: 'Pexels',
   },
   'highland-lake': {
@@ -196,8 +196,8 @@ export const PEACEFUL_PHOTO_SOURCES: Readonly<Record<string, PeacefulPhotoSource
     provider: 'Pexels',
   },
   'snowy-peace': {
-    url: 'https://images.pexels.com/photos/2745258/pexels-photo-2745258.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/lake-near-forest-2745258/',
+    url: 'https://images.pexels.com/photos/36773986/pexels-photo-36773986.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/snowy-mountain-reflecting-on-serene-lake-at-sunrise-36773986/',
     provider: 'Pexels',
   },
   'forest-path': {
@@ -221,33 +221,33 @@ export const PEACEFUL_PHOTO_SOURCES: Readonly<Record<string, PeacefulPhotoSource
     provider: 'Pexels',
   },
   'meadow-prayer': {
-    url: 'https://images.pexels.com/photos/5115675/pexels-photo-5115675.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/view-of-a-hill-at-sunrise-5115675/',
+    url: 'https://images.pexels.com/photos/9151829/pexels-photo-9151829.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/sunrise-over-meadow-9151829/',
     provider: 'Pexels',
   },
   'autumn-trail': {
-    url: 'https://images.pexels.com/photos/15072081/pexels-photo-15072081.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/lake-and-forest-landscape-15072081/',
+    url: 'https://images.pexels.com/photos/5525508/pexels-photo-5525508.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/forest-path-in-autumn-5525508/',
     provider: 'Pexels',
   },
   'spring-garden': {
-    url: 'https://images.pexels.com/photos/31085367/pexels-photo-31085367.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/tranquil-beach-pathway-at-sunrise-31085367/',
+    url: 'https://images.pexels.com/photos/34613440/pexels-photo-34613440.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/vibrant-spring-flowers-in-sunlit-garden-34613440/',
     provider: 'Pexels',
   },
   'starlit-promise': {
-    url: 'https://images.pexels.com/photos/6477400/pexels-photo-6477400.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/jerusalem-cityscape-with-the-dome-of-the-rock-israel-6477400/',
+    url: 'https://images.pexels.com/photos/26841207/pexels-photo-26841207.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/starry-night-sky-26841207/',
     provider: 'Pexels',
   },
   'rainbow-valley': {
-    url: 'https://images.pexels.com/photos/36997691/pexels-photo-36997691.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/scenic-mountain-lake-view-with-lush-forest-36997691/',
+    url: 'https://images.pexels.com/photos/1121888/pexels-photo-1121888.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/landscape-photography-of-mountains-with-rainbow-1121888/',
     provider: 'Pexels',
   },
   'moonlit-peace': {
-    url: 'https://images.pexels.com/photos/30284227/pexels-photo-30284227.jpeg?auto=compress&cs=tinysrgb&w=1600',
-    sourcePage: 'https://www.pexels.com/photo/panoramic-view-of-jerusalem-cityscape-30284227/',
+    url: 'https://images.pexels.com/photos/15082931/pexels-photo-15082931.jpeg?auto=compress&cs=tinysrgb&w=1600',
+    sourcePage: 'https://www.pexels.com/photo/full-moon-behind-clouds-15082931/',
     provider: 'Pexels',
   },
   'heaven-light': {
