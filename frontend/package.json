@@ -15,6 +15,7 @@
     "audit:bible": "node scripts/audit-bible.mjs",
     "audit:cloud": "node scripts/audit-cloud-backup.mjs",
     "audit:premium": "node scripts/audit-premium-faith.mjs",
+    "audit:journey": "node scripts/audit-bible-journey.mjs",
     "audit:runtime": "node scripts/audit-runtime-stability.mjs",
     "audit:visual": "python ../scripts/audit-visual-master.py",
     "test:lumi": "node --experimental-strip-types scripts/test-lumi-engine.ts",
@@ -25,8 +26,8 @@
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn audit:runtime",
-    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
+    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn audit:journey && yarn audit:runtime",
+    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn test:journey && yarn audit:journey && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",
