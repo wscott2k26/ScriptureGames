@@ -1,0 +1,60 @@
+name: Apply Build 17 Scripture Links
+
+on:
+  push:
+    branches:
+      - fix/build-17-universal-scripture-links
+    paths:
+      - '.github/status-triggers/apply-build17-scripture-links.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-build17-scripture-links
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out Build 17 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-17-universal-scripture-links
+          fetch-depth: 0
+
+      - name: Apply guarded source patch
+        run: python scripts/apply-build17-scripture-links.py
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frozen dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile --non-interactive
+
+      - name: Verify navigation contracts and TypeScript
+        working-directory: frontend
+        run: |
+          yarn test:build16
+          yarn test:build17
+          yarn typecheck
+
+      - name: Commit source changes and consume patch machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games Source Bot'
+          git rm -f scripts/apply-build17-scripture-links.py
+          git rm -f .github/workflows/apply-build17-scripture-links.yml
+          git rm -f .github/status-triggers/apply-build17-scripture-links.md
+          git add frontend
+          git commit -m 'feat: add universal Scripture links'
+          git push origin HEAD:fix/build-17-universal-scripture-links
