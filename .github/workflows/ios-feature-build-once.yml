@@ -1,0 +1,119 @@
+name: Scripture Games Authorized iOS Feature Build Once
+
+on:
+  push:
+    branches:
+      - feature/complete-bible-journey-upgrade
+    paths:
+      - '.github/release-triggers/scripture-games-ios-feature-build-once.md'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scripture-games-ios-feature-build-once
+  cancel-in-progress: false
+
+jobs:
+  ios-testflight:
+    name: Validate, build, and submit authorized iOS feature build
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo 'EXPO_TOKEN is not configured for this repository.' >&2
+            exit 1
+          fi
+
+      - name: Check out authorized feature source
+        uses: actions/checkout@v4
+        with:
+          ref: feature/complete-bible-journey-upgrade
+          fetch-depth: 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Revalidate authorized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          yarn generate:bible
+          yarn audit:bible
+          yarn audit:cloud
+          yarn audit:premium
+          yarn test:lumi
+          yarn test:lumi-voice
+          yarn test:navigation
+          yarn test:journey
+          yarn audit:journey
+          yarn audit:runtime
+          yarn audit:content
+          yarn audit:visual
+          yarn doctor
+          yarn typecheck
+          yarn lint
+
+      - name: Verify Expo identity and linked project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive
+
+      - name: Build and submit one iOS build to TestFlight
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform ios --profile production --non-interactive --auto-submit --json > ../ios-feature-build-once.json
+
+      - name: Save signed-build record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-feature-build-once-record
+          path: ios-feature-build-once.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact signed-build blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Scripture Games authorized iOS feature build needs attention — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
