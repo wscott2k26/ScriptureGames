@@ -37,6 +37,7 @@ for (const book of BIBLE_JOURNEY_BOOKS) {
 assert.equal(isBookFree('GEN'), true);
 assert.equal(isBookFree('EXO'), true);
 assert.equal(isBookFree('LEV'), true);
+assert.equal(isBookFree('MAT'), true);
 assert.equal(isBookFree('NUM'), false);
 assert.equal(isBookFree('REV'), false);
 assert.equal(getNextJourneyBook('GEN')?.id, 'EXO');

@@ -115,8 +115,8 @@ assert.doesNotMatch(entitlement, /AsyncStorage/, 'Production Premium access must
 
 const premium = read('app/premium.tsx');
 for (const token of [
-  'Genesis, Exodus, and Leviticus',
-  'Numbers through Revelation',
+  'Genesis, Exodus, Leviticus, and Matthew',
+  'remaining 62 Journey books',
   'Unlock Complete Bible Journey',
   'Restore Purchase',
   'usePremiumEntitlement',

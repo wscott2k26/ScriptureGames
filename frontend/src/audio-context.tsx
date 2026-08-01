@@ -1,6 +1,6 @@
 import { AppState, type AppStateStatus } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { SOFT_PIANO_BASE64 } from './audio-soft-piano';
@@ -63,6 +63,7 @@ function replay(player: AudioPlayer) {
 export function AudioProvider({ children }: { children: ReactNode }) {
   const { preferences } = usePreferences();
   const piano = useAudioPlayer(null);
+  const pianoStatus = useAudioPlayerStatus(piano);
   const tap = useAudioPlayer(null);
   const success = useAudioPlayer(null);
   const error = useAudioPlayer(null);
@@ -105,6 +106,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, [piano]);
 
   const resumeMusic = useCallback(async () => {
+    if (!pianoStatus.isLoaded) return;
     if (!readyRef.current || !musicEnabledRef.current || appState.current !== 'active') return;
     try {
       await ensureAudioSession();
@@ -112,13 +114,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ambient music is optional and must never crash the app.
     }
-  }, [piano]);
+  }, [piano, pianoStatus.isLoaded]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !pianoStatus.isLoaded) return;
     if (preferences.musicEnabled) void resumeMusic();
     else pauseMusic();
-  }, [pauseMusic, preferences.musicEnabled, ready, resumeMusic]);
+  }, [pauseMusic, pianoStatus.isLoaded, preferences.musicEnabled, ready, resumeMusic]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {

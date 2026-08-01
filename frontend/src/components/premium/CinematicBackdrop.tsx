@@ -23,7 +23,7 @@ const DUST = [
 ] as const;
 
 type CinematicBackdropProps = {
-  source: ImageSourcePropType;
+  source?: ImageSourcePropType;
   children: ReactNode;
   darkness?: number;
   accent?: string;
@@ -82,7 +82,7 @@ export function CinematicBackdrop({
 
   return (
     <View testID={testID} style={styles.root}>
-      {preserveSource ? (
+      {preserveSource && source ? (
         <Animated.View style={[StyleSheet.absoluteFill, imageStyle]}>
           <ImageBackground source={source} style={styles.image} resizeMode="cover" />
         </Animated.View>

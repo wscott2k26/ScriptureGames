@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { JOURNEY_NODES, PUZZLES, QUIZ_QUESTIONS, STORIES, VERSES } from './content.generated';
+import { hasValidatedPremiumEntitlement } from './premium-entitlement-core';
 
 type Mode = 'kids' | 'adult';
 
@@ -24,6 +25,8 @@ type Profile = {
   badges: string[];
   family_id?: string;
   is_premium: boolean;
+  premium_entitlement_source?: 'app-store' | 'play-store';
+  premium_product_id?: string;
   premium_expires_at?: string;
   created_at: string;
   bonus_awards?: string[];
@@ -64,18 +67,22 @@ function cloneDb(): LocalDb {
   return JSON.parse(JSON.stringify(EMPTY_DB));
 }
 
+function normalizeLegacyPremiumProfile(profile: Profile): Profile {
+  if (hasValidatedPremiumEntitlement(profile)) return profile;
+  const { premium_entitlement_source: _source, premium_product_id: _product, premium_expires_at: _expires, ...rest } = profile;
+  return { ...rest, is_premium: false };
+}
+
 async function readDb(): Promise<LocalDb> {
   const raw = await AsyncStorage.getItem(DB_KEY);
   if (!raw) return cloneDb();
   try {
     const parsed = JSON.parse(raw) as Partial<LocalDb>;
-    return {
-      version: 2,
-      profiles: parsed.profiles || {},
-      families: parsed.families || {},
-      activities: parsed.activities || [],
-      chats: parsed.chats || {},
-    };
+    const rawProfiles = parsed.profiles || {};
+    const profiles = Object.fromEntries(Object.entries(rawProfiles).map(([profileId, profile]) => [profileId, normalizeLegacyPremiumProfile(profile as Profile)]));
+    const normalized: LocalDb = { version: 2, profiles, families: parsed.families || {}, activities: parsed.activities || [], chats: parsed.chats || {} };
+    if (JSON.stringify(profiles) !== JSON.stringify(rawProfiles)) await AsyncStorage.setItem(DB_KEY, JSON.stringify(normalized));
+    return normalized;
   } catch {
     await AsyncStorage.setItem(CORRUPT_BACKUP_KEY, raw).catch(() => undefined);
     return cloneDb();
@@ -255,8 +262,7 @@ const unsafeLocalApi = {
       completed_nodes: [],
       badges: [],
       family_id,
-      // TestFlight beta ships with all content unlocked. Replace with StoreKit before a paid release.
-      is_premium: true,
+      is_premium: false,
       created_at: now,
       bonus_awards: [],
     };
