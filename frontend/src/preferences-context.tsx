@@ -11,6 +11,12 @@ import type { MotionMode } from './motion-intensity';
 
 export type { AppPreferences, MotionMode, VoiceReplyMode };
 
+export const PERSISTED_EXPERIENCE_PREFERENCE_FIELDS = [
+  'hapticsEnabled',
+  'cinematicTextEnabled',
+  'motionMode',
+] as const;
+
 const STORAGE_KEY = 'scripture_games_preferences_v1';
 const freshDefaults = (): AppPreferences => ({ ...DEFAULT_PREFERENCES, favoriteBackgroundIds: [] });
 
