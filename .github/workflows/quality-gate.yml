@@ -37,56 +37,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-build17-source:
-    if: github.event_name == 'pull_request' && github.head_ref == 'fix/build-17-universal-scripture-links'
-    name: Apply guarded Build 17 source patch
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: write
-    steps:
-      - name: Check out exact Build 17 branch
-        uses: actions/checkout@v4
-        with:
-          ref: fix/build-17-universal-scripture-links
-          fetch-depth: 0
-
-      - name: Apply guarded source patch
-        run: python scripts/apply-build17-scripture-links.py
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
-
-      - name: Install frozen dependencies
-        working-directory: frontend
-        run: yarn install --frozen-lockfile --non-interactive
-
-      - name: Verify Build 16, Build 17, and TypeScript
-        working-directory: frontend
-        run: |
-          yarn test:build16
-          yarn test:build17
-          yarn typecheck
-
-      - name: Commit only verified source and consume patch machinery
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.email actions@users.noreply.github.com
-          git config user.name 'Scripture Games Source Bot'
-          git rm -f scripts/apply-build17-scripture-links.py
-          git rm -f .github/workflows/apply-build17-scripture-links.yml
-          git rm -f .github/status-triggers/apply-build17-scripture-links.md
-          git add frontend
-          git commit -m 'feat: add universal Scripture links'
-          git push origin HEAD:fix/build-17-universal-scripture-links
-
   validate:
-    if: github.event_name != 'pull_request' || github.head_ref != 'fix/build-17-universal-scripture-links'
     name: Audit, typecheck, lint, and export
     runs-on: ubuntu-latest
     timeout-minutes: 45
