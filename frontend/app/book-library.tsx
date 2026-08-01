@@ -6,8 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
 import { colors, radii, spacing } from '@/src/theme';
-import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
-import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
+import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
@@ -61,7 +60,7 @@ export default function BookLibraryScreen() {
   if (!profile) return null;
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS.opening} darkness={0.68}>
+    <PeacefulBackdrop darkness={0.58}>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScreenHeader back eyebrow="66-BOOK LIBRARY" title="Choose Any Bible Book" subtitle="Browse the whole journey without losing your recommended path." />
@@ -150,7 +149,7 @@ export default function BookLibraryScreen() {
           <Text style={styles.footer}>Genesis, Exodus, and Leviticus are free. Premium opens Numbers through Revelation.</Text>
         </ScrollView>
       </SafeAreaView>
-    </CinematicBackdrop>
+    </PeacefulBackdrop>
   );
 }
 
