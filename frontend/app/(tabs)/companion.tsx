@@ -38,6 +38,7 @@ import {
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 const VOICE_PREF_KEY = 'scripture_games_lumi_voice_replies_v1';
+const LUMI_DRAFT_PREFIX = 'scripture_games_lumi_draft_v1';
 const SUGGESTIONS_KIDS = ['Who was Noah?', 'What is prayer?', 'Tell me about Jesus', 'Why did God make people?'];
 const SUGGESTIONS_ADULT = ['What does John 3:16 mean?', 'How do I read the Bible daily?', 'Explain grace in one paragraph', 'What is the Sermon on the Mount?'];
 const CONTEXT_WORDS = ['Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Matthew', 'Mark', 'Luke', 'John', 'Romans', 'Jesus', 'Yahweh', 'Scripture'];
@@ -48,6 +49,7 @@ export default function CompanionScreen() {
   const { profile } = useProfile();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
   const [sending, setSending] = useState(false);
   const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,7 @@ export default function CompanionScreen() {
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const sessionId = profile ? `chat-${profile.id}` : 'chat-guest';
+  const draftKey = `${LUMI_DRAFT_PREFIX}:${sessionId}`;
   const scrollRef = useRef<ScrollView | null>(null);
   const enhancedVoiceRef = useRef<string | undefined>(undefined);
 
@@ -97,6 +100,31 @@ export default function CompanionScreen() {
     const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
     return () => { show.remove(); hide.remove(); };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setDraftRestored(false);
+    AsyncStorage.getItem(draftKey)
+      .then((value) => {
+        if (active) setInput((value || '').slice(0, 1000));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setDraftRestored(true);
+      });
+    return () => { active = false; };
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftRestored) return;
+    const timer = setTimeout(() => {
+      const operation = input.length
+        ? AsyncStorage.setItem(draftKey, input.slice(0, 1000))
+        : AsyncStorage.removeItem(draftKey);
+      operation.catch(() => undefined);
+    }, 140);
+    return () => clearTimeout(timer);
+  }, [draftKey, draftRestored, input]);
 
   useEffect(() => {
     AsyncStorage.getItem(VOICE_PREF_KEY)
@@ -234,7 +262,9 @@ export default function CompanionScreen() {
           await Speech.stop();
           await abortLumiListening();
           await api.clearChat(sessionId);
+          await AsyncStorage.removeItem(draftKey);
           setMessages([greeting()]);
+          setInput('');
           setSpeakingIndex(null);
           setVoiceStarting(false);
           setRecognizing(false);
@@ -246,8 +276,7 @@ export default function CompanionScreen() {
 
   if (!profile) return null;
   const suggestions = profile.mode === 'kids' ? SUGGESTIONS_KIDS : SUGGESTIONS_ADULT;
-  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : 86 + insets.bottom;
-  const voiceBusy = recognizing || voiceStarting;
+  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : spacing.sm;
 
   return (
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-03']} darkness={0.73}>
