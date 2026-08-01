@@ -5,6 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { usePreferences } from '@/src/preferences-context';
 import { colors, radii, spacing } from '@/src/theme';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
@@ -30,10 +31,10 @@ const CATEGORIES: readonly PeacefulSceneCategory[] = [
 export default function BackgroundPickerScreen() {
   const router = useRouter();
   const { profile } = useProfile();
+  const { hasPremium } = usePremiumEntitlement();
   const { preferences, updatePreferences } = usePreferences();
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
-  const hasPremium = Boolean(profile?.is_premium);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
