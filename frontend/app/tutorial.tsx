@@ -37,7 +37,7 @@ export default function TutorialScreen() {
   const notNow = () => router.replace('/(tabs)/command');
 
   return (
-    <PeacefulBackdrop sceneId="cross-on-the-hill" darkness={0.54}>
+    <PeacefulBackdrop darkness={0.54}>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScreenHeader
