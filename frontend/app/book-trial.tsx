@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
@@ -14,7 +15,8 @@ import { MasteryAnswerFeedback } from '@/src/components/premium/MasteryAnswerFee
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
 import { getBibleBook } from '@/src/bible-library';
-import { getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';
+import { getJourneyBook } from '@/src/bible-journey/catalog';
+import { canOpenJourneyBook } from '@/src/bible-journey/access';
 import { buildBookTrials } from '@/src/bible-journey/questions';
 import { recordBibleJourneyTrial } from '@/src/bible-journey/progress';
 import { recordDailyCompletion } from '@/src/daily-rhythm';
@@ -36,8 +38,8 @@ export default function BookTrialScreen() {
   const [done, setDone] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const completedRef = useRef(false);
-  const hasPremium = Boolean(profile?.is_premium);
-  const locked = Boolean(catalogBook && !isBookFree(catalogBook.id) && !hasPremium);
+  const { hasPremium } = usePremiumEntitlement();
+  const locked = Boolean(catalogBook && !canOpenJourneyBook(catalogBook, hasPremium));
 
   if (!profile) return null;
 

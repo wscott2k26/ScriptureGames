@@ -134,6 +134,19 @@ export default function PreferencesScreen() {
             </View>
           </GlassPanel>
 
+          <Text style={styles.section}>Help & Access</Text>
+          <GlassPanel style={styles.infoPanel}>
+            <Ionicons name="help-circle" size={24} color={colors.info} />
+            <View style={styles.infoCopy}>
+              <Text style={styles.infoTitle}>Learn the app or review Premium</Text>
+              <Text style={styles.infoText}>The optional tour explains every bottom tab and major system. Premium options clearly show which books are free and which require a validated entitlement.</Text>
+            </View>
+          </GlassPanel>
+          <View style={styles.actions}>
+            <TactileButton label="App Tour & Tutorial" icon={<Ionicons name="compass-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => router.push('/tutorial')} />
+            <TactileButton label="View Premium Options" icon={<Ionicons name="diamond-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => router.push('/premium')} />
+          </View>
+
           <Text style={styles.section}>Account, Privacy & Data</Text>
           <GlassPanel style={styles.infoPanel}>
             <Ionicons name="shield-checkmark" size={24} color={colors.success} />

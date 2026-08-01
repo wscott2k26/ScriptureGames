@@ -5,12 +5,15 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { colors, radii, spacing } from '@/src/theme';
 import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
-import { BIBLE_JOURNEY_BOOKS, isBookFree, type JourneyBook, type JourneyTestament } from '@/src/bible-journey/catalog';
+import { TactileButton } from '@/src/components/premium/TactileButton';
+import { BIBLE_JOURNEY_BOOKS, type JourneyBook, type JourneyTestament } from '@/src/bible-journey/catalog';
+import { canOpenJourneyBook, getJourneyAccessLabel } from '@/src/bible-journey/access';
 import { loadBibleJourneyProgress, type BibleJourneyProgress } from '@/src/bible-journey/progress';
 
 export default function BookLibraryScreen() {
@@ -19,7 +22,7 @@ export default function BookLibraryScreen() {
   const [query, setQuery] = useState('');
   const [progress, setProgress] = useState<BibleJourneyProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const hasPremium = Boolean(profile?.is_premium);
+  const { hasPremium } = usePremiumEntitlement();
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -50,7 +53,7 @@ export default function BookLibraryScreen() {
       router.push('/(tabs)/journey');
       return;
     }
-    if (!isBookFree(book.id) && !hasPremium) {
+    if (!canOpenJourneyBook(book, hasPremium)) {
       router.push('/premium');
       return;
     }
@@ -86,6 +89,14 @@ export default function BookLibraryScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          <GlassPanel strong style={styles.premiumPanel}>
+            <View style={styles.premiumCopy}>
+              <Text style={styles.premiumTitle}>Free books and Premium books</Text>
+              <Text style={styles.premiumText}>Genesis, Exodus, and Leviticus are FREE. Every card from Numbers through Revelation is labeled PREMIUM REQUIRED until a validated Premium entitlement is active.</Text>
+            </View>
+            {!hasPremium ? <TactileButton compact label="View Premium Options" onPress={() => router.push('/premium')} /> : <Text style={styles.premiumActive}>PREMIUM ACTIVE</Text>}
+          </GlassPanel>
+
           {(['Old Testament', 'New Testament'] as JourneyTestament[]).map((testament) => {
             const books = filtered.filter((book) => book.testament === testament);
             if (books.length === 0) return null;
@@ -101,7 +112,7 @@ export default function BookLibraryScreen() {
                     const completed = Boolean(progress?.completedBookIds.includes(book.id));
                     const inProgress = !completed && Boolean(saved?.completedTrials.length);
                     const status = completed ? 'Completed' : inProgress ? 'In Progress' : 'Not Started';
-                    const locked = !isBookFree(book.id) && !hasPremium;
+                    const locked = !canOpenJourneyBook(book, hasPremium);
                     return (
                       <Pressable
                         key={book.id}
@@ -125,7 +136,7 @@ export default function BookLibraryScreen() {
                               <Text style={styles.dot}>•</Text>
                               <Text style={styles.meta}>{book.chapterCount} chapter{book.chapterCount === 1 ? '' : 's'}</Text>
                               <Text style={styles.dot}>•</Text>
-                              <Text style={[styles.meta, locked && styles.premium]}>{locked ? 'Premium' : isBookFree(book.id) ? 'Free' : 'Unlocked'}</Text>
+                              <Text style={[styles.meta, locked && styles.premium]}>{getJourneyAccessLabel(book, hasPremium)}</Text>
                             </View>
                           </View>
                           <Ionicons name={locked ? 'lock-closed' : 'chevron-forward'} size={20} color={locked ? colors.brand : colors.parchment} />
@@ -146,7 +157,7 @@ export default function BookLibraryScreen() {
             </GlassPanel>
           ) : null}
 
-          <Text style={styles.footer}>Genesis, Exodus, and Leviticus are free. Premium opens Numbers through Revelation.</Text>
+          <Text style={styles.footer}>Completing chapters or free books never unlocks Books 4–66. Those books remain Premium-only until a validated entitlement is active.</Text>
         </ScrollView>
       </SafeAreaView>
     </PeacefulBackdrop>
@@ -160,6 +171,11 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: colors.onSurface, fontSize: 14, minHeight: 50 },
   clearButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   error: { color: colors.coral, fontSize: 12, lineHeight: 18 },
+  premiumPanel: { borderRadius: radii.lg, padding: spacing.md, gap: spacing.md },
+  premiumCopy: { gap: 4 },
+  premiumTitle: { color: colors.onSurface, fontSize: 16, fontWeight: '900' },
+  premiumText: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
+  premiumActive: { color: colors.success, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
   testamentSection: { gap: spacing.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { color: colors.parchment, fontSize: 20, fontWeight: '900' },

@@ -78,7 +78,6 @@
     "**/@eslint/eslintrc/js-yaml": "3.15.0",
     "**/@expo/xcpretty/js-yaml": "3.15.0",
     "**/@istanbuljs/load-nyc-config/js-yaml": "3.15.0",
-    "**/@expo/xcpretty/js-yaml": "3.15.0",
     "shell-quote": "1.9.0"
   },
   "private": true,

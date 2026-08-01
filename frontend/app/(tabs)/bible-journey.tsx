@@ -5,12 +5,14 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useProfile } from '@/src/profile-context';
+import { usePremiumEntitlement } from '@/src/premium-entitlement';
 import { colors, radii, spacing } from '@/src/theme';
 import { PeacefulBackdrop } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
-import { BIBLE_JOURNEY_BOOKS, getJourneyBook, isBookFree } from '@/src/bible-journey/catalog';
+import { BIBLE_JOURNEY_BOOKS, getJourneyBook } from '@/src/bible-journey/catalog';
+import { canOpenJourneyBook } from '@/src/bible-journey/access';
 import { getSequentialBookId, type BibleJourneyProgress } from '@/src/bible-journey/progress-core';
 import { loadBibleJourneyProgress, syncGenesisJourneyCompletion } from '@/src/bible-journey/progress';
 
@@ -56,14 +58,14 @@ export default function BibleJourneyHub() {
   const newCompleted = BIBLE_JOURNEY_BOOKS.filter((book) => book.testament === 'New Testament' && completed.has(book.id)).length;
   const nextBookId = progress ? getSequentialBookId(progress) : 'GEN';
   const nextBook = nextBookId ? getJourneyBook(nextBookId) : undefined;
-  const hasPremium = Boolean(profile?.is_premium);
+  const { hasPremium } = usePremiumEntitlement();
 
   const openBook = (bookId: string) => {
     if (bookId === 'GEN') {
       router.push('/(tabs)/journey');
       return;
     }
-    if (!isBookFree(bookId) && !hasPremium) {
+    if (!canOpenJourneyBook(bookId, hasPremium)) {
       router.push('/premium');
       return;
     }
@@ -83,7 +85,7 @@ export default function BibleJourneyHub() {
           <View style={styles.heading}>
             <Text style={styles.eyebrow}>THE COMPLETE BIBLE JOURNEY</Text>
             <Text style={styles.title}>Walk through all 66 books.</Text>
-            <Text style={styles.subtitle}>Begin with Genesis and unlock the Bible in order, or choose any available book whenever you want.</Text>
+            <Text style={styles.subtitle}>Begin with Genesis and continue in Bible order, or choose any available book. Completing free content never bypasses a Premium lock.</Text>
           </View>
 
           {error ? (
@@ -146,9 +148,9 @@ export default function BibleJourneyHub() {
             <Ionicons name={hasPremium ? 'diamond' : 'lock-closed'} size={25} color={colors.brand} />
             <View style={styles.accessCopy}>
               <Text style={styles.accessTitle}>{hasPremium ? 'Complete Journey Unlocked' : 'The first three books are free'}</Text>
-              <Text style={styles.accessText}>{hasPremium ? 'All 66 Bible books are available on this player profile.' : 'Play Genesis, Exodus, and Leviticus. Numbers through Revelation unlock with Premium.'}</Text>
+              <Text style={styles.accessText}>{hasPremium ? 'All 66 Bible books are available on this player profile.' : 'Play Genesis, Exodus, and Leviticus free. Numbers through Revelation require Premium. Completing a free book never unlocks Premium books.'}</Text>
             </View>
-            {!hasPremium ? <TactileButton compact variant="glass" label="See Premium" onPress={() => router.push('/premium')} /> : null}
+            {!hasPremium ? <TactileButton compact variant="glass" label="View Premium" onPress={() => router.push('/premium')} /> : null}
           </GlassPanel>
 
           <Text style={styles.footer}>Progress is stored locally and the Bible Journey is designed for offline play.</Text>
