@@ -15,14 +15,15 @@
     "audit:bible": "node scripts/audit-bible.mjs",
     "audit:cloud": "node scripts/audit-cloud-backup.mjs",
     "audit:premium": "node scripts/audit-premium-faith.mjs",
+    "audit:runtime": "node scripts/audit-runtime-stability.mjs",
     "audit:visual": "python ../scripts/audit-visual-master.py",
     "test:lumi": "node --experimental-strip-types scripts/test-lumi-engine.ts",
     "generate:content": "python ../scripts/generate-content.py",
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi",
-    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
+    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn audit:runtime && yarn test:lumi",
+    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn audit:runtime && yarn test:lumi && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",
@@ -67,6 +68,8 @@
     "undici": "6.27.0",
     "tar": "7.5.19",
     "**/@eslint/eslintrc/js-yaml": "3.15.0",
+    "**/@expo/xcpretty/js-yaml": "3.15.0",
+    "**/@istanbuljs/load-nyc-config/js-yaml": "3.15.0",
     "**/@expo/xcpretty/js-yaml": "3.15.0",
     "**/@istanbuljs/load-nyc-config/js-yaml": "3.15.0",
     "shell-quote": "1.9.0"
