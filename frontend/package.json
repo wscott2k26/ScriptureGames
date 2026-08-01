@@ -20,7 +20,7 @@
     "test:lumi": "node --experimental-strip-types scripts/test-lumi-engine.ts",
     "test:lumi-voice": "node --experimental-strip-types scripts/test-lumi-voice.ts",
     "test:navigation": "node --experimental-strip-types scripts/test-navigation-fallback.ts",
-    "test:journey": "node --experimental-strip-types scripts/test-bible-journey.ts && node --experimental-strip-types scripts/test-bible-journey-questions.ts && node --experimental-strip-types scripts/test-bible-journey-routes.ts && node --experimental-strip-types scripts/test-bible-journey-premium-scenes.ts",
+    "test:journey": "node --experimental-strip-types scripts/test-bible-journey.ts && node --experimental-strip-types scripts/test-bible-journey-questions.ts && node --experimental-strip-types scripts/test-bible-journey-routes.ts && node --experimental-strip-types scripts/test-bible-journey-premium-scenes.ts && node --experimental-strip-types scripts/test-bible-journey-mastery.ts",
     "generate:content": "python ../scripts/generate-content.py",
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
