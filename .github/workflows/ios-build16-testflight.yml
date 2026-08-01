@@ -1,0 +1,143 @@
+name: Scripture Games Build 16 iOS TestFlight
+
+on:
+  push:
+    branches:
+      - fix/build-16-scripture-reference-navigation
+    paths:
+      - '.github/status-triggers/ios-build16-authorized.md'
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: scripture-games-build16-ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  ios-testflight:
+    name: Build 16 iOS production and TestFlight
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      VERIFIED_SOURCE_SHA: 48f8ef67b5d09417aba700c6d6b5e18b1367c1da
+
+    steps:
+      - name: Check out exact Build 16 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-16-scripture-reference-navigation
+          fetch-depth: 0
+
+      - name: Verify one-use authorization and source ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "fix/build-16-scripture-reference-navigation"
+          test -f .github/status-triggers/ios-build16-authorized.md
+          grep -Fq 'AUTHORIZED: one iOS Build 16 production build and one TestFlight auto-submit.' .github/status-triggers/ios-build16-authorized.md
+          grep -Fq 'NO ANDROID CLOUD BUILD.' .github/status-triggers/ios-build16-authorized.md
+          grep -Fq 'NO APP REVIEW OR PUBLIC RELEASE SUBMISSION.' .github/status-triggers/ios-build16-authorized.md
+          git merge-base --is-ancestor "$VERIFIED_SOURCE_SHA" HEAD
+          echo "Verified Build 16 source $VERIFIED_SOURCE_SHA is present in $(git rev-parse HEAD)."
+
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install frozen dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Re-run complete Build 16 source gate
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          yarn validate
+
+      - name: Verify Expo identity and linked project
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive
+          npx expo config --type public > /tmp/expo-public-config.txt
+          grep -q '18710e80-2a62-46ac-8d3a-d1711b7d920a' /tmp/expo-public-config.txt
+          grep -q 'com.willywill.scripturegames' /tmp/expo-public-config.txt
+
+      - name: Build exactly one iOS production binary and auto-submit to TestFlight
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --auto-submit \
+            --json > ../ios-build16-testflight.json
+          python -m json.tool ../ios-build16-testflight.json
+
+      - name: Validate exact Build 16 record
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '
+            length == 1 and
+            .[0].platform == "IOS" and
+            .[0].project.id == "18710e80-2a62-46ac-8d3a-d1711b7d920a" and
+            .[0].distribution == "STORE" and
+            .[0].buildProfile == "production" and
+            .[0].appVersion == "1.0.0" and
+            .[0].appBuildVersion == "16" and
+            .[0].isForIosSimulator == false and
+            (.[0].submissions | length) == 1 and
+            .[0].submissions[0].platform == "IOS" and
+            .[0].submissions[0].iosConfig.ascAppIdentifier == "6795368257"
+          ' ios-build16-testflight.json
+
+      - name: Save signed-build record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-build16-testflight-record
+          path: ios-build16-testflight.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact Build 16 release blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Scripture Games Build 16 iOS TestFlight run needs attention — $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
