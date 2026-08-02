@@ -35,15 +35,22 @@ function parseReference(reference?: string): (QuizPassageLocation & { order: num
   const normalized = reference.trim().replace(/[–—]/g, '-');
   const book = [...BOOK_BY_NAME.keys()]
     .sort((a, b) => b.length - a.length)
-    .find((name) => normalized.toLowerCase().startsWith(`${name} `));
+    .find((name) => {
+      const lower = normalized.toLowerCase();
+      return lower === name || lower.startsWith(`${name} `);
+    });
   if (!book) return null;
-  const details = normalized.slice(book.length).trim().match(/^(\d+)(?::(\d+))?/);
+  const meta = BOOK_BY_NAME.get(book);
+  if (!meta) return null;
+  const remainder = normalized.slice(book.length).trim();
+  if (!remainder) {
+    return { bookId: meta.id, chapter: 1, order: meta.index * 1_000_000 + 1_000 };
+  }
+  const details = remainder.match(/^(\d+)(?::(\d+))?/);
   if (!details) return null;
   const chapter = Number(details[1]);
   const verse = details[2] ? Number(details[2]) : undefined;
   if (!Number.isInteger(chapter) || chapter < 1 || (verse !== undefined && (!Number.isInteger(verse) || verse < 1))) return null;
-  const meta = BOOK_BY_NAME.get(book);
-  if (!meta) return null;
   return {
     bookId: meta.id,
     chapter,
