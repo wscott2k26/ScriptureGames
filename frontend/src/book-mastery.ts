@@ -1,6 +1,5 @@
 import { getBibleBook } from './bible-library';
 import {
-  BOOK_MASTERY_BOOKS,
   buildMasteryQuestionPool,
   buildMasteryRoundFromPool,
   getBookMasteryConfig,
@@ -32,5 +31,3 @@ export function getMasteryQuestionPool(bookId: BookMasteryBookId): MasteryQuesti
 export function buildMasteryRound(bookId: BookMasteryBookId, mode: MasteryMode, seed = Date.now()): MasteryQuestion[] {
   return buildMasteryRoundFromPool(getMasteryQuestionPool(bookId), mode, seed);
 }
-
-export { BOOK_MASTERY_BOOKS };
