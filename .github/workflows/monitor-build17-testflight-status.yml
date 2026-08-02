@@ -1,0 +1,58 @@
+name: Monitor Build 17 TestFlight Status
+
+on:
+  push:
+    branches:
+      - monitor/build17-testflight-status
+    paths:
+      - '.github/status-triggers/monitor-build17-testflight-status.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    name: Monitor authorized Build 17 release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Find the one-use Build 17 release run
+        id: find
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id=''
+          for attempt in $(seq 1 120); do
+            run_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build17-testflight-once.yml/runs?branch=fix%2Fbuild-17-universal-scripture-links&event=push&per_page=10" --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0].id // empty')
+            if [ -n "$run_id" ]; then break; fi
+            sleep 5
+          done
+          test -n "$run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          status=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status')
+          conclusion=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion // empty')
+          gh pr comment 51 --repo "$GITHUB_REPOSITORY" --body "Build 17 TestFlight monitor: release run \`$run_id\` is \`$status\`${conclusion:+ with conclusion \`$conclusion\`}. This monitor is read-only."
+
+      - name: Wait for terminal result
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id='${{ steps.find.outputs.run_id }}'
+          status=''
+          conclusion=''
+          for attempt in $(seq 1 270); do
+            status=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status')
+            conclusion=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion // empty')
+            if [ "$status" = 'completed' ]; then break; fi
+            sleep 10
+          done
+          test "$status" = 'completed'
+          artifact_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" --jq '.artifacts[]? | select(.name == "scripture-games-ios-build17-testflight-record") | .id' | head -n1)
+          gh pr comment 51 --repo "$GITHUB_REPOSITORY" --body "Build 17 TestFlight release run \`$run_id\` completed with \`$conclusion\`. Signed-record artifact ID: \`${artifact_id:-none}\`."
+          test "$conclusion" = 'success'
+          test -n "$artifact_id"
