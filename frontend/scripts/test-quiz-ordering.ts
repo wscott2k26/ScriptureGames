@@ -49,10 +49,9 @@ assert.deepEqual(
   { bookId: '1SA', chapter: 17, verse: 40 },
   'Numbered Bible books must parse correctly.',
 );
-assert.deepEqual(
-  passageLocationFromReference('Psalms'),
-  { bookId: 'PSA', chapter: 1 },
-  'A book-only reference must still open a real Scripture location.',
-);
+assert.deepEqual(passageLocationFromReference('Psalms'), { bookId: 'PSA', chapter: 1 });
+assert.deepEqual(passageLocationFromReference('Psalm 23:1'), { bookId: 'PSA', chapter: 23, verse: 1 });
+assert.deepEqual(passageLocationFromReference('Song of Songs 2:1'), { bookId: 'SNG', chapter: 2, verse: 1 });
+assert.deepEqual(passageLocationFromReference('I Samuel 17:40'), { bookId: '1SA', chapter: 17, verse: 40 });
 
 console.log('Quiz ordering tests passed.');
