@@ -9,7 +9,7 @@ on:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
   issues: write
 
 jobs:
@@ -21,24 +21,42 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Find the one-use Build 17 release run
+      - name: Check out monitor branch
+        uses: actions/checkout@v4
+        with:
+          ref: monitor/build17-testflight-status
+          fetch-depth: 0
+
+      - name: Find and persist the one-use Build 17 release run
         id: find
         shell: bash
         run: |
           set -euo pipefail
-          run_id=''
-          for attempt in $(seq 1 120); do
-            run_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build17-testflight-once.yml/runs?branch=fix%2Fbuild-17-universal-scripture-links&event=push&per_page=10" --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0].id // empty')
-            if [ -n "$run_id" ]; then break; fi
-            sleep 5
-          done
+          run_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build17-testflight-once.yml/runs?branch=fix%2Fbuild-17-universal-scripture-links&event=push&per_page=10" --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0].id // empty')
+          status='not_found'
+          conclusion=''
+          if [ -n "$run_id" ]; then
+            status=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status')
+            conclusion=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion // empty')
+          fi
+          mkdir -p .github/status-results
+          jq -n \
+            --arg run_id "$run_id" \
+            --arg status "$status" \
+            --arg conclusion "$conclusion" \
+            --arg checked_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{run_id:$run_id,status:$status,conclusion:$conclusion,checked_at:$checked_at,monitor_run:env.GITHUB_RUN_ID}' \
+            > .github/status-results/build17-testflight-status.json
+          git config user.email actions@users.noreply.github.com
+          git config user.name 'Scripture Games Release Monitor'
+          git add .github/status-results/build17-testflight-status.json
+          git commit -m "chore: record Build 17 TestFlight status ${status}"
+          git push origin HEAD:monitor/build17-testflight-status
           test -n "$run_id"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
-          status=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status')
-          conclusion=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.conclusion // empty')
           gh pr comment 51 --repo "$GITHUB_REPOSITORY" --body "Build 17 TestFlight monitor: release run \`$run_id\` is \`$status\`${conclusion:+ with conclusion \`$conclusion\`}. This monitor is read-only."
 
-      - name: Wait for terminal result
+      - name: Wait for terminal result and persist artifact
         shell: bash
         run: |
           set -euo pipefail
@@ -53,6 +71,18 @@ jobs:
           done
           test "$status" = 'completed'
           artifact_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" --jq '.artifacts[]? | select(.name == "scripture-games-ios-build17-testflight-record") | .id' | head -n1)
+          jq -n \
+            --arg run_id "$run_id" \
+            --arg status "$status" \
+            --arg conclusion "$conclusion" \
+            --arg artifact_id "$artifact_id" \
+            --arg checked_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{run_id:$run_id,status:$status,conclusion:$conclusion,artifact_id:$artifact_id,checked_at:$checked_at,monitor_run:env.GITHUB_RUN_ID}' \
+            > .github/status-results/build17-testflight-status.json
+          git pull --rebase origin monitor/build17-testflight-status
+          git add .github/status-results/build17-testflight-status.json
+          git commit -m "chore: record terminal Build 17 TestFlight status"
+          git push origin HEAD:monitor/build17-testflight-status
           gh pr comment 51 --repo "$GITHUB_REPOSITORY" --body "Build 17 TestFlight release run \`$run_id\` completed with \`$conclusion\`. Signed-record artifact ID: \`${artifact_id:-none}\`."
           test "$conclusion" = 'success'
           test -n "$artifact_id"
