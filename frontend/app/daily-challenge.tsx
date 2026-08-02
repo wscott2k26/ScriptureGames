@@ -22,6 +22,7 @@ import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
+import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
@@ -100,7 +101,6 @@ export default function DailyChallengeScreen() {
       const previous = await loadDailyChallengeState(profile.id);
       const firstCompletion = previous?.date !== challenge.date || !previous.rewarded;
       if (firstCompletion) {
-        // Every write is idempotent, so a dropped connection or closed app can be retried safely.
         await Promise.all([
           api.awardBonus(profile.id, `daily:${challenge.date}`, 75, 'daily_bread'),
           awardSeasonBonus(profile.id, `daily:${challenge.date}`, 20, 10),
@@ -221,7 +221,7 @@ export default function DailyChallengeScreen() {
               <Ionicons name={selected === question.answer ? 'checkmark-circle' : 'information-circle'} size={21} color={selected === question.answer ? colors.success : colors.coral} />
               <View style={styles.feedbackCopy}>
                 <Text style={styles.feedbackTitle}>{selected === question.answer ? 'That’s it. Light up the path.' : `Correct answer: ${question.options[question.answer]}`}</Text>
-                {question.verse ? <Text style={styles.feedbackReference}>Read it in context: {question.verse}</Text> : null}
+                {question.verse ? <ScriptureReferenceLink reference={question.verse} testID="daily-feedback-scripture" /> : null}
               </View>
             </GlassPanel>
           ) : null}
