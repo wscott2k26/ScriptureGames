@@ -1,0 +1,148 @@
+name: Scripture Games iOS Build 18 TestFlight Once
+
+on:
+  push:
+    branches:
+      - fix/build-18-scripture-reference-runtime
+    paths:
+      - '.github/status-triggers/ios-build18-authorized.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: scripture-games-ios-build18-testflight-once
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build 18 iOS production and TestFlight
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      VERIFIED_SOURCE_SHA: 4d56670550c810ecf78faae07676a485373e8181
+
+    steps:
+      - name: Check out exact Build 18 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/build-18-scripture-reference-runtime
+          fetch-depth: 0
+
+      - name: Verify one-use authorization and source boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "fix/build-18-scripture-reference-runtime"
+          test -f .github/status-triggers/ios-build18-authorized.md
+          grep -Fq 'AUTHORIZED: one iOS Build 18 production build and one TestFlight auto-submit.' .github/status-triggers/ios-build18-authorized.md
+          grep -Fq 'NO ANDROID CLOUD BUILD.' .github/status-triggers/ios-build18-authorized.md
+          grep -Fq 'NO APP REVIEW OR PUBLIC RELEASE SUBMISSION.' .github/status-triggers/ios-build18-authorized.md
+          grep -Fq 'NO MERGE.' .github/status-triggers/ios-build18-authorized.md
+          git merge-base --is-ancestor "$VERIFIED_SOURCE_SHA" HEAD
+          git diff --exit-code "$VERIFIED_SOURCE_SHA" HEAD -- frontend scripts supabase
+          run_count=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build18-testflight-once.yml/runs?branch=fix%2Fbuild-18-scripture-reference-runtime&event=push&per_page=20" --jq '.workflow_runs | length')
+          test "$run_count" -eq 1
+          echo "Verified Build 18 source $VERIFIED_SOURCE_SHA is unchanged in $(git rev-parse HEAD)."
+
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install frozen dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Re-run complete Build 18 source gate
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          yarn validate
+
+      - name: Verify Expo identity and linked project
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive
+          npx expo config --type public > /tmp/expo-public-config.txt
+          grep -q '18710e80-2a62-46ac-8d3a-d1711b7d920a' /tmp/expo-public-config.txt
+          grep -q 'com.willywill.scripturegames' /tmp/expo-public-config.txt
+
+      - name: Build exactly one iOS production binary and auto-submit to TestFlight
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --auto-submit \
+            --json > ../ios-build18-testflight.json
+          python -m json.tool ../ios-build18-testflight.json
+
+      - name: Validate exact Build 18 record
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '
+            length == 1 and
+            .[0].platform == "IOS" and
+            .[0].project.id == "18710e80-2a62-46ac-8d3a-d1711b7d920a" and
+            .[0].distribution == "STORE" and
+            .[0].buildProfile == "production" and
+            .[0].appVersion == "1.0.0" and
+            .[0].appBuildVersion == "18" and
+            .[0].isForIosSimulator == false and
+            .[0].gitCommitHash == env.GITHUB_SHA and
+            (.[0].submissions | length) == 1 and
+            .[0].submissions[0].platform == "IOS" and
+            .[0].submissions[0].iosConfig.ascAppIdentifier == "6795368257"
+          ' ios-build18-testflight.json
+
+      - name: Save signed-build record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-build18-testflight-record
+          path: ios-build18-testflight.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact Build 18 release blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh pr comment 52 --repo "$GITHUB_REPOSITORY" --body "Build 18 TestFlight launcher stopped in run $GITHUB_RUN_ID. No retry or second EAS build is authorized automatically; inspect the failed step before any new release action."
