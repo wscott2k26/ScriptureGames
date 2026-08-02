@@ -10,6 +10,7 @@ on:
       - fix/build-15-piano-premium-boundary
       - fix/build-16-scripture-reference-navigation
       - fix/build-17-universal-scripture-links
+      - fix/build-18-scripture-reference-runtime
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -23,6 +24,7 @@ on:
       - fix/build-15-piano-premium-boundary
       - fix/build-16-scripture-reference-navigation
       - fix/build-17-universal-scripture-links
+      - fix/build-18-scripture-reference-runtime
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -118,6 +120,10 @@ jobs:
       - name: Test Build 17 universal Scripture links
         working-directory: frontend
         run: yarn test:build17
+
+      - name: Test Build 18 Scripture runtime navigation
+        working-directory: frontend
+        run: yarn test:build18
 
       - name: Audit complete Bible journey source
         working-directory: frontend
