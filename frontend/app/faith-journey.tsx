@@ -17,6 +17,7 @@ import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
 import { colors, radii, spacing } from '@/src/theme';
 
@@ -123,7 +124,7 @@ export default function FaithJourneyScreen() {
             <Text style={styles.eyebrow}>DAY {dayIndex + 1}</Text>
             <Text style={styles.dayTitle}>{day.title}</Text>
             <Text style={styles.verse}>“{day.verse}”</Text>
-            <Text style={styles.reference}>{day.reference}</Text>
+            <ScriptureLink reference={day.reference} returnLabel="Return to Faith Journey" />
           </GlassPanel>
 
           <GlassPanel strong style={styles.sectionCard}>

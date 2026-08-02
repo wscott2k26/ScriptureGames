@@ -143,6 +143,7 @@ check(len(list((FRONTEND / "assets/textures").glob("*.png"))) == 5, "exactly fiv
 allowed_native_pressable = {
     SRC / "components/premium/TactileButton.tsx",
     SRC / "components/premium/TactilePressable.tsx",
+    SRC / "components/ScriptureLink.tsx",
 }
 for source in sorted(FRONTEND.rglob("*.tsx")):
     if "node_modules" in source.parts:

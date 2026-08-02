@@ -23,6 +23,7 @@ import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
@@ -164,7 +165,7 @@ export default function DailyChallengeScreen() {
                 <GlassPanel variant="crystal" style={styles.witnessCard}>
                   <Text style={styles.witnessEyebrow}>WITNESS CARD</Text>
                   <Text style={styles.witnessScore}>{percent}% · {readableTopic(challenge.topic)}</Text>
-                  {witnessVerse ? <Text style={styles.witnessVerse}>{witnessVerse}</Text> : null}
+                  {witnessVerse ? <ScriptureLink reference={witnessVerse} compact returnLabel="Return to Results" /> : null}
                   <Text style={styles.witnessFooter}>A little Word every day builds strong roots.</Text>
                 </GlassPanel>
                 <View style={styles.resultActions}>
@@ -194,7 +195,7 @@ export default function DailyChallengeScreen() {
                 <Text style={styles.noInterruptions}>NO ADS · NO INTERRUPTIONS</Text>
               </View>
               <Text style={styles.question}>{question.q}</Text>
-              {question.verse ? <Text style={styles.reference}>{question.verse}</Text> : null}
+              {question.verse ? <ScriptureLink reference={question.verse} compact tone="muted" returnLabel="Return to Daily Bread" /> : null}
               <Animated.View pointerEvents="none" style={[styles.correctHalo, pulseStyle]}>
                 <Text style={styles.correctHaloText}>✦</Text>
               </Animated.View>
@@ -221,7 +222,7 @@ export default function DailyChallengeScreen() {
               <Ionicons name={selected === question.answer ? 'checkmark-circle' : 'information-circle'} size={21} color={selected === question.answer ? colors.success : colors.coral} />
               <View style={styles.feedbackCopy}>
                 <Text style={styles.feedbackTitle}>{selected === question.answer ? 'That’s it. Light up the path.' : `Correct answer: ${question.options[question.answer]}`}</Text>
-                {question.verse ? <Text style={styles.feedbackReference}>Read it in context: {question.verse}</Text> : null}
+                {question.verse ? <ScriptureLink reference={question.verse} prefix="Read it in context:" returnLabel="Return to Daily Bread" /> : null}
               </View>
             </GlassPanel>
           ) : null}

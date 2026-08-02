@@ -6,48 +6,22 @@ function read(relativePath: string) {
 }
 
 function requireMatch(source: string, pattern: RegExp, message: string) {
-  if (!pattern.test(source)) {
-    throw new Error(message);
-  }
+  if (!pattern.test(source)) throw new Error(message);
 }
 
 const quiz = read('app/quiz-play.tsx');
 const bible = read('app/(tabs)/bible.tsx');
+const link = read('src/components/ScriptureLink.tsx');
 
-requireMatch(
-  quiz,
-  /const openReference = \(\) => \{[\s\S]*?router\.push\(\{ pathname: '\/\(tabs\)\/bible', params: \{ reference: question\.verse, fromQuiz: '1' \} \}\);[\s\S]*?\};/,
-  'Quiz feedback must route the exact graded-question reference to the Bible tab.',
-);
+requireMatch(quiz, /<ScriptureLink[\s\S]*?reference=\{question\.verse\}[\s\S]*?returnLabel="Return to Quiz"/,
+  'Quiz feedback must route its exact graded-question reference through ScriptureLink.');
+requireMatch(link, /pathname:\s*'\/bible'[\s\S]*?reference[\s\S]*?fromScriptureLink:\s*'1'/,
+  'ScriptureLink must route the exact reference to the public Bible page.');
+requireMatch(link, /minHeight:\s*44[\s\S]*?minWidth:\s*44/,
+  'The visible Scripture source must provide a finger-sized target.');
+requireMatch(bible, /reference \? parseBibleReference\(String\(reference\)\) : null/,
+  'The Bible tab must parse the incoming reference before selecting the passage.');
+requireMatch(bible, /fromScriptureLink === '1'[\s\S]*?router\.canGoBack\(\)[\s\S]*?router\.back\(\)/,
+  'The Bible tab must preserve a Return action for Scripture lookups.');
 
-requireMatch(
-  quiz,
-  /<Pressable[\s\S]*?testID="quiz-scripture-reference"[\s\S]*?onPress=\{openReference\}[\s\S]*?<Text[^>]*>Source: \{question\.verse\}<\/Text>[\s\S]*?<\/Pressable>/,
-  'The visible blue Scripture source itself must be a pressable control wired to openReference.',
-);
-
-requireMatch(
-  quiz,
-  /accessibilityLabel=\{`Open \$\{question\.verse\} in Bible`\}/,
-  'The pressable Scripture source must have a descriptive accessibility label.',
-);
-
-requireMatch(
-  bible,
-  /const \{ reference, fromQuiz \} = useLocalSearchParams/,
-  'The Bible tab must accept quiz reference and return-route parameters.',
-);
-
-requireMatch(
-  bible,
-  /reference \? parseBibleReference\(String\(reference\)\) : null/,
-  'The Bible tab must parse the incoming quiz reference before selecting the passage.',
-);
-
-requireMatch(
-  bible,
-  /fromQuiz === '1'[\s\S]*?onPress=\{\(\) => router\.back\(\)\}/,
-  'The Bible tab must preserve a Return to Quiz action for quiz lookups.',
-);
-
-console.log('Build 16 Scripture-reference navigation contract passed.');
+console.log('Build 16 Scripture-reference navigation contract passed through the universal link system.');

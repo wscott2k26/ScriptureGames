@@ -64,17 +64,22 @@ check('quiz selected photo and warm panels', () => {
   assert.match(quiz, /<CinematicBackdrop darkness=/);
   assert.match(quiz, /rgba\(249,242,224,0\.93\)/);
 });
+const scriptureLink = read('src/components/ScriptureLink.tsx');
 check('post-answer Bible lookup', () => {
-  assert.match(quiz, /if \(!checked \|\| !question\?\.verse\) return/);
-  assert.match(quiz, /label="Open in Bible"/);
-  assert.match(quiz, /pathname: '\/\(tabs\)\/bible'/);
-  assert.match(quiz, /fromQuiz: '1'/);
+  assert.match(quiz, /<ScriptureLink[\s\S]*reference=\{question\.verse\}/);
+  assert.match(quiz, /returnLabel="Return to Quiz"/);
+  assert.match(scriptureLink, /parseBibleReference\(reference\)/);
+  assert.match(scriptureLink, /pathname:\s*'\/bible'/);
+  assert.match(scriptureLink, /fromScriptureLink:\s*'1'/);
+  assert.match(scriptureLink, /minHeight:\s*44/);
+  assert.match(scriptureLink, /hitSlop=/);
 });
 const bible = read('app/(tabs)/bible.tsx');
 check('Bible return flow', () => {
   assert.match(bible, /useLocalSearchParams/);
   assert.match(bible, /parseBibleReference\(String\(reference\)\)/);
-  assert.match(bible, /Return to Quiz/);
+  assert.match(bible, /fromScriptureLink === '1'/);
+  assert.match(bible, /router\.canGoBack\(\)/);
   assert.match(bible, /router\.back\(\)/);
 });
 const premium = read('app/premium.tsx');
@@ -95,4 +100,4 @@ check('Genesis preserved', () => {
 if (failures.length) {
   throw new Error(['Build 15 regression contract failed:', ...failures].join('\n- '));
 }
-console.log('Build 15 regression contract passed.');
+console.log('Build 15 regression contract passed through the universal Scripture-link system.');

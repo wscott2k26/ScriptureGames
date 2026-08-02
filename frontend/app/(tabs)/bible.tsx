@@ -60,7 +60,7 @@ function locationFromResult(result: BibleSearchResult): BibleLocation {
 
 export default function BibleCompanionScreen() {
   const router = useRouter();
-  const { reference, fromQuiz } = useLocalSearchParams<{ reference?: string; fromQuiz?: string }>();
+  const { reference, fromQuiz, fromScriptureLink, returnLabel } = useLocalSearchParams<{ reference?: string; fromQuiz?: string; fromScriptureLink?: string; returnLabel?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const { profile } = useProfile();
   const [study, setStudy] = useState<BibleStudyState | null>(null);
@@ -74,6 +74,7 @@ export default function BibleCompanionScreen() {
   const [noteDraft, setNoteDraft] = useState('');
   const [sermonDraft, setSermonDraft] = useState('');
   const [loading, setLoading] = useState(true);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [speakingChapter, setSpeakingChapter] = useState(false);
 
@@ -83,6 +84,7 @@ export default function BibleCompanionScreen() {
     try {
       const next = await loadBibleStudy(profile.id);
       const requestedLocation = reference ? parseBibleReference(String(reference)) : null;
+      setReferenceError(reference && !requestedLocation ? `We could not open ${String(reference)}. Your last Bible location is still available.` : null);
       const targetLocation = requestedLocation || next.lastLocation;
       const restoredBook = getBibleBook(targetLocation.bookId) || BIBLE_LIBRARY[0];
       if (restoredBook) {
@@ -302,13 +304,18 @@ export default function BibleCompanionScreen() {
           eyebrow={study?.churchMode ? 'CHURCH MODE · OFFLINE' : 'FULL BIBLE · OFFLINE READY'}
           title="Bible & Church Companion"
           subtitle={`${BIBLE_BUILD_META.translationName} · ${BIBLE_BUILD_META.bookCount} books · public domain`}
-          right={fromQuiz === '1' ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Return to quiz" onPress={() => router.back()} style={styles.returnQuizButton}>
+          right={(fromQuiz === '1' || fromScriptureLink === '1') && router.canGoBack() ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={String(returnLabel || (fromQuiz === '1' ? 'Return to Quiz' : 'Return'))} onPress={() => router.back()} style={styles.returnQuizButton}>
               <Ionicons name="arrow-back" size={16} color={colors.brand} />
-              <Text style={styles.returnQuizText}>Return to Quiz</Text>
+              <Text style={styles.returnQuizText}>{String(returnLabel || (fromQuiz === '1' ? 'Return to Quiz' : 'Return'))}</Text>
             </Pressable>
           ) : <Text style={styles.headerBook}>📖</Text>}
         />
+        {referenceError ? (
+          <GlassPanel style={{ marginHorizontal: spacing.lg, marginBottom: spacing.sm, borderRadius: radii.lg, padding: spacing.md }}>
+            <Text accessibilityRole="alert" style={{ color: colors.coral, fontSize: 12.5, lineHeight: 18, fontWeight: '800' }}>{referenceError}</Text>
+          </GlassPanel>
+        ) : null}
         <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <GlassPanel strong style={styles.searchCard}>
             <View style={styles.searchTop}>
