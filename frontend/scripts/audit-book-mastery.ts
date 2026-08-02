@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import {
   BOOK_MASTERY_BOOKS,
@@ -14,6 +15,10 @@ import {
   resolveQuizReference,
 } from '../src/quiz-reference-resolution.ts';
 import { passageLocationFromReference } from '../src/quiz-ordering.ts';
+
+function readSource(relativePath: string): string {
+  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url).href), 'utf8');
+}
 
 function fakeBibleBook(bookId: string, title: string): BibleBookForMastery {
   return {
@@ -89,20 +94,20 @@ for (const [question, reference] of Object.entries(QUIZ_REFERENCE_OVERRIDES)) {
   assert.ok(passageLocationFromReference(reference), `Scripture override cannot open: ${question} -> ${reference}`);
 }
 
-const genesisSource = readFileSync(new URL('../src/genesis-season.ts', import.meta.url), 'utf8');
+const genesisSource = readSource('../src/genesis-season.ts');
 const genesisReferences = [...genesisSource.matchAll(/'(Genesis\s+\d+(?::\d+)?(?:[–-]\d+)?)'/g)].map((match) => match[1]);
 assert.ok(genesisReferences.length >= 50, 'Genesis season should retain its Scripture-grounded question references.');
 for (const reference of genesisReferences) {
   assert.ok(passageLocationFromReference(reference), `Genesis trial reference cannot open: ${reference}`);
 }
 
-const classicScreen = readFileSync(new URL('../app/quiz-play.tsx', import.meta.url), 'utf8');
-const genesisScreen = readFileSync(new URL('../app/genesis-quiz.tsx', import.meta.url), 'utf8');
-const dailyScreen = readFileSync(new URL('../app/daily-challenge.tsx', import.meta.url), 'utf8');
-const dailyEngine = readFileSync(new URL('../src/daily-challenge.ts', import.meta.url), 'utf8');
-const masteryScreen = readFileSync(new URL('../app/book-mastery.tsx', import.meta.url), 'utf8');
-const passageReader = readFileSync(new URL('../app/passage-reader.tsx', import.meta.url), 'utf8');
-const quizHub = readFileSync(new URL('../app/(tabs)/quiz.tsx', import.meta.url), 'utf8');
+const classicScreen = readSource('../app/quiz-play.tsx');
+const genesisScreen = readSource('../app/genesis-quiz.tsx');
+const dailyScreen = readSource('../app/daily-challenge.tsx');
+const dailyEngine = readSource('../src/daily-challenge.ts');
+const masteryScreen = readSource('../app/book-mastery.tsx');
+const passageReader = readSource('../app/passage-reader.tsx');
+const quizHub = readSource('../app/(tabs)/quiz.tsx');
 
 assert.match(classicScreen, /withResolvedQuizReference/, 'Classic Training must resolve every Scripture reference.');
 assert.match(classicScreen, /quiz-feedback-scripture/, 'Classic Training must link feedback to Scripture.');
