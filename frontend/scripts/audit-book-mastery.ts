@@ -7,6 +7,12 @@ import {
   buildMasteryRoundFromPool,
   type BibleBookForMastery,
 } from '../src/book-mastery-core.ts';
+import { QUIZ_QUESTIONS } from '../src/content.generated.ts';
+import {
+  QUIZ_REFERENCE_OVERRIDES,
+  hasExplicitQuizReferenceOverride,
+  resolveQuizReference,
+} from '../src/quiz-reference-resolution.ts';
 import { passageLocationFromReference } from '../src/quiz-ordering.ts';
 
 function fakeBibleBook(bookId: string, title: string): BibleBookForMastery {
@@ -55,17 +61,32 @@ for (const book of BOOK_MASTERY_BOOKS) {
   }
 }
 
-const seedData = readFileSync(new URL('../../backend/seed_data.py', import.meta.url), 'utf8');
-const quizStart = seedData.indexOf('QUIZ_QUESTIONS =');
-const quizEndCandidates = ['\nVERSES =', '\nSTORIES =', '\nPUZZLES =']
-  .map((marker) => seedData.indexOf(marker, quizStart + 1))
-  .filter((index) => index > quizStart);
-assert.ok(quizStart >= 0 && quizEndCandidates.length > 0, 'The canonical quiz question section must be discoverable.');
-const quizSeed = seedData.slice(quizStart, Math.min(...quizEndCandidates));
-const seedReferences = [...quizSeed.matchAll(/["']verse["']:\s*["']([^"']+)["']/g)].map((match) => match[1]);
-assert.ok(seedReferences.length >= 100, 'The canonical quiz seed should contain a substantial set of Scripture references.');
-for (const reference of seedReferences) {
-  assert.ok(passageLocationFromReference(reference), `Classic quiz reference cannot open: ${reference}`);
+const quizBanks = QUIZ_QUESTIONS as unknown as Record<string, readonly { q: string; verse?: string }[]>;
+const seenQuestions = new Set<string>();
+let classicQuestionCount = 0;
+for (const [topic, questions] of Object.entries(quizBanks)) {
+  for (const [index, question] of questions.entries()) {
+    classicQuestionCount += 1;
+    seenQuestions.add(question.q);
+    const rawReference = question.verse?.trim();
+    const rawIsValid = Boolean(rawReference && passageLocationFromReference(rawReference));
+    const resolvedReference = resolveQuizReference(question.q, question.verse);
+    assert.ok(
+      passageLocationFromReference(resolvedReference),
+      `${topic} question ${index + 1} cannot open resolved Scripture: ${resolvedReference}`,
+    );
+    if (!rawIsValid) {
+      assert.ok(
+        hasExplicitQuizReferenceOverride(question.q),
+        `${topic} question ${index + 1} needs an explicit Scripture override: ${question.q}`,
+      );
+    }
+  }
+}
+assert.ok(classicQuestionCount >= 100, 'The canonical quiz seed should contain a substantial question bank.');
+for (const [question, reference] of Object.entries(QUIZ_REFERENCE_OVERRIDES)) {
+  assert.ok(seenQuestions.has(question), `Stale Scripture override does not match a quiz question: ${question}`);
+  assert.ok(passageLocationFromReference(reference), `Scripture override cannot open: ${question} -> ${reference}`);
 }
 
 const genesisSource = readFileSync(new URL('../src/genesis-season.ts', import.meta.url), 'utf8');
@@ -78,11 +99,14 @@ for (const reference of genesisReferences) {
 const classicScreen = readFileSync(new URL('../app/quiz-play.tsx', import.meta.url), 'utf8');
 const genesisScreen = readFileSync(new URL('../app/genesis-quiz.tsx', import.meta.url), 'utf8');
 const dailyScreen = readFileSync(new URL('../app/daily-challenge.tsx', import.meta.url), 'utf8');
+const dailyEngine = readFileSync(new URL('../src/daily-challenge.ts', import.meta.url), 'utf8');
 const masteryScreen = readFileSync(new URL('../app/book-mastery.tsx', import.meta.url), 'utf8');
 const passageReader = readFileSync(new URL('../app/passage-reader.tsx', import.meta.url), 'utf8');
 const quizHub = readFileSync(new URL('../app/(tabs)/quiz.tsx', import.meta.url), 'utf8');
 
+assert.match(classicScreen, /withResolvedQuizReference/, 'Classic Training must resolve every Scripture reference.');
 assert.match(classicScreen, /quiz-feedback-scripture/, 'Classic Training must link feedback to Scripture.');
+assert.match(dailyEngine, /withResolvedQuizReference/, 'Daily Bread must resolve every Scripture reference.');
 assert.match(genesisScreen, /genesis-feedback-scripture/, 'Genesis trials must link feedback to Scripture.');
 assert.match(dailyScreen, /daily-feedback-scripture/, 'Daily Bread must link feedback to Scripture.');
 assert.match(masteryScreen, /mastery-feedback-scripture/, 'Book Mastery must link feedback to Scripture.');
