@@ -69,7 +69,8 @@ check('post-answer Bible lookup', () => {
   assert.match(quiz, /<ScriptureLink[\s\S]*reference=\{question\.verse\}/);
   assert.match(quiz, /returnLabel="Return to Quiz"/);
   assert.match(scriptureLink, /parseBibleReference\(reference\)/);
-  assert.match(scriptureLink, /pathname:\s*'\/bible'/);
+  assert.match(scriptureLink, /router\.navigate\(/);
+  assert.match(scriptureLink, /pathname:\s*'\/\(tabs\)\/bible'/);
   assert.match(scriptureLink, /fromScriptureLink:\s*'1'/);
   assert.match(scriptureLink, /minHeight:\s*44/);
   assert.match(scriptureLink, /hitSlop=/);
@@ -100,4 +101,4 @@ check('Genesis preserved', () => {
 if (failures.length) {
   throw new Error(['Build 15 regression contract failed:', ...failures].join('\n- '));
 }
-console.log('Build 15 regression contract passed through the universal Scripture-link system.');
+console.log('Build 15 regression contract passed through the registered Bible-tab Scripture-link system.');
