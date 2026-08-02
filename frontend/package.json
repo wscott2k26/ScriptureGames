@@ -13,10 +13,13 @@
     "generate:bible": "python ../scripts/build-bible.py --output src/bible-data",
     "audit:content": "python ../scripts/run-current-audit.py",
     "audit:bible": "node scripts/audit-bible.mjs",
+    "audit:book-mastery": "node --experimental-strip-types scripts/audit-book-mastery.ts",
     "audit:cloud": "node scripts/audit-cloud-backup.mjs",
     "audit:premium": "node scripts/audit-premium-faith.mjs",
     "audit:runtime": "node scripts/audit-runtime-stability.mjs",
     "audit:visual": "python ../scripts/audit-visual-master.py",
+    "test:book-mastery": "node --experimental-strip-types scripts/test-book-mastery.ts",
+    "test:quiz-ordering": "node --experimental-strip-types scripts/test-quiz-ordering.ts",
     "test:lumi": "node --experimental-strip-types scripts/test-lumi-engine.ts",
     "test:lumi-voice": "node --experimental-strip-types scripts/test-lumi-voice.ts",
     "test:navigation": "node --experimental-strip-types scripts/test-navigation-fallback.ts",
@@ -24,8 +27,8 @@
     "typecheck": "tsc --noEmit",
     "export:ios": "expo export --platform ios --output-dir dist-ios",
     "export:android": "expo export --platform android --output-dir dist-android",
-    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn audit:runtime",
-    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
+    "eas-build-post-install": "yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:quiz-ordering && yarn test:book-mastery && yarn audit:book-mastery && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn audit:runtime",
+    "validate": "yarn generate:bible && yarn audit:bible && yarn audit:cloud && yarn audit:premium && yarn test:quiz-ordering && yarn test:book-mastery && yarn audit:book-mastery && yarn test:lumi && yarn test:lumi-voice && yarn test:navigation && yarn audit:runtime && yarn audit:content && yarn audit:visual && yarn doctor && yarn typecheck && yarn lint && yarn export:ios && yarn export:android"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",
