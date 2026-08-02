@@ -1,0 +1,43 @@
+name: Discover Scripture Games Build 18 Run IDs
+
+on:
+  push:
+    branches:
+      - monitor/build18-testflight-status
+    paths:
+      - '.github/status-triggers/discover-build18-run-ids.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read existing GitHub Actions records only
+        id: runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build18-testflight-once.yml/runs?branch=fix%2Fbuild-18-scripture-reference-runtime&event=push&per_page=20" --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0]')
+          snapshot=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/snapshot-ios-build18-eas.yml/runs?branch=monitor%2Fbuild18-testflight-status&event=push&per_page=20" --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0] // {}')
+          monitor=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/monitor-ios-build18-testflight.yml/runs?branch=monitor%2Fbuild18-testflight-status&event=push&per_page=20" --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0] // {}')
+
+          release_id=$(jq -r '.id' <<<"$release")
+          release_status=$(jq -r '.status' <<<"$release")
+          release_conclusion=$(jq -r '.conclusion // "pending"' <<<"$release")
+          release_sha=$(jq -r '.head_sha' <<<"$release")
+          snapshot_id=$(jq -r '.id // "none"' <<<"$snapshot")
+          snapshot_status=$(jq -r '.status // "none"' <<<"$snapshot")
+          snapshot_conclusion=$(jq -r '.conclusion // "pending"' <<<"$snapshot")
+          monitor_id=$(jq -r '.id // "none"' <<<"$monitor")
+          monitor_status=$(jq -r '.status // "none"' <<<"$monitor")
+          monitor_conclusion=$(jq -r '.conclusion // "pending"' <<<"$monitor")
+
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Build 18 run audit — release $release_id" \
+            --body "GitHub-only read audit.\n\nRelease run: \`$release_id\` — **$release_status / $release_conclusion**\nRelease event SHA: \`$release_sha\`\n\nEAS snapshot run: \`$snapshot_id\` — **$snapshot_status / $snapshot_conclusion**\n\nObserver run: \`$monitor_id\` — **$monitor_status / $monitor_conclusion**\n\nNo build, submission, retry, cancellation, merge, or release action was performed by this audit."
