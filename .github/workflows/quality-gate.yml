@@ -72,6 +72,18 @@ jobs:
         working-directory: frontend
         run: yarn audit:premium
 
+      - name: Test chronological quiz ordering
+        working-directory: frontend
+        run: yarn test:quiz-ordering
+
+      - name: Test Book Mastery selection and depth
+        working-directory: frontend
+        run: yarn test:book-mastery
+
+      - name: Audit Book Mastery and Scripture links
+        working-directory: frontend
+        run: yarn audit:book-mastery
+
       - name: Test Lumi response engine
         working-directory: frontend
         run: yarn test:lumi

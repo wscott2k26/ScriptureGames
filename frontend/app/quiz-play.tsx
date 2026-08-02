@@ -11,12 +11,15 @@ import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
+import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
+import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
+import { withResolvedQuizReference } from '@/src/quiz-reference-resolution';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 
-type Question = { q: string; options: string[]; answer: number; verse?: string };
+type Question = { q: string; options: string[]; answer: number; verse: string };
 
 function titleCase(topic: string) {
   return topic.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -43,7 +46,11 @@ export default function QuizPlay() {
     setLoading(true);
     setError(null);
     api.getQuiz(String(topic), 5)
-      .then((result) => { if (active) setQuestions(result.questions); })
+      .then((result) => {
+        if (!active) return;
+        const resolved = result.questions.map(withResolvedQuizReference);
+        setQuestions(sortSelectedQuizQuestions(String(topic), resolved));
+      })
       .catch(() => { if (active) setError('This training field could not be opened.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -172,7 +179,7 @@ export default function QuizPlay() {
               <View style={styles.feedbackCopy}>
                 <Text style={styles.feedbackTitle}>{correctSelection ? 'Correct' : 'Not quite'}</Text>
                 {!correctSelection ? <Text style={styles.feedbackText}>Correct answer: {question.options[question.answer]}</Text> : null}
-                {question.verse ? <Text style={styles.feedbackReference}>{question.verse}</Text> : null}
+                <ScriptureReferenceLink reference={question.verse} testID="quiz-feedback-scripture" />
               </View>
             </GlassPanel>
           ) : null}
@@ -202,7 +209,6 @@ const styles = StyleSheet.create({
   feedbackCopy: { flex: 1 },
   feedbackTitle: { color: colors.onSurface, fontSize: 14, fontWeight: '900' },
   feedbackText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 2 },
-  feedbackReference: { color: colors.brandSecondary, fontSize: 11, fontWeight: '800', marginTop: 5 },
   resultCard: { borderRadius: radii.xl, padding: spacing.xl, alignItems: 'center', gap: spacing.md },
   resultIcon: { fontSize: 72 },
   resultEyebrow: { color: colors.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },

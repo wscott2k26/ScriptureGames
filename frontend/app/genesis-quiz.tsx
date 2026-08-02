@@ -23,10 +23,12 @@ import { useProfile } from '@/src/profile-context';
 import { colors } from '@/src/theme';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
+import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
 import { getFaction, getTrial, type GenesisQuestion } from '@/src/genesis-season';
 import { completeSeasonTrial, loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
+import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 
 function shuffle<T>(items: readonly T[]): T[] {
@@ -53,7 +55,11 @@ export default function GenesisQuizScreen() {
   const { profile, refresh } = useProfile();
   const reducedMotion = useReducedMotionPreference();
   const trial = useMemo(() => getTrial(String(id || '')), [id]);
-  const questions = useMemo(() => trial ? shuffle(trial.questions).slice(0, 5).map(prepareQuestion) : [], [trial]);
+  const questions = useMemo(() => {
+    if (!trial) return [];
+    const selected = shuffle(trial.questions).slice(0, 5);
+    return sortSelectedQuizQuestions('genesis-season', selected).map(prepareQuestion);
+  }, [trial]);
   const [season, setSeason] = useState<SeasonProgress | null>(null);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -199,7 +205,7 @@ export default function GenesisQuizScreen() {
               <View style={styles.truthCopy}>
                 <Text style={styles.truthLabel}>TRIAL TRUTH</Text>
                 <Text style={styles.truthText}>{question.explanation}</Text>
-                <Text style={styles.truthReference}>{question.reference}</Text>
+                <ScriptureReferenceLink reference={question.reference} testID="genesis-result-scripture" />
               </View>
             </GlassPanel>
 
@@ -237,9 +243,10 @@ export default function GenesisQuizScreen() {
           <Animated.View key={`question-${index}`} entering={reducedMotion ? undefined : SlideInRight.springify().damping(20)} exiting={reducedMotion ? undefined : SlideOutLeft.duration(180)}>
             <View style={styles.questionMeta}>
               <Text style={styles.questionEyebrow}>TRIAL {trial.number} · {trial.virtue.toUpperCase()}</Text>
-              <Text style={styles.questionReference}>{question.reference}</Text>
+              <Text style={styles.questionReference}>READ BEFORE ANSWERING</Text>
             </View>
             <Text style={styles.question}>{question.q}</Text>
+            <ScriptureReferenceLink reference={question.reference} label="Open Passage Before Answering" testID="genesis-open-passage" />
             <View style={styles.options}>
               {question.options.map((option, optionIndex) => {
                 const chosen = selected === optionIndex;
@@ -290,7 +297,7 @@ export default function GenesisQuizScreen() {
                 </View>
                 {!isCorrect ? <Text style={styles.correctAnswer}>Correct answer: {question.options[question.answer]}</Text> : null}
                 <Text style={styles.explanation}>{question.explanation}</Text>
-                <Text style={styles.feedbackReference}>{question.reference}</Text>
+                <ScriptureReferenceLink reference={question.reference} testID="genesis-feedback-scripture" />
               </GlassPanel>
             </Animated.View>
           )}
@@ -327,8 +334,8 @@ const styles = StyleSheet.create({
   questionMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 10 },
   questionEyebrow: { color: colors.brand, fontSize: 9, fontWeight: '900', letterSpacing: 1.25 },
   questionReference: { color: colors.muted, fontSize: 10, fontWeight: '700' },
-  question: { color: colors.onSurface, fontSize: 25, lineHeight: 34, fontWeight: '900', marginBottom: 21 },
-  options: { gap: 11 },
+  question: { color: colors.onSurface, fontSize: 25, lineHeight: 34, fontWeight: '900', marginBottom: 8 },
+  options: { gap: 11, marginTop: 14 },
   optionCard: { minHeight: 70, borderRadius: 21, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   optionChosen: { borderColor: colors.brand },
   optionRight: { borderColor: '#FFE9A8' },

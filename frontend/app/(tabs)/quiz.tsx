@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+import { BOOK_MASTERY_BOOKS } from '@/src/book-mastery';
 import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { FeatureCard, SectionTitle } from '@/src/components/premium/FeatureCard';
@@ -52,6 +53,10 @@ export default function QuizHub() {
     else router.push({ pathname: '/quiz-play', params: { topic: item.topic } });
   };
 
+  const openBook = (book: (typeof BOOK_MASTERY_BOOKS)[number]) => {
+    router.push({ pathname: '/book-mastery', params: { book: book.id, mode: 'core' } });
+  };
+
   return (
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-09']} darkness={0.65}>
       <SafeAreaView style={styles.safe} edges={['top']}>
@@ -78,6 +83,38 @@ export default function QuizHub() {
                 accent={game.accent}
                 icon={<Ionicons name={game.icon} size={25} color={game.accent} />}
                 onPress={() => go(game)}
+              />
+            ))}
+          </View>
+
+          <SectionTitle title="Old Testament Books" />
+          <View style={styles.list}>
+            {BOOK_MASTERY_BOOKS.filter((book) => book.testament === 'old').map((book) => (
+              <FeatureCard
+                key={book.id}
+                testID={`book-mastery-${book.id}`}
+                title={book.title}
+                description={book.summary}
+                accent={colors.brand}
+                icon={<Text style={styles.bookIcon}>{book.icon}</Text>}
+                badge="5 FREE · 10 DEEP"
+                onPress={() => openBook(book)}
+              />
+            ))}
+          </View>
+
+          <SectionTitle title="New Testament Books" />
+          <View style={styles.list}>
+            {BOOK_MASTERY_BOOKS.filter((book) => book.testament === 'new').map((book) => (
+              <FeatureCard
+                key={book.id}
+                testID={`book-mastery-${book.id}`}
+                title={book.title}
+                description={book.summary}
+                accent={colors.brandSecondary}
+                icon={<Text style={styles.bookIcon}>{book.icon}</Text>}
+                badge="5 FREE · 10 DEEP"
+                onPress={() => openBook(book)}
               />
             ))}
           </View>
@@ -113,4 +150,5 @@ const styles = StyleSheet.create({
   dailyTitle: { color: colors.onSurface, fontSize: 21, fontWeight: '900' },
   dailyDescription: { color: colors.muted, fontSize: 12.5, lineHeight: 18 },
   list: { gap: spacing.md },
+  bookIcon: { fontSize: 25 },
 });

@@ -95,11 +95,18 @@ contains(
     "systemUltraThinMaterialDark",
     "GLOBAL_DOCK_HEIGHT",
 )
+
+tabs_layout = APP / "(tabs)/_layout.tsx"
 contains(
-    APP / "(tabs)/_layout.tsx",
-    "detachInactiveScreens={false}",
-    "tabBarStyle: { display: 'none' }",
+    tabs_layout,
+    "detachInactiveScreens",
+    "freezeOnBlur: true",
+    "tabBarBackground: () => <GlassTabBackground />",
+    "tabBarStyle: {",
 )
+tabs_body = text(tabs_layout)
+check("detachInactiveScreens={false}" not in tabs_body, "native tabs detach inactive screens for stability")
+check("tabBarStyle: { display: 'none' }" not in tabs_body, "native glass tab bar remains visible")
 
 # ---------------------------------------------------------------------------
 # Pillar 2 — Tactile Maximalism
