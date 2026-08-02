@@ -23,7 +23,7 @@ export const QUIZ_REFERENCE_OVERRIDES: Readonly<Record<string, string>> = {
   'How many Psalms are there in total?': 'Psalm 150:1',
   'Psalm 119 is famous for being the _____?': 'Psalm 119:1',
   'What kind of writings make up the book of Psalms?': 'Psalm 72:20',
-  'What is the meaning of the word Selah found in many Psalms?': 'Psalm 3:2',
+  'What is true about the word ‘Selah’ in the Psalms?': 'Psalm 3:2',
 };
 
 const SAFE_FALLBACK_REFERENCE = '2 Timothy 3:16';
