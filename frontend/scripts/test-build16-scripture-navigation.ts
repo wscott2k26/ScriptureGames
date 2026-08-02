@@ -15,8 +15,8 @@ const link = read('src/components/ScriptureLink.tsx');
 
 requireMatch(quiz, /<ScriptureLink[\s\S]*?reference=\{question\.verse\}[\s\S]*?returnLabel="Return to Quiz"/,
   'Quiz feedback must route its exact graded-question reference through ScriptureLink.');
-requireMatch(link, /pathname:\s*'\/bible'[\s\S]*?reference[\s\S]*?fromScriptureLink:\s*'1'/,
-  'ScriptureLink must route the exact reference to the public Bible page.');
+requireMatch(link, /router\.navigate\([\s\S]*?pathname:\s*'\/\(tabs\)\/bible'[\s\S]*?reference[\s\S]*?fromScriptureLink:\s*'1'/,
+  'ScriptureLink must route the exact reference through the registered Bible tab.');
 requireMatch(link, /minHeight:\s*44[\s\S]*?minWidth:\s*44/,
   'The visible Scripture source must provide a finger-sized target.');
 requireMatch(bible, /reference \? parseBibleReference\(String\(reference\)\) : null/,
@@ -24,4 +24,4 @@ requireMatch(bible, /reference \? parseBibleReference\(String\(reference\)\) : n
 requireMatch(bible, /fromScriptureLink === '1'[\s\S]*?router\.canGoBack\(\)[\s\S]*?router\.back\(\)/,
   'The Bible tab must preserve a Return action for Scripture lookups.');
 
-console.log('Build 16 Scripture-reference navigation contract passed through the universal link system.');
+console.log('Build 16 Scripture-reference navigation contract passed through the registered Bible-tab link system.');
