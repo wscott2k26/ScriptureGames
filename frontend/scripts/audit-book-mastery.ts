@@ -56,7 +56,13 @@ for (const book of BOOK_MASTERY_BOOKS) {
 }
 
 const seedData = readFileSync(new URL('../../backend/seed_data.py', import.meta.url), 'utf8');
-const seedReferences = [...seedData.matchAll(/["']verse["']:\s*["']([^"']+)["']/g)].map((match) => match[1]);
+const quizStart = seedData.indexOf('QUIZ_QUESTIONS =');
+const quizEndCandidates = ['\nVERSES =', '\nSTORIES =', '\nPUZZLES =']
+  .map((marker) => seedData.indexOf(marker, quizStart + 1))
+  .filter((index) => index > quizStart);
+assert.ok(quizStart >= 0 && quizEndCandidates.length > 0, 'The canonical quiz question section must be discoverable.');
+const quizSeed = seedData.slice(quizStart, Math.min(...quizEndCandidates));
+const seedReferences = [...quizSeed.matchAll(/["']verse["']:\s*["']([^"']+)["']/g)].map((match) => match[1]);
 assert.ok(seedReferences.length >= 100, 'The canonical quiz seed should contain a substantial set of Scripture references.');
 for (const reference of seedReferences) {
   assert.ok(passageLocationFromReference(reference), `Classic quiz reference cannot open: ${reference}`);
