@@ -66,6 +66,10 @@ EAS remotely incremented the iOS build number from 16 to 17, completed the produ
 
 The workflow then validated that the returned record contained exactly one non-simulator iOS `STORE` build using the `production` profile, version `1.0.0`, build `17`, and exactly one iOS submission targeting App Store Connect app `6795368257`.
 
+## EAS billing disclosure
+
+During this authorized release, EAS CLI reported that the Expo account had used **38 builds beyond the included credits this billing period** and showed **$27.00 in overages so far**. No second Build 17 run was performed. Future paid cloud builds still require separate explicit authorization.
+
 ## Cleanup and repository state
 
 The one-use Build 17 release launcher and authorization trigger were consumed and removed after successful delivery. Draft PR #51 remains open and unmerged pending physical-device acceptance.
