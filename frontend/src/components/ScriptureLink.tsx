@@ -41,25 +41,23 @@ export function ScriptureLink({
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={valid ? `Open ${reference} in Bible` : `${reference} is not available in the Bible reader`}
-      accessibilityHint={valid ? 'Opens the exact passage and keeps this screen available to return to.' : undefined}
-      accessibilityState={{ disabled: !valid }}
-      disabled={!valid}
+      accessibilityLabel={`Open ${reference} in Bible`}
+      accessibilityHint={valid
+        ? 'Opens the exact passage and keeps this screen available to return to.'
+        : 'Opens the Bible reader, which will explain if the reference cannot be resolved.'}
       hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
       testID={testID}
       onPress={() => {
-        if (!valid) return;
         sfx.tap();
-        router.push({
-          pathname: '/bible',
+        router.navigate({
+          pathname: '/(tabs)/bible',
           params: { reference, fromScriptureLink: '1', returnLabel },
         });
       }}
       style={({ pressed }) => [
         styles.target,
         compact && styles.compact,
-        pressed && valid && styles.pressed,
-        !valid && styles.disabled,
+        pressed && styles.pressed,
         style,
       ]}
     >
@@ -109,8 +107,5 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: 'rgba(121,210,228,0.14)',
     opacity: 0.82,
-  },
-  disabled: {
-    opacity: 0.55,
   },
 });
