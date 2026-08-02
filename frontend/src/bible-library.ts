@@ -1,4 +1,5 @@
 import { BIBLE_BOOKS, BIBLE_BUILD_META } from './bible.generated';
+import { parseBibleReferenceParts } from './bible-reference-parser';
 import type { BibleBook, BibleLocation, BibleSearchResult, BibleVerse } from './bible-types';
 
 export { BIBLE_BUILD_META };
@@ -42,12 +43,11 @@ export function getBibleChapter(bookId: string, chapter: number): BibleVerse[] {
 }
 
 export function parseBibleReference(input: string): BibleLocation | null {
-  const match = input.trim().match(/^(.+?)\s+(\d+)(?::(\d+))?(?:-(\d+))?$/i);
-  if (!match) return null;
-  const book = BOOK_BY_ALIAS.get(normalize(match[1]));
+  const parts = parseBibleReferenceParts(input);
+  if (!parts) return null;
+  const book = BOOK_BY_ALIAS.get(normalize(parts.bookText));
   if (!book) return null;
-  const chapter = Number(match[2]);
-  const verse = match[3] ? Number(match[3]) : undefined;
+  const { chapter, verse } = parts;
   if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) return null;
   if (verse !== undefined && !book.chapters[chapter - 1]?.some(([number]) => number === verse)) return null;
   return { bookId: book.id, chapter, verse };
@@ -86,7 +86,13 @@ export function searchBible(query: string, limit = 80): BibleSearchResult[] {
       for (const [verse, text] of book.chapters[chapterIndex]) {
         const haystack = text.toLowerCase();
         if (terms.every((term) => haystack.includes(term))) {
-          results.push({ bookId: book.id, bookName: book.name, chapter: chapterIndex + 1, verse, text });
+          results.push({
+            bookId: book.id,
+            bookName: book.name,
+            chapter: chapterIndex + 1,
+            verse,
+            text,
+          });
           if (results.length >= limit) return results;
         }
       }
