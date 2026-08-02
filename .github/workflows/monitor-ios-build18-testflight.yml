@@ -3,7 +3,7 @@ name: Monitor Scripture Games iOS Build 18 TestFlight
 on:
   push:
     branches:
-      - fix/build-18-scripture-reference-runtime
+      - monitor/build18-testflight-status
     paths:
       - '.github/status-triggers/ios-build18-monitor.md'
 
@@ -26,10 +26,10 @@ jobs:
       AUTHORIZED_SHA: b735435933cd0e37a50c7d0b2737729c61ff63f4
 
     steps:
-      - name: Check out monitoring source
+      - name: Check out isolated monitoring source
         uses: actions/checkout@v4
         with:
-          ref: fix/build-18-scripture-reference-runtime
+          ref: monitor/build18-testflight-status
           fetch-depth: 1
 
       - name: Locate and wait for the authorized release run
