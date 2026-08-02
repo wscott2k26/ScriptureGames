@@ -1,0 +1,116 @@
+name: Snapshot Scripture Games iOS Build 18 EAS Record
+
+on:
+  push:
+    branches:
+      - monitor/build18-testflight-status
+    paths:
+      - '.github/status-triggers/ios-build18-eas-snapshot.md'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: snapshot-scripture-games-ios-build18-eas
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: Read existing Build 18 EAS record
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out isolated monitor branch
+        uses: actions/checkout@v4
+        with:
+          ref: monitor/build18-testflight-status
+          fetch-depth: 1
+
+      - name: Verify this workflow is read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "monitor/build18-testflight-status"
+          grep -Fq 'READ ONLY: do not build, submit, retry, or cancel.' .github/status-triggers/ios-build18-eas-snapshot.md
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install frozen project dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Read the existing Build 18 record
+        id: record
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build:list \
+            --platform ios \
+            --status finished \
+            --distribution store \
+            --app-version 1.0.0 \
+            --app-build-version 18 \
+            --limit 5 \
+            --json > ../ios-build18-eas-snapshot.json
+
+          jq -e '
+            length == 1 and
+            .[0].platform == "IOS" and
+            .[0].status == "FINISHED" and
+            .[0].project.id == "18710e80-2a62-46ac-8d3a-d1711b7d920a" and
+            .[0].distribution == "STORE" and
+            .[0].buildProfile == "production" and
+            .[0].appVersion == "1.0.0" and
+            .[0].appBuildVersion == "18" and
+            .[0].isForIosSimulator == false and
+            (.[0].submissions | length) == 1 and
+            .[0].submissions[0].platform == "IOS"
+          ' ../ios-build18-eas-snapshot.json
+
+          build_id=$(jq -r '.[0].id' ../ios-build18-eas-snapshot.json)
+          submission_id=$(jq -r '.[0].submissions[0].id' ../ios-build18-eas-snapshot.json)
+          submission_status=$(jq -r '.[0].submissions[0].status' ../ios-build18-eas-snapshot.json)
+          git_hash=$(jq -r '.[0].gitCommitHash' ../ios-build18-eas-snapshot.json)
+          created_at=$(jq -r '.[0].createdAt' ../ios-build18-eas-snapshot.json)
+
+          echo "build_id=$build_id" >> "$GITHUB_OUTPUT"
+          echo "submission_id=$submission_id" >> "$GITHUB_OUTPUT"
+          echo "submission_status=$submission_status" >> "$GITHUB_OUTPUT"
+          echo "git_hash=$git_hash" >> "$GITHUB_OUTPUT"
+          echo "created_at=$created_at" >> "$GITHUB_OUTPUT"
+
+      - name: Save read-only EAS snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-ios-build18-eas-snapshot
+          path: ios-build18-eas-snapshot.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact Build 18 IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr comment 52 --repo "$GITHUB_REPOSITORY" --body "Read-only EAS verification found exactly one finished iOS store build for Scripture Games 1.0.0 (18). Build ID: `${{ steps.record.outputs.build_id }}`. Submission ID: `${{ steps.record.outputs.submission_id }}`. Submission status: **${{ steps.record.outputs.submission_status }}**. EAS source commit: `${{ steps.record.outputs.git_hash }}`. Created: `${{ steps.record.outputs.created_at }}`. This snapshot did not build, submit, retry, cancel, merge, or release anything."
