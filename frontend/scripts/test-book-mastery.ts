@@ -2,9 +2,23 @@ import assert from 'node:assert/strict';
 
 import {
   BOOK_MASTERY_BOOKS,
-  buildMasteryRound,
-  getMasteryQuestionPool,
-} from '../src/book-mastery.ts';
+  buildMasteryQuestionPool,
+  buildMasteryRoundFromPool,
+  type BibleBookForMastery,
+} from '../src/book-mastery-core.ts';
+
+function fakeBibleBook(bookId: string, title: string): BibleBookForMastery {
+  return {
+    id: bookId,
+    name: title,
+    chapters: Array.from({ length: 30 }, (_, chapterIndex) =>
+      Array.from({ length: 20 }, (_, verseIndex) => [
+        verseIndex + 1,
+        `${title} chapter ${chapterIndex + 1} verse ${verseIndex + 1} contains unique verified test wording ${bookId}-${chapterIndex}-${verseIndex}.`,
+      ] as const),
+    ),
+  };
+}
 
 assert.deepEqual(
   BOOK_MASTERY_BOOKS.filter((book) => book.testament === 'old').map((book) => book.title),
@@ -18,13 +32,13 @@ assert.deepEqual(
 );
 
 for (const book of BOOK_MASTERY_BOOKS) {
-  const pool = getMasteryQuestionPool(book.id);
+  const pool = buildMasteryQuestionPool(book, fakeBibleBook(book.bookId, book.title));
   const corePool = pool.filter((question) => question.tier === 'core');
   assert.ok(corePool.length >= 10, `${book.title} must provide at least 10 free questions.`);
   assert.ok(pool.length >= 25, `${book.title} must provide at least 25 total questions.`);
 
-  const core = buildMasteryRound(book.id, 'core', 11);
-  const extended = buildMasteryRound(book.id, 'extended', 11);
+  const core = buildMasteryRoundFromPool(pool, 'core', 11);
+  const extended = buildMasteryRoundFromPool(pool, 'extended', 11);
   assert.equal(core.length, 5, `${book.title} core rounds must contain five questions.`);
   assert.equal(extended.length, 10, `${book.title} extended rounds must contain ten questions.`);
   assert.equal(new Set(core.map((question) => question.concept)).size, core.length, `${book.title} core rounds cannot repeat a passage.`);
