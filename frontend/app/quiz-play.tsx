@@ -15,6 +15,7 @@ import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink'
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
+import { withResolvedQuizReference } from '@/src/quiz-reference-resolution';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 
@@ -46,7 +47,9 @@ export default function QuizPlay() {
     setError(null);
     api.getQuiz(String(topic), 5)
       .then((result) => {
-        if (active) setQuestions(sortSelectedQuizQuestions(String(topic), result.questions));
+        if (!active) return;
+        const resolved = result.questions.map(withResolvedQuizReference);
+        setQuestions(sortSelectedQuizQuestions(String(topic), resolved));
       })
       .catch(() => { if (active) setError('This training field could not be opened.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -176,7 +179,7 @@ export default function QuizPlay() {
               <View style={styles.feedbackCopy}>
                 <Text style={styles.feedbackTitle}>{correctSelection ? 'Correct' : 'Not quite'}</Text>
                 {!correctSelection ? <Text style={styles.feedbackText}>Correct answer: {question.options[question.answer]}</Text> : null}
-                {question.verse ? <ScriptureReferenceLink reference={question.verse} testID="quiz-feedback-scripture" /> : null}
+                <ScriptureReferenceLink reference={question.verse} testID="quiz-feedback-scripture" />
               </View>
             </GlassPanel>
           ) : null}
