@@ -1,13 +1,12 @@
-# Scripture Games Build 10 Blinking Recovery TestFlight Trigger
+# Scripture Games Build 19 TestFlight Trigger
 
-Authorized by Will Scott on August 1, 2026.
+Authorized by Will Scott on August 2, 2026.
 
-- Certified blinking-recovery merge: `ce95b5505f44580b66ff0cc800df09920f9cc776`
-- Regression fixed: Build 10 root-level full-screen navigation overlay and unfrozen, always-mounted inactive tabs causing repeated iOS redraws/blinking
-- Recovery: restored native Expo Router tabs, detached and froze inactive screens, removed pathname-wide root rerenders, preserved visible Settings
-- Expected corrected iOS build number: 11
-- Features retained: grounded Lumi answers, guarded Lumi microphone, offline Bible, cloud backup, Settings, Back fallback, motion controls, optional music/SFX/haptics, and sacred headers
-- Purpose: one iOS production build with automatic App Store Connect/TestFlight submission for immediate physical-device validation
+- Certified release source: `b1c23f644b67db689309397638c44d21e27b9484`
+- Release contents: chronological story quizzes, ten free Book Mastery fields, premium Deep Study rounds, offline passage reading, and clickable Scripture feedback across quiz paths
+- Regression verification: full GitHub quality gate passed, including Bible/cloud/premium/Lumi/navigation/runtime/content/visual audits, Expo Doctor, TypeScript, ESLint, iOS export, and Android local export
+- Expected iOS build number: 19, assigned by EAS remote auto-increment after TestFlight Build 18
+- Purpose: one iOS production EAS build with automatic App Store Connect/TestFlight submission for physical-device validation
 - Android EAS build: intentionally skipped to conserve Expo credits
 - App Review/public release: not authorized by this trigger
-- Duplicate EAS builds: prohibited unless build 11 fails before producing a usable binary or physical-device testing identifies a confirmed blocker
+- Duplicate EAS builds or TestFlight submissions: prohibited unless this run fails before producing a usable binary and Will Scott separately authorizes a retry
