@@ -1,0 +1,60 @@
+name: Build 18 Release Status Watch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build18-status-watch.yml'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for the one-use Build 18 release run
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          release_run=""
+          for attempt in $(seq 1 120); do
+            release_run="$(gh run list --repo "$repo" --workflow build18-one-use-testflight.yml --limit 1 --json databaseId,status,conclusion,headSha --jq '.[0] // empty')"
+            if [ -n "$release_run" ]; then
+              status="$(printf '%s' "$release_run" | jq -r '.status')"
+              if [ "$status" = "completed" ]; then
+                break
+              fi
+            fi
+            sleep 30
+          done
+          test -n "$release_run" || { echo 'Build 18 release run was not found.' >&2; exit 1; }
+          run_id="$(printf '%s' "$release_run" | jq -r '.databaseId')"
+          status="$(printf '%s' "$release_run" | jq -r '.status')"
+          conclusion="$(printf '%s' "$release_run" | jq -r '.conclusion // "pending"')"
+          head_sha="$(printf '%s' "$release_run" | jq -r '.headSha')"
+          details="$(gh run view "$run_id" --repo "$repo" --json jobs,status,conclusion,url)"
+          body=$(cat <<EOF
+Build 18 release status watcher completed.
+
+- Release run: $run_id
+- Status: $status
+- Conclusion: $conclusion
+- Launcher commit: $head_sha
+- URL: https://github.com/$repo/actions/runs/$run_id
+
+Jobs:
+\`\`\`json
+$details
+\`\`\`
+EOF
+)
+          gh issue create --repo "$repo" --title "Build 18 release result — $conclusion — run $run_id" --body "$body"
+          test "$status" = "completed"
