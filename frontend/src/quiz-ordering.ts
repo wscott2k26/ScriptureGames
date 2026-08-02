@@ -26,19 +26,47 @@ const BOOKS = [
   ['Revelation', 'REV'],
 ] as const;
 
-const BOOK_BY_NAME = new Map<string, { id: string; index: number }>(
+type BookMeta = { id: string; index: number };
+const BOOK_BY_NAME = new Map<string, BookMeta>(
   BOOKS.map(([name, id], index) => [name.toLowerCase(), { id, index }]),
 );
+
+const ALIASES: Record<string, string> = {
+  psalm: 'Psalms',
+  'song of songs': 'Song of Solomon',
+  canticles: 'Song of Solomon',
+  revelations: 'Revelation',
+  'i samuel': '1 Samuel',
+  'ii samuel': '2 Samuel',
+  'i kings': '1 Kings',
+  'ii kings': '2 Kings',
+  'i chronicles': '1 Chronicles',
+  'ii chronicles': '2 Chronicles',
+  'i corinthians': '1 Corinthians',
+  'ii corinthians': '2 Corinthians',
+  'i thessalonians': '1 Thessalonians',
+  'ii thessalonians': '2 Thessalonians',
+  'i timothy': '1 Timothy',
+  'ii timothy': '2 Timothy',
+  'i peter': '1 Peter',
+  'ii peter': '2 Peter',
+  'i john': '1 John',
+  'ii john': '2 John',
+  'iii john': '3 John',
+};
+
+for (const [alias, canonical] of Object.entries(ALIASES)) {
+  const meta = BOOK_BY_NAME.get(canonical.toLowerCase());
+  if (meta) BOOK_BY_NAME.set(alias, meta);
+}
 
 function parseReference(reference?: string): (QuizPassageLocation & { order: number }) | null {
   if (!reference) return null;
   const normalized = reference.trim().replace(/[–—]/g, '-');
+  const lower = normalized.toLowerCase();
   const book = [...BOOK_BY_NAME.keys()]
     .sort((a, b) => b.length - a.length)
-    .find((name) => {
-      const lower = normalized.toLowerCase();
-      return lower === name || lower.startsWith(`${name} `);
-    });
+    .find((name) => lower === name || lower.startsWith(`${name} `));
   if (!book) return null;
   const meta = BOOK_BY_NAME.get(book);
   if (!meta) return null;
