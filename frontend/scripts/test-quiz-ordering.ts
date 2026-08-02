@@ -49,6 +49,10 @@ assert.deepEqual(
   { bookId: '1SA', chapter: 17, verse: 40 },
   'Numbered Bible books must parse correctly.',
 );
-assert.equal(passageLocationFromReference('Psalms'), null);
+assert.deepEqual(
+  passageLocationFromReference('Psalms'),
+  { bookId: 'PSA', chapter: 1 },
+  'A book-only reference must still open a real Scripture location.',
+);
 
 console.log('Quiz ordering tests passed.');
