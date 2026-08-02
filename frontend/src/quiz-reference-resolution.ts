@@ -1,4 +1,4 @@
-import { passageLocationFromReference } from './quiz-ordering';
+import { passageLocationFromReference } from './quiz-ordering.ts';
 
 export type ReferencedQuizQuestion = {
   q: string;
