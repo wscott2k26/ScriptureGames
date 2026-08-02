@@ -19,7 +19,7 @@ import { withResolvedQuizReference } from '@/src/quiz-reference-resolution';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 
-type Question = { q: string; options: string[]; answer: number; verse?: string };
+type Question = { q: string; options: string[]; answer: number; verse: string };
 
 function titleCase(topic: string) {
   return topic.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
