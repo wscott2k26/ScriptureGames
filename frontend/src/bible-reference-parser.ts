@@ -31,6 +31,6 @@ export function parseBibleReferenceParts(input: string): BibleReferenceParts | n
   return {
     bookText: match[1],
     chapter,
-    verse,
+    ...(verse === undefined ? {} : { verse }),
   };
 }
