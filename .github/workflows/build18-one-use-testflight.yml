@@ -1,0 +1,93 @@
+name: Scripture Games Build 18 One-Use TestFlight
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build18-one-use-testflight.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scripture-games-build-18-one-use
+  cancel-in-progress: false
+
+jobs:
+  build18-testflight:
+    name: Validate, build, and submit Build 18
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify protected Expo credential exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}" || { echo 'EXPO_TOKEN is not configured.' >&2; exit 1; }
+
+      - name: Check out exact verified Build 18 source
+        uses: actions/checkout@v4
+        with:
+          ref: 4d56670550c810ecf78faae07676a485373e8181
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
+
+      - name: Run complete Build 18 source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          yarn validate
+
+      - name: Verify Expo identity and linked project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive
+
+      - name: Build iOS once and auto-submit once
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas build --platform ios --profile production --non-interactive --auto-submit --json > ../build18-ios-testflight.json
+
+      - name: Save signed Build 18 record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-build18-testflight-record
+          path: build18-ios-testflight.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report exact release blocker
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Scripture Games Build 18 needs attention — run $GITHUB_RUN_ID" --body "Review: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
