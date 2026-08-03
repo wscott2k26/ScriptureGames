@@ -1,5 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
-# Recovery attempt 5: proven Build 18 overlap files always win.
+# Recovery attempt 6: Daily references resolve before the proven Build 18 screen.
 
 on:
   push:
