@@ -35,7 +35,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "release/build21-ios-only"
           test -n "$EXPO_TOKEN"
 
-          expected_trigger=$'AUTHORIZE_ONE_IOS_BUILD_21_ONLY\nSOURCE_SHA=50f935d5bd69a9fea2b29bc74cba3dd7c9375180'
+          expected_trigger=$'AUTHORIZE_ONE_IOS_BUILD_21_ONLY\nSOURCE_SHA=50f935d5bd69a9fea2b29bc74cba3dd7c9375180\nPREFLIGHT_RETRY=NODE22_MATCH_QUALITY_GATE'
           actual_trigger="$(cat .github/release-trigger-build21-ios-only.txt)"
           test "$actual_trigger" = "$expected_trigger"
 
@@ -77,16 +77,26 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install proven validation toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          npm install --global eas-cli@16.20.0
+
       - name: Install frozen app dependencies
         working-directory: frontend
-        run: yarn install --frozen-lockfile
-
-      - name: Install pinned EAS CLI
-        run: npm install --global eas-cli@16.20.0
+        run: yarn install --frozen-lockfile --non-interactive
 
       - name: Verify Build 20 is latest and Build 21 does not exist
         working-directory: frontend
