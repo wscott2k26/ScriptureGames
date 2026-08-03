@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / 'frontend'
@@ -10,6 +11,14 @@ def read(relative: str) -> str:
 
 def write(relative: str, content: str) -> None:
     (FRONTEND / relative).write_text(content, encoding='utf-8')
+
+
+def head_file(relative: str) -> str:
+    return subprocess.check_output(
+        ['git', 'show', f'HEAD:frontend/{relative}'],
+        cwd=ROOT,
+        text=True,
+    )
 
 
 def replace_once(content: str, old: str, new: str, label: str) -> str:
@@ -77,6 +86,27 @@ quiz = replace_once(
 )
 write('app/quiz-play.tsx', quiz)
 
+# Restore the physically proven Build 18 Daily screen verbatim. Resolve legacy references in its generator,
+# so every existing question.verse and witnessVerse link remains valid without a second screen-level route.
+write('app/daily-challenge.tsx', head_file('app/daily-challenge.tsx'))
+daily_core = read('src/daily-challenge.ts')
+if "withResolvedQuizReference" not in daily_core:
+    daily_core = replace_once(
+        daily_core,
+        "import { QUIZ_QUESTIONS } from './content.generated';",
+        "import { QUIZ_QUESTIONS } from './content.generated';\nimport { withResolvedQuizReference } from './quiz-reference-resolution';",
+        'Daily reference resolver import',
+    )
+    daily_core = replace_once(
+        daily_core,
+        "    const question = pool[questionSeed % pool.length];\n    return shuffleQuestion({ ...question, topic, options: [...question.options] }, questionSeed + index * 101);",
+        """    const question = pool[questionSeed % pool.length];
+    const resolved = withResolvedQuizReference({ ...question, topic, options: [...question.options] });
+    return shuffleQuestion(resolved, questionSeed + index * 101);""",
+        'Daily resolved question generation',
+    )
+write('src/daily-challenge.ts', daily_core)
+
 # Add chronology to Genesis while retaining the physically proven Build 18 screen and ScriptureLink component.
 genesis = read('app/genesis-quiz.tsx')
 if "sortSelectedQuizQuestions" not in genesis:
@@ -106,4 +136,4 @@ audit = audit.replace(
 )
 write('scripts/audit-book-mastery.ts', audit)
 
-print('Build 18 compatibility seams preserved for piano, quiz links, and Genesis chronology.')
+print('Build 18 compatibility seams preserved for piano, Classic, Daily, and Genesis.')
