@@ -1,5 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
-# Recovery attempt 6: Daily references resolve before the proven Build 18 screen.
+# Recovery attempt 7: audit Daily resolution in its generator, not its screen.
 
 on:
   push:
