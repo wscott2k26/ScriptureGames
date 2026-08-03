@@ -1,5 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
-# Recovery attempt 7: audit Daily resolution in its generator, not its screen.
+# Recovery attempt 8: TypeScript-safe filesystem audit paths.
 
 on:
   push:
