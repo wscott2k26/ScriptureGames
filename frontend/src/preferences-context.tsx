@@ -4,12 +4,13 @@ import { configureHaptics } from './sfx';
 import {
   DEFAULT_PREFERENCES,
   restorePreferences,
+  type AmbientSound,
   type AppPreferences,
   type VoiceReplyMode,
 } from './preferences-core';
 import type { MotionMode } from './motion-intensity';
 
-export type { AppPreferences, MotionMode, VoiceReplyMode };
+export type { AmbientSound, AppPreferences, MotionMode, VoiceReplyMode };
 
 export const PERSISTED_EXPERIENCE_PREFERENCE_FIELDS = [
   'hapticsEnabled',

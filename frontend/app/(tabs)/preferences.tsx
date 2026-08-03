@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { usePreferences, type MotionMode } from '@/src/preferences-context';
+import { usePreferences, type AmbientSound, type MotionMode } from '@/src/preferences-context';
 import { useAppAudio } from '@/src/audio-context';
 import { PeacefulBackdrop, PeacefulScenePreview } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
@@ -18,6 +18,12 @@ const MOTION_OPTIONS: { value: MotionMode; label: string; description: string }[
   { value: 'reduced', label: 'Motion Off', description: 'Use immediate state changes without decorative movement.' },
   { value: 'gentle', label: 'Gentle Motion', description: 'Use calmer transitions, smaller effects, and fewer particles.' },
   { value: 'full', label: 'Full Experience', description: 'Use the complete premium motion and celebration experience.' },
+];
+
+const AMBIENT_OPTIONS: { value: AmbientSound; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'piano', label: 'Soft Piano', description: 'Quiet original piano for prayer, study, and calm play.', icon: 'musical-notes' },
+  { value: 'rain', label: 'Gentle Rain', description: 'A soft looping rain bed with no thunder or sudden volume changes.', icon: 'rainy' },
+  { value: 'reading', label: 'Quiet Reading Room', description: 'Warm room tone for focused Bible reading and reflection.', icon: 'book-outline' },
 ];
 
 export default function PreferencesScreen() {
@@ -56,12 +62,36 @@ export default function PreferencesScreen() {
           <Text style={styles.section}>Sound & Touch</Text>
           <GlassPanel strong style={styles.panel}>
             <SettingToggle
-              icon="musical-notes"
-              title="Soft Piano"
-              description="Play quiet original piano ambience. It pauses for Lumi’s microphone and whenever the app leaves the foreground."
+              icon="volume-high"
+              title="Ambient Audio"
+              description="Play the selected peaceful sound. It pauses for Lumi’s microphone and whenever the app leaves the foreground."
               value={preferences.musicEnabled}
               onValueChange={(musicEnabled) => void updatePreferences({ musicEnabled })}
             />
+            <View style={styles.divider} />
+            <Text style={styles.label}>AMBIENT SOUND</Text>
+            <View style={styles.motionList}>
+              {AMBIENT_OPTIONS.map((option) => {
+                const selected = preferences.ambientSound === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${option.label}. ${option.description}`}
+                    onPress={() => void updatePreferences({ ambientSound: option.value, musicEnabled: true })}
+                    style={[styles.motionOption, selected && styles.motionSelected]}
+                  >
+                    <View style={styles.toggleIcon}><Ionicons name={option.icon} size={20} color={colors.brand} /></View>
+                    <View style={styles.motionCopy}>
+                      <Text style={styles.motionTitle}>{option.label}</Text>
+                      <Text style={styles.motionDescription}>{option.description}</Text>
+                    </View>
+                    <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? colors.brand : colors.muted} />
+                  </Pressable>
+                );
+              })}
+            </View>
             <View style={styles.divider} />
             <SettingToggle
               icon="volume-medium"
@@ -161,7 +191,7 @@ export default function PreferencesScreen() {
             <TactileButton label="Privacy Policy" icon={<Ionicons name="lock-closed-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => void Linking.openURL('https://scripture-games-support.vercel.app/privacy/')} />
             <TactileButton label="Restore All Defaults" variant="stone" onPress={() => void resetPreferences()} />
           </View>
-          <Text style={styles.footer}>Music, feedback sounds, and Bible content are bundled offline. Peaceful photos are cached after loading, with an artistic fallback when a photo is unavailable.</Text>
+          <Text style={styles.footer}>Piano, rain, reading-room ambience, feedback sounds, and Bible content are bundled offline. Peaceful photos are cached after loading, with an artistic fallback when a photo is unavailable.</Text>
         </ScrollView>
       </SafeAreaView>
     </PeacefulBackdrop>

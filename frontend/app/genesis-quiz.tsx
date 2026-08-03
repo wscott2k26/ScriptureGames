@@ -29,6 +29,7 @@ import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
 import { getFaction, getTrial, type GenesisQuestion } from '@/src/genesis-season';
 import { completeSeasonTrial, loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
+import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
 
 function shuffle<T>(items: readonly T[]): T[] {
   const copy = [...items];
@@ -54,7 +55,11 @@ export default function GenesisQuizScreen() {
   const { profile, refresh } = useProfile();
   const reducedMotion = useReducedMotionPreference();
   const trial = useMemo(() => getTrial(String(id || '')), [id]);
-  const questions = useMemo(() => trial ? shuffle(trial.questions).slice(0, 5).map(prepareQuestion) : [], [trial]);
+  const questions = useMemo(() => {
+    if (!trial) return [];
+    const selected = shuffle(trial.questions).slice(0, 5);
+    return sortSelectedQuizQuestions('genesis-season', selected).map(prepareQuestion);
+  }, [trial]);
   const [season, setSeason] = useState<SeasonProgress | null>(null);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);

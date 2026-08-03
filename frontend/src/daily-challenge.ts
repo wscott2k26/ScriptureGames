@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QUIZ_QUESTIONS } from './content.generated';
+import { withResolvedQuizReference } from './quiz-reference-resolution';
 
 export type DailyQuestion = {
   q: string;
@@ -83,7 +84,8 @@ export function getDailyChallenge(date = localDateKey()) {
     const pool = banks[topic]?.length ? banks[topic] : banks.general;
     const questionSeed = hashText(`${date}:${topic}:${index}`);
     const question = pool[questionSeed % pool.length];
-    return shuffleQuestion({ ...question, topic, options: [...question.options] }, questionSeed + index * 101);
+    const resolved = withResolvedQuizReference({ ...question, topic, options: [...question.options] });
+    return shuffleQuestion(resolved, questionSeed + index * 101);
   });
   return { date, topic: 'five-field mix', questions };
 }

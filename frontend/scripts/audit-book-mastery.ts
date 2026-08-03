@@ -1,10 +1,6 @@
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-TARGET = ROOT / 'frontend/scripts/audit-book-mastery.ts'
-
-TARGET.write_text(r'''import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -21,8 +17,10 @@ import {
 } from '../src/quiz-reference-resolution.ts';
 import { passageLocationFromReference } from '../src/quiz-ordering.ts';
 
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+
 function readSource(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
+  return readFileSync(resolve(scriptDirectory, relativePath), 'utf8');
 }
 
 function fakeBibleBook(bookId: string, title: string): BibleBookForMastery {
@@ -109,14 +107,15 @@ for (const reference of genesisReferences) {
 const classicScreen = readSource('../app/quiz-play.tsx');
 const genesisScreen = readSource('../app/genesis-quiz.tsx');
 const dailyScreen = readSource('../app/daily-challenge.tsx');
+const dailyCore = readSource('../src/daily-challenge.ts');
 const masteryScreen = readSource('../app/book-mastery.tsx');
 const scriptureLink = readSource('../src/components/ScriptureLink.tsx');
 const bibleScreen = readSource('../app/(tabs)/bible.tsx');
 const quizHub = readSource('../app/(tabs)/quiz.tsx');
 
-assert.match(classicScreen, /resolveQuizReference/, 'Classic Training must resolve every Scripture reference.');
+assert.match(classicScreen, /withResolvedQuizReference/, 'Classic Training must resolve every Scripture reference before rendering.');
 assert.match(classicScreen, /quiz-scripture-reference/, 'Classic Training must link right and wrong feedback to Scripture.');
-assert.match(dailyScreen, /resolveQuizReference/, 'Daily Bread must resolve every Scripture reference.');
+assert.match(dailyCore, /withResolvedQuizReference/, 'Daily Bread must resolve every Scripture reference before rendering.');
 assert.match(dailyScreen, /Read it in context:/, 'Daily Bread feedback must provide a contextual Scripture link.');
 assert.ok((dailyScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Daily Bread must retain question, feedback, and Witness Card Scripture links.');
 assert.ok((genesisScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Genesis must retain question, feedback, and result Scripture links.');
@@ -137,6 +136,3 @@ assert.match(quizHub, /Old Testament Books/, 'Old Testament book shelf is missin
 assert.match(quizHub, /New Testament Books/, 'New Testament book shelf is missing.');
 
 console.log('Book Mastery and recovered clickable Scripture audit passed.');
-''', encoding='utf-8')
-
-print('Recovered Book Mastery audit now validates the proven Build 18 ScriptureLink/Bible path.')

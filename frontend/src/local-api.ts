@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { JOURNEY_NODES, PUZZLES, QUIZ_QUESTIONS, STORIES, VERSES } from './content.generated';
+import { sortSelectedQuizQuestions } from './quiz-ordering';
 import { hasValidatedPremiumEntitlement } from './premium-entitlement-core';
 
 type Mode = 'kids' | 'adult';
@@ -398,10 +399,8 @@ const unsafeLocalApi = {
   async getQuiz(topic: string, limit = 5) {
     const all = QUIZ_QUESTIONS as unknown as Record<string, readonly QuizQuestion[]>;
     const pool = all[topic] || all.general;
-    const questions = shuffle(pool)
-      .slice(0, Math.max(1, limit))
-      .sort((a, b) => (a.difficulty || 1) - (b.difficulty || 1))
-      .map(shuffleQuestion);
+    const selected = shuffle(pool).slice(0, Math.max(1, limit));
+    const questions = sortSelectedQuizQuestions(topic, selected).map(shuffleQuestion);
     return { topic, questions };
   },
 

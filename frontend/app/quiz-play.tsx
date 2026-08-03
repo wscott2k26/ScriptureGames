@@ -12,11 +12,12 @@ import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { ScriptureLink } from '@/src/components/ScriptureLink';
+import { withResolvedQuizReference } from '@/src/quiz-reference-resolution';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 
-type Question = { q: string; options: string[]; answer: number; verse?: string };
+type Question = { q: string; options: string[]; answer: number; verse: string };
 
 function titleCase(topic: string) {
   return topic.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -43,7 +44,7 @@ export default function QuizPlay() {
     setLoading(true);
     setError(null);
     api.getQuiz(String(topic), 5)
-      .then((result) => { if (active) setQuestions(result.questions); })
+      .then((result) => { if (active) setQuestions(result.questions.map(withResolvedQuizReference)); })
       .catch(() => { if (active) setError('This training field could not be opened.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -172,14 +173,12 @@ export default function QuizPlay() {
               <View style={styles.feedbackCopy}>
                 <Text style={styles.feedbackTitle}>{correctSelection ? 'Correct' : 'Not quite'}</Text>
                 {!correctSelection ? <Text style={styles.feedbackText}>Correct answer: {question.options[question.answer]}</Text> : null}
-                {question.verse ? (
-                  <ScriptureLink
-                    reference={question.verse}
-                    prefix="Source:"
-                    returnLabel="Return to Quiz"
-                    testID="quiz-scripture-reference"
-                  />
-                ) : null}
+                <ScriptureLink
+                  reference={question.verse}
+                  prefix="Source:"
+                  returnLabel="Return to Quiz"
+                  testID="quiz-scripture-reference"
+                />
               </View>
             </GlassPanel>
           ) : null}
