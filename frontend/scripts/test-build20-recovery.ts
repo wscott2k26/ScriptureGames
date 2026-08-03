@@ -33,10 +33,11 @@ requireText(lumi, 'TextInput', 'Lumi typed composer');
 if (!exists('src/book-mastery-core.ts') || !exists('src/book-mastery.ts') || !exists('app/book-mastery.tsx')) {
   throw new Error('Ten-book Book Mastery files are missing.');
 }
+const masteryCore = read('src/book-mastery-core.ts');
 requireText(quizHub, 'Old Testament Books', 'Old Testament mastery shelf');
 requireText(quizHub, 'New Testament Books', 'New Testament mastery shelf');
-requireText(quizHub, 'Genesis', 'First free Old Testament book');
-requireText(quizHub, 'Matthew', 'First free New Testament book');
+requireText(masteryCore, "title: 'Genesis', testament: 'old'", 'First free Old Testament book');
+requireText(masteryCore, "title: 'Matthew', testament: 'new'", 'First free New Testament book');
 requireText(read('app/book-mastery.tsx'), "from '@/src/components/ScriptureLink'", 'Proven Scripture link reuse');
 requireText(read('app/book-mastery.tsx'), 'REFERENCE REVEALED AFTER ANSWER', 'No pre-answer reference giveaway');
 requireText(localApi, 'sortSelectedQuizQuestions', 'Chronological classic quiz ordering');
