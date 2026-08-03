@@ -73,7 +73,7 @@ export default function GenesisTrialScreen() {
   };
 
   return (
-    <CinematicBackdrop source={trial.background} darkness={0.32}>
+    <CinematicBackdrop source={trial.background} darkness={0.32} preserveSource>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topbar}>

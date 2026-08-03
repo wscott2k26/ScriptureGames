@@ -16,7 +16,7 @@ import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { CelebrationBurst } from '@/src/components/premium/CelebrationBurst';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
-import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
@@ -139,7 +139,7 @@ export default function BookMasteryScreen() {
               <Text style={styles.noGiveaway}>REFERENCE REVEALED AFTER ANSWER</Text>
             </View>
             <Text style={styles.question}>{question.q}</Text>
-            <ScriptureReferenceLink reference={question.reference} label="Open Passage Before Answering" testID="mastery-open-passage" />
+            <ScriptureLink reference={question.reference} label="Open Passage Before Answering" returnLabel="Return to Book Mastery" testID="mastery-open-passage" />
           </GlassPanel>
 
           <View style={styles.options}>
@@ -167,7 +167,7 @@ export default function BookMasteryScreen() {
                 <Text style={styles.feedbackTitle}>{isCorrect ? 'Correct. That wording is in the passage.' : 'Not quite. Read the matching line below.'}</Text>
                 {!isCorrect ? <Text style={styles.correctAnswer}>Correct answer: {question.options[question.answer]}</Text> : null}
                 <Text style={styles.explanation}>{question.explanation}</Text>
-                <ScriptureReferenceLink reference={question.reference} testID="mastery-feedback-scripture" />
+                <ScriptureLink reference={question.reference} returnLabel="Return to Book Mastery" testID="mastery-feedback-scripture" />
               </View>
             </GlassPanel>
           ) : null}

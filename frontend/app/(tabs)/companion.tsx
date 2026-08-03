@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,6 +47,7 @@ const CONTEXT_WORDS = ['Genesis', 'Exodus', 'Psalms', 'Proverbs', 'Matthew', 'Ma
 export default function CompanionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { profile } = useProfile();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -276,7 +278,7 @@ export default function CompanionScreen() {
 
   if (!profile) return null;
   const suggestions = profile.mode === 'kids' ? SUGGESTIONS_KIDS : SUGGESTIONS_ADULT;
-  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : spacing.sm;
+  const composerBottom = keyboardOpen ? Math.max(insets.bottom, 6) : tabBarHeight + spacing.sm;
 
   return (
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-03']} darkness={0.73}>

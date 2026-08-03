@@ -3,41 +3,95 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { usePreferences, type MotionMode } from '@/src/preferences-context';
+import { usePreferences, type AmbientSound, type MotionMode } from '@/src/preferences-context';
 import { useAppAudio } from '@/src/audio-context';
-import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
-import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
+import { PeacefulBackdrop, PeacefulScenePreview } from '@/src/components/premium/PeacefulBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
+import { getPeacefulScene } from '@/src/backgrounds/peaceful-scenes';
 import { colors, radii, spacing } from '@/src/theme';
 
 const MOTION_OPTIONS: { value: MotionMode; label: string; description: string }[] = [
   { value: 'system', label: 'System', description: 'Follow the phone accessibility setting.' },
-  { value: 'reduced', label: 'Motion Off', description: 'Stop drifting, reveal, and screen-transition motion.' },
-  { value: 'full', label: 'Full Motion', description: 'Use the complete cinematic experience.' },
+  { value: 'reduced', label: 'Motion Off', description: 'Use immediate state changes without decorative movement.' },
+  { value: 'gentle', label: 'Gentle Motion', description: 'Use calmer transitions, smaller effects, and fewer particles.' },
+  { value: 'full', label: 'Full Experience', description: 'Use the complete premium motion and celebration experience.' },
+];
+
+const AMBIENT_OPTIONS: { value: AmbientSound; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'piano', label: 'Soft Piano', description: 'Quiet original piano for prayer, study, and calm play.', icon: 'musical-notes' },
+  { value: 'rain', label: 'Gentle Rain', description: 'A soft looping rain bed with no thunder or sudden volume changes.', icon: 'rainy' },
+  { value: 'reading', label: 'Quiet Reading Room', description: 'Warm room tone for focused Bible reading and reflection.', icon: 'book-outline' },
 ];
 
 export default function PreferencesScreen() {
   const router = useRouter();
   const { preferences, updatePreferences, resetPreferences } = usePreferences();
   const { ready, previewSound } = useAppAudio();
+  const currentScene = getPeacefulScene(preferences.backgroundId);
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-04']} darkness={0.72}>
+    <PeacefulBackdrop darkness={0.54}>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader eyebrow="PLAYER CONTROL" title="Settings" subtitle="Sound, touch, motion, privacy, cloud backup, and player data." />
+        <ScreenHeader eyebrow="PLAYER CONTROL" title="Settings" subtitle="Atmosphere, sound, touch, motion, privacy, cloud backup, and player data." />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <Text style={styles.section}>Peaceful Atmosphere</Text>
+          <GlassPanel strong style={styles.backgroundPanel}>
+            {currentScene ? <PeacefulScenePreview scene={currentScene} style={styles.backgroundPreview} /> : null}
+            <View style={styles.backgroundCopy}>
+              <Text style={styles.backgroundLabel}>CURRENT BACKGROUND</Text>
+              <Text style={styles.backgroundTitle}>{currentScene?.name || 'Cross on the Hill'}</Text>
+              <Text style={styles.backgroundText}>Choose from 50 curated real photos, including Bible lands, lakes, oceans, mountains, gardens, skies, and worship settings. Photos download once when viewed and are cached on this device.</Text>
+            </View>
+            <TactileButton
+              label="Choose Peaceful Background"
+              icon={<Ionicons name="images" size={19} color={colors.onBrand} />}
+              onPress={() => router.push('/background-picker')}
+            />
+            <SettingToggle
+              icon="shuffle"
+              title="Daily Background Rotation"
+              description="Change once per day, preferring your favorites. Free profiles rotate through free scenes only."
+              value={preferences.backgroundRotationEnabled}
+              onValueChange={(backgroundRotationEnabled) => void updatePreferences({ backgroundRotationEnabled })}
+            />
+          </GlassPanel>
+
           <Text style={styles.section}>Sound & Touch</Text>
           <GlassPanel strong style={styles.panel}>
             <SettingToggle
-              icon="musical-notes"
-              title="Soft Piano"
-              description="Play quiet original piano ambience. It pauses for Lumi’s microphone and whenever the app leaves the foreground."
+              icon="volume-high"
+              title="Ambient Audio"
+              description="Play the selected peaceful sound. It pauses for Lumi’s microphone and whenever the app leaves the foreground."
               value={preferences.musicEnabled}
               onValueChange={(musicEnabled) => void updatePreferences({ musicEnabled })}
             />
+            <View style={styles.divider} />
+            <Text style={styles.label}>AMBIENT SOUND</Text>
+            <View style={styles.motionList}>
+              {AMBIENT_OPTIONS.map((option) => {
+                const selected = preferences.ambientSound === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${option.label}. ${option.description}`}
+                    onPress={() => void updatePreferences({ ambientSound: option.value, musicEnabled: true })}
+                    style={[styles.motionOption, selected && styles.motionSelected]}
+                  >
+                    <View style={styles.toggleIcon}><Ionicons name={option.icon} size={20} color={colors.brand} /></View>
+                    <View style={styles.motionCopy}>
+                      <Text style={styles.motionTitle}>{option.label}</Text>
+                      <Text style={styles.motionDescription}>{option.description}</Text>
+                    </View>
+                    <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? colors.brand : colors.muted} />
+                  </Pressable>
+                );
+              })}
+            </View>
             <View style={styles.divider} />
             <SettingToggle
               icon="volume-medium"
@@ -82,6 +136,7 @@ export default function PreferencesScreen() {
                     key={option.value}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
+                    accessibilityLabel={`${option.label}. ${option.description}`}
                     onPress={() => void updatePreferences({
                       motionMode: option.value,
                       ...(option.value === 'reduced' ? { cinematicTextEnabled: false } : {}),
@@ -97,7 +152,30 @@ export default function PreferencesScreen() {
                 );
               })}
             </View>
+            <Text style={styles.motionNote}>The phone’s Reduce Motion accessibility setting always overrides decorative animation for safety.</Text>
           </GlassPanel>
+
+          <Text style={styles.section}>Faith Rhythm</Text>
+          <GlassPanel style={styles.infoPanel}>
+            <Ionicons name="leaf" size={24} color={colors.success} />
+            <View style={styles.infoCopy}>
+              <Text style={styles.infoTitle}>Encouraging, never guilt-based</Text>
+              <Text style={styles.infoText}>A Bible trial, Daily Challenge, or guided Faith Journey can keep your rhythm growing. Grace Leaves protect an occasional missed day. There are no paid streak repairs or shame messages.</Text>
+            </View>
+          </GlassPanel>
+
+          <Text style={styles.section}>Help & Access</Text>
+          <GlassPanel style={styles.infoPanel}>
+            <Ionicons name="help-circle" size={24} color={colors.info} />
+            <View style={styles.infoCopy}>
+              <Text style={styles.infoTitle}>Learn the app or review Premium</Text>
+              <Text style={styles.infoText}>The optional tour explains every bottom tab and major system. Premium options clearly show which books are free and which require a validated entitlement.</Text>
+            </View>
+          </GlassPanel>
+          <View style={styles.actions}>
+            <TactileButton label="App Tour & Tutorial" icon={<Ionicons name="compass-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => router.push('/tutorial')} />
+            <TactileButton label="View Premium Options" icon={<Ionicons name="diamond-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => router.push('/premium')} />
+          </View>
 
           <Text style={styles.section}>Account, Privacy & Data</Text>
           <GlassPanel style={styles.infoPanel}>
@@ -113,10 +191,10 @@ export default function PreferencesScreen() {
             <TactileButton label="Privacy Policy" icon={<Ionicons name="lock-closed-outline" size={19} color={colors.onSurface} />} variant="glass" onPress={() => void Linking.openURL('https://scripture-games-support.vercel.app/privacy/')} />
             <TactileButton label="Restore All Defaults" variant="stone" onPress={() => void resetPreferences()} />
           </View>
-          <Text style={styles.footer}>All music and feedback sounds are bundled with the app for offline use.</Text>
+          <Text style={styles.footer}>Piano, rain, reading-room ambience, feedback sounds, and Bible content are bundled offline. Peaceful photos are cached after loading, with an artistic fallback when a photo is unavailable.</Text>
         </ScrollView>
       </SafeAreaView>
-    </CinematicBackdrop>
+    </PeacefulBackdrop>
   );
 }
 
@@ -141,9 +219,15 @@ function SettingToggle({ icon, title, description, value, onValueChange }: {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
+  scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md, maxWidth: 760, width: '100%', alignSelf: 'center' },
   section: { color: colors.parchment, fontSize: 18, fontWeight: '900', marginTop: spacing.sm },
   panel: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md },
+  backgroundPanel: { borderRadius: radii.xl, padding: spacing.md, gap: spacing.md },
+  backgroundPreview: { minHeight: 176 },
+  backgroundCopy: { gap: 3 },
+  backgroundLabel: { color: colors.brand, fontSize: 8.5, fontWeight: '900', letterSpacing: 1.1 },
+  backgroundTitle: { color: colors.onSurface, fontSize: 20, fontWeight: '900' },
+  backgroundText: { color: colors.muted, fontSize: 11.5, lineHeight: 17 },
   divider: { height: 1, backgroundColor: colors.divider },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   toggleIcon: { width: 43, height: 43, borderRadius: 14, backgroundColor: 'rgba(232,185,87,0.12)', borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
@@ -158,6 +242,7 @@ const styles = StyleSheet.create({
   motionCopy: { flex: 1 },
   motionTitle: { color: colors.onSurface, fontSize: 14, fontWeight: '900' },
   motionDescription: { color: colors.muted, fontSize: 11, lineHeight: 15, marginTop: 2 },
+  motionNote: { color: colors.muted, fontSize: 9.5, lineHeight: 14 },
   infoPanel: { borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   infoCopy: { flex: 1 },
   infoTitle: { color: colors.onSurface, fontSize: 15, fontWeight: '900' },

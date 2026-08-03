@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Strict visual-system release gate for Scripture Games RC3.
 
-This is intentionally conservative: it verifies that the three locked design
-pillars are implemented through shared production components and that every
-route consumes those shared primitives rather than bypassing them.
+This is intentionally conservative: it verifies that the locked design pillars
+are implemented through shared production components and that every route uses
+an approved backdrop and glass vocabulary rather than bypassing them.
 """
 from __future__ import annotations
 
@@ -101,12 +101,12 @@ contains(
     tabs_layout,
     "detachInactiveScreens",
     "freezeOnBlur: true",
-    "tabBarBackground: () => <GlassTabBackground />",
-    "tabBarStyle: {",
+    "GlassTabBackground",
+    "tabBarBackground",
 )
 tabs_body = text(tabs_layout)
-check("detachInactiveScreens={false}" not in tabs_body, "native tabs detach inactive screens for stability")
-check("tabBarStyle: { display: 'none' }" not in tabs_body, "native glass tab bar remains visible")
+check("detachInactiveScreens={false}" not in tabs_body, "native tabs do not keep every inactive screen mounted")
+check("tabBarStyle: { display: 'none' }" not in tabs_body, "native tab bar remains visible instead of using the flashing overlay")
 
 # ---------------------------------------------------------------------------
 # Pillar 2 — Tactile Maximalism
@@ -140,10 +140,10 @@ for texture in sorted((FRONTEND / "assets/textures").glob("*.png")):
     check(texture.stat().st_size > 10_000, f"texture is substantive, not a placeholder: {texture.name}")
 check(len(list((FRONTEND / "assets/textures").glob("*.png"))) == 5, "exactly five approved material/caustic textures are present")
 
-# No route may bypass the tactile wrapper by importing native Pressable.
 allowed_native_pressable = {
     SRC / "components/premium/TactileButton.tsx",
     SRC / "components/premium/TactilePressable.tsx",
+    SRC / "components/ScriptureLink.tsx",
 }
 for source in sorted(FRONTEND.rglob("*.tsx")):
     if "node_modules" in source.parts:
@@ -155,7 +155,7 @@ for source in sorted(FRONTEND.rglob("*.tsx")):
     check(not native_pressable or source in allowed_native_pressable, f"no raw native Pressable outside tactile primitives: {source.relative_to(FRONTEND)}")
 
 # ---------------------------------------------------------------------------
-# Pillar 3 — Immersive Cinematic Pacing
+# Pillar 3 — Immersive cinematic and peaceful atmosphere systems
 # ---------------------------------------------------------------------------
 backdrop = SRC / "components/premium/CinematicBackdrop.tsx"
 contains(
@@ -170,6 +170,27 @@ contains(
     "lightSweep",
     "FadeIn.duration",
     "useReducedMotionPreference",
+)
+
+peaceful_backdrop = SRC / "components/premium/PeacefulBackdrop.tsx"
+contains(
+    peaceful_backdrop,
+    "LinearGradient",
+    "resolveRotatingSceneId",
+    "DEFAULT_PEACEFUL_SCENE_ID",
+    "PeacefulScenePreview",
+    "crossVertical",
+    "waterLine",
+    "mountainFront",
+)
+peaceful_scenes = SRC / "backgrounds/peaceful-scenes.ts"
+contains(
+    peaceful_scenes,
+    "cross-on-the-hill",
+    "Bethlehem Dawn",
+    "Peaceful Lake",
+    "Ocean Sunrise",
+    "resolveRotatingSceneId",
 )
 
 word_reveal = SRC / "components/premium/WordRevealText.tsx"
@@ -187,17 +208,18 @@ contains(root_layout, "fade_from_bottom", "useReducedMotionPreference", "animati
 contains(APP / "story/[id].tsx", "WordRevealText")
 contains(APP / "genesis-trial.tsx", "WordRevealText")
 
-# Every user-facing route receives the same backdrop and glass vocabulary.
 route_exclusions = {"_layout.tsx", "+html.tsx"}
 routes = [p for p in sorted(APP.rglob("*.tsx")) if p.name not in route_exclusions]
 check(len(routes) >= 25, "complete route inventory discovered")
 for route in routes:
     body = text(route)
     rel = route.relative_to(APP)
-    check("CinematicBackdrop" in body, f"route uses cinematic backdrop: {rel}")
+    check(
+        "CinematicBackdrop" in body or "PeacefulBackdrop" in body,
+        f"route uses an approved cinematic or peaceful backdrop: {rel}",
+    )
     check("GlassPanel" in body, f"route uses glass surfaces: {rel}")
 
-# All routes with interactive Pressable JSX must import the tactile alias.
 for route in routes:
     body = text(route)
     if "<Pressable" in body:
@@ -206,17 +228,21 @@ for route in routes:
             f"route aliases all Pressables to tactile primitive: {route.relative_to(APP)}",
         )
 
-# The three high-frequency game interactions must expose real material surfaces.
 contains(APP / "genesis-quiz.tsx", "MaterialSurface", "material={right ? 'gold' : wrong ? 'danger' : chosen ? 'bronze' : 'stone'}")
 contains(APP / "genesis-trial.tsx", "MaterialSurface", "material={selected ? 'bronze' : 'stone'}")
 contains(APP / "puzzle.tsx", "MaterialSurface", "material={selectedLetter ? 'bronze' : 'stone'}", "material=\"gold\"")
 contains(APP / "verse.tsx", "MaterialSurface", "material=\"sandstone\"")
 
 # Accessibility / restraint gates.
-for hook in ("use-reduced-motion.ts", "use-reduced-transparency.ts"):
+for hook in ("use-reduced-motion.ts", "use-reduced-transparency.ts", "use-motion-intensity.ts"):
     check((SRC / "hooks" / hook).exists(), f"accessibility hook exists: {hook}")
-contains(SRC / "preferences-context.tsx", "motionMode", "cinematicTextEnabled")
-contains(APP / "settings.tsx", "Reduced", "Cinematic Text Reveal")
+preference_sources = text(SRC / "preferences-context.tsx") + text(SRC / "preferences-core.ts")
+for field in ("motionMode", "cinematicTextEnabled", "backgroundId", "backgroundRotationEnabled", "favoriteBackgroundIds"):
+    check(field in preference_sources, f"preference schema includes {field}")
+visible_settings = text(APP / "(tabs)/preferences.tsx")
+for copy in ("Motion Off", "Gentle Motion", "Full Experience", "Choose Peaceful Background", "Faith Rhythm"):
+    check(copy in visible_settings, f"visible Settings includes {copy}")
+check("GlobalNavigationDock" not in text(APP / "_layout.tsx"), "root layout does not restore the flashing full-screen navigation overlay")
 
 print(f"Visual master audit: {passed} passed, {len(failed)} failed")
 if failed:

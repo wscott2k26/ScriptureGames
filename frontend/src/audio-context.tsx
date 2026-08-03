@@ -1,17 +1,20 @@
 import { AppState, type AppStateStatus } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { SOFT_PIANO_BASE64 } from './audio-soft-piano';
+import { SOFT_RAIN_BASE64 } from './audio-soft-rain';
+import { READING_ROOM_BASE64 } from './audio-reading-room';
 import { TAP_SOUND_BASE64 } from './audio-tap';
 import { SUCCESS_SOUND_BASE64 } from './audio-success';
 import { ERROR_SOUND_BASE64 } from './audio-error';
 import { configureLumiVoiceAudio } from './lumi-voice';
 import { configureSoundEffects, type SoundCue } from './sfx';
 import { usePreferences } from './preferences-context';
+import type { AmbientSound } from './preferences-core';
 
-type AudioFiles = Record<'piano' | 'tap' | 'success' | 'error', string>;
+type AudioFiles = Record<'piano' | 'rain' | 'reading' | 'tap' | 'success' | 'error', string>;
 
 type AudioContextValue = {
   ready: boolean;
@@ -23,6 +26,8 @@ const AUDIO_DIRECTORY = `${FileSystem.cacheDirectory || ''}scripture-games-audio
 
 const AUDIO_DEFINITIONS = [
   ['piano', 'soft-piano.m4a', SOFT_PIANO_BASE64],
+  ['rain', 'soft-rain.wav', SOFT_RAIN_BASE64],
+  ['reading', 'reading-room.wav', READING_ROOM_BASE64],
   ['tap', 'tap.m4a', TAP_SOUND_BASE64],
   ['success', 'success.m4a', SUCCESS_SOUND_BASE64],
   ['error', 'error.m4a', ERROR_SOUND_BASE64],
@@ -34,48 +39,67 @@ async function materializeBundledAudio(): Promise<AudioFiles> {
   const entries = await Promise.all(AUDIO_DEFINITIONS.map(async ([key, filename, data]) => {
     const uri = `${AUDIO_DIRECTORY}${filename}`;
     const info = await FileSystem.getInfoAsync(uri);
-    if (!info.exists) {
-      await FileSystem.writeAsStringAsync(uri, data, { encoding: FileSystem.EncodingType.Base64 });
-    }
+    if (!info.exists) await FileSystem.writeAsStringAsync(uri, data, { encoding: FileSystem.EncodingType.Base64 });
     return [key, uri] as const;
   }));
   return Object.fromEntries(entries) as AudioFiles;
 }
 
+async function ensureAudioSession() {
+  await setAudioModeAsync({
+    allowsRecording: false,
+    playsInSilentMode: true,
+    shouldPlayInBackground: false,
+    interruptionMode: 'mixWithOthers',
+  });
+  await setIsAudioActiveAsync(true);
+}
+
 function replay(player: AudioPlayer) {
-  void player.seekTo(0)
-    .then(() => player.play())
-    .catch(() => {
-      // Sound effects are optional and never block gameplay or navigation.
-    });
+  void player.seekTo(0).then(() => player.play()).catch(() => undefined);
 }
 
 export function AudioProvider({ children }: { children: ReactNode }) {
   const { preferences } = usePreferences();
   const piano = useAudioPlayer(null);
+  const rain = useAudioPlayer(null);
+  const reading = useAudioPlayer(null);
+  const pianoStatus = useAudioPlayerStatus(piano);
+  const rainStatus = useAudioPlayerStatus(rain);
+  const readingStatus = useAudioPlayerStatus(reading);
   const tap = useAudioPlayer(null);
   const success = useAudioPlayer(null);
   const error = useAudioPlayer(null);
   const [ready, setReady] = useState(false);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const musicEnabledRef = useRef(preferences.musicEnabled);
+  const ambientSoundRef = useRef<AmbientSound>(preferences.ambientSound);
   const readyRef = useRef(false);
 
+  const ambientPlayers = useMemo<Record<AmbientSound, AudioPlayer>>(() => ({ piano, rain, reading }), [piano, rain, reading]);
   useEffect(() => {
     musicEnabledRef.current = preferences.musicEnabled;
-  }, [preferences.musicEnabled]);
+    ambientSoundRef.current = preferences.ambientSound;
+  }, [preferences.ambientSound, preferences.musicEnabled]);
 
   useEffect(() => {
     let active = true;
-    void materializeBundledAudio()
+    void ensureAudioSession()
+      .then(() => materializeBundledAudio())
       .then((files) => {
         if (!active) return;
         piano.replace({ uri: files.piano });
+        rain.replace({ uri: files.rain });
+        reading.replace({ uri: files.reading });
         tap.replace({ uri: files.tap });
         success.replace({ uri: files.success });
         error.replace({ uri: files.error });
         piano.loop = true;
+        rain.loop = true;
+        reading.loop = true;
         piano.volume = 0.12;
+        rain.volume = 0.17;
+        reading.volume = 0.14;
         tap.volume = 0.28;
         success.volume = 0.32;
         error.volume = 0.25;
@@ -87,28 +111,37 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         setReady(false);
       });
     return () => { active = false; };
-  }, [error, piano, success, tap]);
+  }, [error, piano, rain, reading, success, tap]);
 
   const pauseMusic = useCallback(() => {
-    try { piano.pause(); } catch { /* Optional audio. */ }
-  }, [piano]);
+    for (const player of Object.values(ambientPlayers)) {
+      try { player.pause(); } catch { /* Optional ambience. */ }
+    }
+  }, [ambientPlayers]);
 
   const resumeMusic = useCallback(async () => {
+    const sound = ambientSoundRef.current;
     if (!readyRef.current || !musicEnabledRef.current || appState.current !== 'active') return;
-    try {
-      await setIsAudioActiveAsync(true);
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false, shouldPlayInBackground: false });
-      piano.play();
-    } catch {
-      // Ambient music is optional and must never crash the app.
+    if (sound === 'piano') {
+      if (!pianoStatus.isLoaded) return;
+    } else if (sound === 'rain') {
+      if (!rainStatus.isLoaded) return;
+    } else {
+      if (!readingStatus.isLoaded) return;
     }
-  }, [piano]);
+    try {
+      await ensureAudioSession();
+      ambientPlayers[sound].play();
+    } catch {
+      // Ambient sound is optional and must never crash the app.
+    }
+  }, [ambientPlayers, pianoStatus.isLoaded, rainStatus.isLoaded, readingStatus.isLoaded]);
 
   useEffect(() => {
     if (!ready) return;
+    pauseMusic();
     if (preferences.musicEnabled) void resumeMusic();
-    else pauseMusic();
-  }, [pauseMusic, preferences.musicEnabled, ready, resumeMusic]);
+  }, [pauseMusic, preferences.ambientSound, preferences.musicEnabled, ready, resumeMusic]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -124,7 +157,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     configureSoundEffects(preferences.soundEffectsEnabled
       ? (cue) => {
           if (!readyRef.current || appState.current !== 'active') return;
-          replay(players[cue]);
+          void ensureAudioSession().then(() => replay(players[cue])).catch(() => undefined);
         }
       : null);
     return () => configureSoundEffects(null);
@@ -136,17 +169,14 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         pauseMusic();
         try { await setIsAudioActiveAsync(false); } catch { /* Speech still gets a chance. */ }
       },
-      resumeAfterVoice: async () => {
-        try { await setIsAudioActiveAsync(true); } catch { /* Optional audio. */ }
-        await resumeMusic();
-      },
+      resumeAfterVoice: async () => { await resumeMusic(); },
     });
     return () => configureLumiVoiceAudio({});
   }, [pauseMusic, resumeMusic]);
 
   const previewSound = useCallback((cue: Exclude<SoundCue, 'tap'>) => {
     if (!preferences.soundEffectsEnabled || !readyRef.current) return;
-    replay(cue === 'success' ? success : error);
+    void ensureAudioSession().then(() => replay(cue === 'success' ? success : error)).catch(() => undefined);
   }, [error, preferences.soundEffectsEnabled, success]);
 
   const value = useMemo(() => ({ ready, previewSound }), [previewSound, ready]);

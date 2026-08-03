@@ -76,10 +76,21 @@ if (companion.includes('ExpoSpeechRecognitionModule.start(')) fail('Companion st
 if (!companion.includes('startLumiListening')) fail('Companion is not connected to startLumiListening.');
 if (!companion.includes('LUMI_DRAFT_PREFIX')) fail('Lumi does not persist an unsent draft while users consult the Bible.');
 
-const preferences = read('src/preferences-context.tsx');
-for (const field of ['musicEnabled', 'soundEffectsEnabled', 'hapticsEnabled', 'motionMode']) {
-  if (!preferences.includes(field)) fail(`Preferences schema is missing ${field}.`);
+const preferencesContext = read('src/preferences-context.tsx');
+const preferencesCore = read('src/preferences-core.ts');
+const preferencesSchema = `${preferencesContext}\n${preferencesCore}`;
+for (const field of [
+  'musicEnabled',
+  'soundEffectsEnabled',
+  'hapticsEnabled',
+  'motionMode',
+  'backgroundId',
+  'backgroundRotationEnabled',
+  'favoriteBackgroundIds',
+]) {
+  if (!preferencesSchema.includes(field)) fail(`Preferences schema is missing ${field}.`);
 }
+if (!preferencesContext.includes('restorePreferences')) fail('Preferences context does not use the backward-compatible preference normalizer.');
 
 const rootLayout = read('app/_layout.tsx');
 if (!rootLayout.includes('AudioProvider')) fail('Root layout is missing the app-wide AudioProvider.');
@@ -106,9 +117,12 @@ for (const file of appFiles) {
   if (file.startsWith('(tabs)/') || file.includes('/_layout.') || backExclusions.has(file)) continue;
   const source = fs.readFileSync(path.join(APP_DIR, file), 'utf8');
   const hasStandardBack = /<ScreenHeader[^>]*\bback\b/.test(source) || source.includes('goBackOrHome(') || source.includes('router.back()');
-  const hasDedicatedReturn = file === 'season-victory.tsx'
-    && source.includes('Return to the Trial Map')
-    && source.includes('Return to Genesis Map');
+  const hasDedicatedReturn = (file === 'season-victory.tsx'
+      && source.includes('Return to the Trial Map')
+      && source.includes('Return to Genesis Map'))
+    || source.includes('Return to Book Library')
+    || source.includes('Choose Any Bible Book')
+    || source.includes("router.replace('/book-library')");
   if (!hasStandardBack && !hasDedicatedReturn) fail(`User-facing route app/${file} has no Back or dedicated return affordance.`);
 }
 

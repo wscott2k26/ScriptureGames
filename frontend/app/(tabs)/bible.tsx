@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 
@@ -60,6 +60,7 @@ function locationFromResult(result: BibleSearchResult): BibleLocation {
 
 export default function BibleCompanionScreen() {
   const router = useRouter();
+  const { reference, fromQuiz, fromScriptureLink, returnLabel } = useLocalSearchParams<{ reference?: string; fromQuiz?: string; fromScriptureLink?: string; returnLabel?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const { profile } = useProfile();
   const [study, setStudy] = useState<BibleStudyState | null>(null);
@@ -73,6 +74,7 @@ export default function BibleCompanionScreen() {
   const [noteDraft, setNoteDraft] = useState('');
   const [sermonDraft, setSermonDraft] = useState('');
   const [loading, setLoading] = useState(true);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [speakingChapter, setSpeakingChapter] = useState(false);
 
@@ -81,12 +83,15 @@ export default function BibleCompanionScreen() {
     setLoading(true);
     try {
       const next = await loadBibleStudy(profile.id);
-      const restoredBook = getBibleBook(next.lastLocation.bookId) || BIBLE_LIBRARY[0];
+      const requestedLocation = reference ? parseBibleReference(String(reference)) : null;
+      setReferenceError(reference && !requestedLocation ? `We could not open ${String(reference)}. Your last Bible location is still available.` : null);
+      const targetLocation = requestedLocation || next.lastLocation;
+      const restoredBook = getBibleBook(targetLocation.bookId) || BIBLE_LIBRARY[0];
       if (restoredBook) {
-        const restoredChapter = Math.max(1, Math.min(restoredBook.chapters.length, next.lastLocation.chapter));
+        const restoredChapter = Math.max(1, Math.min(restoredBook.chapters.length, targetLocation.chapter));
         setBookId(restoredBook.id);
         setChapter(restoredChapter);
-        setFocusedVerse(next.lastLocation.verse);
+        setFocusedVerse(targetLocation.verse);
         setSermonDraft(next.sermonNotes[chapterKey(restoredBook.id, restoredChapter)] || '');
       }
       setStudy(next);
@@ -95,7 +100,7 @@ export default function BibleCompanionScreen() {
     } finally {
       setLoading(false);
     }
-  }, [profile]);
+  }, [profile, reference]);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
   useEffect(() => () => { void Speech.stop(); }, []);
@@ -299,8 +304,18 @@ export default function BibleCompanionScreen() {
           eyebrow={study?.churchMode ? 'CHURCH MODE · OFFLINE' : 'FULL BIBLE · OFFLINE READY'}
           title="Bible & Church Companion"
           subtitle={`${BIBLE_BUILD_META.translationName} · ${BIBLE_BUILD_META.bookCount} books · public domain`}
-          right={<Text style={styles.headerBook}>📖</Text>}
+          right={(fromQuiz === '1' || fromScriptureLink === '1') && router.canGoBack() ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={String(returnLabel || (fromQuiz === '1' ? 'Return to Quiz' : 'Return'))} onPress={() => router.back()} style={styles.returnQuizButton}>
+              <Ionicons name="arrow-back" size={16} color={colors.brand} />
+              <Text style={styles.returnQuizText}>{String(returnLabel || (fromQuiz === '1' ? 'Return to Quiz' : 'Return'))}</Text>
+            </Pressable>
+          ) : <Text style={styles.headerBook}>📖</Text>}
         />
+        {referenceError ? (
+          <GlassPanel style={{ marginHorizontal: spacing.lg, marginBottom: spacing.sm, borderRadius: radii.lg, padding: spacing.md }}>
+            <Text accessibilityRole="alert" style={{ color: colors.coral, fontSize: 12.5, lineHeight: 18, fontWeight: '800' }}>{referenceError}</Text>
+          </GlassPanel>
+        ) : null}
         <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <GlassPanel strong style={styles.searchCard}>
             <View style={styles.searchTop}>
@@ -525,6 +540,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
   loadingText: { color: colors.parchment, fontWeight: '800' },
+  returnQuizButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(10,15,24,0.76)', borderWidth: 1, borderColor: colors.borderStrong },
+  returnQuizText: { color: colors.brand, fontSize: 11, fontWeight: '900' },
   headerBook: { fontSize: 34 },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: 130, gap: spacing.md },
   searchCard: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md },

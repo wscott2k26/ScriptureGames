@@ -7,15 +7,13 @@ import { CelebrationBurst } from '@/src/components/premium/CelebrationBurst';
 
 import { api } from '@/src/api';
 import { useProfile } from '@/src/profile-context';
-import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
-import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink';
 import { TactileButton } from '@/src/components/premium/TactileButton';
-import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
-import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { withResolvedQuizReference } from '@/src/quiz-reference-resolution';
+import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
 
@@ -46,11 +44,7 @@ export default function QuizPlay() {
     setLoading(true);
     setError(null);
     api.getQuiz(String(topic), 5)
-      .then((result) => {
-        if (!active) return;
-        const resolved = result.questions.map(withResolvedQuizReference);
-        setQuestions(sortSelectedQuizQuestions(String(topic), resolved));
-      })
+      .then((result) => { if (active) setQuestions(result.questions.map(withResolvedQuizReference)); })
       .catch(() => { if (active) setError('This training field could not be opened.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -103,7 +97,7 @@ export default function QuizPlay() {
 
   if (loading || error || !question) {
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-09']} darkness={0.73}>
+      <CinematicBackdrop darkness={0.66}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <Stack.Screen options={{ headerShown: false }} />
           <ScreenHeader back eyebrow="TRAINING GROUND" title={titleCase(String(topic))} />
@@ -123,7 +117,7 @@ export default function QuizPlay() {
   if (done) {
     const percent = Math.round((correct / questions.length) * 100);
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-09']} darkness={0.55}>
+      <CinematicBackdrop darkness={0.5}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <Stack.Screen options={{ headerShown: false }} />
           <View style={styles.center} testID="quiz-done">
@@ -147,7 +141,7 @@ export default function QuizPlay() {
   }
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-09']} darkness={0.73}>
+    <CinematicBackdrop darkness={0.66}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader back eyebrow="CLASSIC TRAINING" title={titleCase(String(topic))} subtitle={`Question ${index + 1} of ${questions.length}`} />
@@ -179,7 +173,12 @@ export default function QuizPlay() {
               <View style={styles.feedbackCopy}>
                 <Text style={styles.feedbackTitle}>{correctSelection ? 'Correct' : 'Not quite'}</Text>
                 {!correctSelection ? <Text style={styles.feedbackText}>Correct answer: {question.options[question.answer]}</Text> : null}
-                <ScriptureReferenceLink reference={question.verse} testID="quiz-feedback-scripture" />
+                <ScriptureLink
+                  reference={question.verse}
+                  prefix="Source:"
+                  returnLabel="Return to Quiz"
+                  testID="quiz-scripture-reference"
+                />
               </View>
             </GlassPanel>
           ) : null}
@@ -193,28 +192,28 @@ export default function QuizPlay() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', padding: spacing.lg },
-  stateCard: { borderRadius: radii.xl, padding: spacing.xl, alignItems: 'center', gap: spacing.md },
+  stateCard: { borderRadius: radii.xl, padding: spacing.xl, alignItems: 'center', gap: spacing.md, backgroundColor: 'rgba(249,242,224,0.93)', borderColor: 'rgba(232,185,87,0.62)' },
   stateIcon: { fontSize: 62 },
-  stateTitle: { color: colors.onSurface, fontSize: 22, fontWeight: '900', textAlign: 'center' },
-  stateCopy: { color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  stateTitle: { color: '#241C14', fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  stateCopy: { color: '#665747', fontSize: 13, lineHeight: 19, textAlign: 'center' },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
   progress: { height: 7, borderRadius: 99, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.09)' },
   progressFill: { height: '100%', backgroundColor: colors.brand, borderRadius: 99 },
-  questionCard: { borderRadius: radii.xl, minHeight: 150, padding: spacing.xl, justifyContent: 'center' },
-  question: { color: colors.onSurface, fontSize: 23, lineHeight: 31, fontWeight: '900' },
+  questionCard: { borderRadius: radii.xl, minHeight: 150, padding: spacing.xl, justifyContent: 'center', backgroundColor: 'rgba(249,242,224,0.93)', borderColor: 'rgba(232,185,87,0.62)' },
+  question: { color: '#241C14', fontSize: 23, lineHeight: 31, fontWeight: '900' },
   options: { gap: spacing.md },
-  feedback: { borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  feedback: { borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', backgroundColor: 'rgba(249,242,224,0.91)' },
   feedbackGood: { borderColor: 'rgba(79,181,138,0.55)' },
   feedbackBad: { borderColor: 'rgba(240,131,90,0.55)' },
   feedbackCopy: { flex: 1 },
-  feedbackTitle: { color: colors.onSurface, fontSize: 14, fontWeight: '900' },
-  feedbackText: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 2 },
-  resultCard: { borderRadius: radii.xl, padding: spacing.xl, alignItems: 'center', gap: spacing.md },
+  feedbackTitle: { color: '#241C14', fontSize: 14, fontWeight: '900' },
+  feedbackText: { color: '#665747', fontSize: 12, lineHeight: 18, marginTop: 2 },
+  resultCard: { borderRadius: radii.xl, padding: spacing.xl, alignItems: 'center', gap: spacing.md, backgroundColor: 'rgba(249,242,224,0.93)', borderColor: 'rgba(232,185,87,0.62)' },
   resultIcon: { fontSize: 72 },
   resultEyebrow: { color: colors.brand, fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  resultTitle: { color: colors.onSurface, fontSize: 25, fontWeight: '900', textAlign: 'center' },
+  resultTitle: { color: '#241C14', fontSize: 25, fontWeight: '900', textAlign: 'center' },
   resultPercent: { color: colors.brand, fontSize: 52, fontWeight: '900' },
-  resultCopy: { color: colors.muted, fontSize: 14, fontWeight: '800' },
+  resultCopy: { color: '#665747', fontSize: 14, fontWeight: '800' },
   resultActions: { width: '100%', gap: spacing.md },
   errorText: { color: colors.error, fontSize: 12, lineHeight: 18, textAlign: 'center', fontWeight: '800' },
 });

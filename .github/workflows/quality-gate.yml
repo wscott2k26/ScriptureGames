@@ -4,6 +4,13 @@ on:
   pull_request:
     branches:
       - main
+      - feature/complete-bible-journey-upgrade
+      - fix/build-13-acceptance-regressions
+      - fix/build-14-global-audio-backgrounds
+      - fix/build-15-piano-premium-boundary
+      - fix/build-16-scripture-reference-navigation
+      - fix/build-17-universal-scripture-links
+      - fix/build-18-scripture-reference-runtime
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -12,6 +19,12 @@ on:
   push:
     branches:
       - main
+      - fix/build-13-acceptance-regressions
+      - fix/build-14-global-audio-backgrounds
+      - fix/build-15-piano-premium-boundary
+      - fix/build-16-scripture-reference-navigation
+      - fix/build-17-universal-scripture-links
+      - fix/build-18-scripture-reference-runtime
     paths:
       - 'frontend/**'
       - 'scripts/**'
@@ -84,6 +97,10 @@ jobs:
         working-directory: frontend
         run: yarn audit:book-mastery
 
+      - name: Test Build 18 and Build 20 coexistence
+        working-directory: frontend
+        run: yarn test:build20
+
       - name: Test Lumi response engine
         working-directory: frontend
         run: yarn test:lumi
@@ -95,6 +112,38 @@ jobs:
       - name: Test Back navigation fallback
         working-directory: frontend
         run: yarn test:navigation
+
+      - name: Test complete Bible journey requirements
+        working-directory: frontend
+        run: yarn test:journey
+
+      - name: Test Build 13 acceptance corrections
+        working-directory: frontend
+        run: yarn test:acceptance
+
+      - name: Test Build 14 global audio and backgrounds
+        working-directory: frontend
+        run: yarn test:build14
+
+      - name: Test Build 15 piano and Premium boundary
+        working-directory: frontend
+        run: yarn test:build15
+
+      - name: Test Build 16 Scripture-reference navigation
+        working-directory: frontend
+        run: yarn test:build16
+
+      - name: Test Build 17 universal Scripture links
+        working-directory: frontend
+        run: yarn test:build17
+
+      - name: Test Build 18 Scripture runtime navigation
+        working-directory: frontend
+        run: yarn test:build18
+
+      - name: Audit complete Bible journey source
+        working-directory: frontend
+        run: yarn audit:journey
 
       - name: Audit runtime stability and navigation
         working-directory: frontend

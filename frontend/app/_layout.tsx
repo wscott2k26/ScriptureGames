@@ -9,6 +9,7 @@ import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { ProfileProvider } from '@/src/profile-context';
 import { PreferencesProvider } from '@/src/preferences-context';
 import { AudioProvider } from '@/src/audio-context';
+import { PremiumEntitlementProvider } from '@/src/premium-entitlement';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 import { colors } from '@/src/theme';
 
@@ -47,7 +48,9 @@ export default function RootLayout() {
         <PreferencesProvider>
           <AudioProvider>
             <ProfileProvider>
-              <RootNavigator />
+              <PremiumEntitlementProvider>
+                <RootNavigator />
+              </PremiumEntitlementProvider>
             </ProfileProvider>
           </AudioProvider>
         </PreferencesProvider>

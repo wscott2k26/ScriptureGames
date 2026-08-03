@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -16,8 +17,10 @@ import {
 } from '../src/quiz-reference-resolution.ts';
 import { passageLocationFromReference } from '../src/quiz-ordering.ts';
 
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+
 function readSource(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url).href), 'utf8');
+  return readFileSync(resolve(scriptDirectory, relativePath), 'utf8');
 }
 
 function fakeBibleBook(bookId: string, title: string): BibleBookForMastery {
@@ -104,23 +107,32 @@ for (const reference of genesisReferences) {
 const classicScreen = readSource('../app/quiz-play.tsx');
 const genesisScreen = readSource('../app/genesis-quiz.tsx');
 const dailyScreen = readSource('../app/daily-challenge.tsx');
-const dailyEngine = readSource('../src/daily-challenge.ts');
+const dailyCore = readSource('../src/daily-challenge.ts');
 const masteryScreen = readSource('../app/book-mastery.tsx');
-const passageReader = readSource('../app/passage-reader.tsx');
+const scriptureLink = readSource('../src/components/ScriptureLink.tsx');
+const bibleScreen = readSource('../app/(tabs)/bible.tsx');
 const quizHub = readSource('../app/(tabs)/quiz.tsx');
 
-assert.match(classicScreen, /withResolvedQuizReference/, 'Classic Training must resolve every Scripture reference.');
-assert.match(classicScreen, /quiz-feedback-scripture/, 'Classic Training must link feedback to Scripture.');
-assert.match(dailyEngine, /withResolvedQuizReference/, 'Daily Bread must resolve every Scripture reference.');
-assert.match(genesisScreen, /genesis-feedback-scripture/, 'Genesis trials must link feedback to Scripture.');
-assert.match(dailyScreen, /daily-feedback-scripture/, 'Daily Bread must link feedback to Scripture.');
-assert.match(masteryScreen, /mastery-feedback-scripture/, 'Book Mastery must link feedback to Scripture.');
-assert.doesNotMatch(genesisScreen, />\{question\.reference\}<\/Text>/, 'Genesis must not print the answer reference above the question.');
+assert.match(classicScreen, /withResolvedQuizReference/, 'Classic Training must resolve every Scripture reference before rendering.');
+assert.match(classicScreen, /quiz-scripture-reference/, 'Classic Training must link right and wrong feedback to Scripture.');
+assert.match(dailyCore, /withResolvedQuizReference/, 'Daily Bread must resolve every Scripture reference before rendering.');
+assert.match(dailyScreen, /Read it in context:/, 'Daily Bread feedback must provide a contextual Scripture link.');
+assert.ok((dailyScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Daily Bread must retain question, feedback, and Witness Card Scripture links.');
+assert.ok((genesisScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Genesis must retain question, feedback, and result Scripture links.');
+assert.match(masteryScreen, /from '@\/src\/components\/ScriptureLink'/, 'Book Mastery must reuse the proven ScriptureLink component.');
+assert.match(masteryScreen, /mastery-feedback-scripture/, 'Book Mastery must link right and wrong feedback to Scripture.');
 assert.match(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must provide passage reading before answering.');
-assert.match(passageReader, /router\.back\(\)/, 'The passage reader must return without replacing mastery state.');
+assert.match(masteryScreen, /REFERENCE REVEALED AFTER ANSWER/, 'Book Mastery must not print an answer-giving reference before grading.');
+
+assert.match(scriptureLink, /router\.navigate/, 'Shared Scripture links must preserve the originating screen in navigation history.');
+assert.match(scriptureLink, /pathname: '\/\(tabs\)\/bible'/, 'Shared Scripture links must use the proven Bible tab destination.');
+assert.match(scriptureLink, /returnLabel/, 'Shared Scripture links must preserve a contextual return label.');
+assert.match(bibleScreen, /fromScriptureLink/, 'The Bible tab must recognize shared Scripture-link navigation.');
+assert.match(bibleScreen, /returnLabel/, 'The Bible tab must display contextual return behavior.');
+
 assert.match(quizHub, /Scripture Fields/, 'Existing Scripture Fields section must remain.');
 assert.match(quizHub, /Memory & Skill/, 'Existing Memory & Skill section must remain.');
 assert.match(quizHub, /Old Testament Books/, 'Old Testament book shelf is missing.');
 assert.match(quizHub, /New Testament Books/, 'New Testament book shelf is missing.');
 
-console.log('Book Mastery and clickable Scripture audit passed.');
+console.log('Book Mastery and recovered clickable Scripture audit passed.');

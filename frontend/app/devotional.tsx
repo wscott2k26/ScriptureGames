@@ -12,6 +12,7 @@ import { GENESIS_BACKGROUNDS } from '@/src/genesis-season';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { colors, radii, spacing } from '@/src/theme';
 
 type Devo = { title: string; verse: string; reference: string; reflection: string; prayer: string };
@@ -47,7 +48,7 @@ export default function DevotionalScreen() {
                 <View style={styles.heroCopy}>
                   <Text style={styles.heroEyebrow}>WORD FOR TODAY</Text>
                   <Text style={styles.verse}>“{devo.verse}”</Text>
-                  <Text style={styles.reference}>{devo.reference}</Text>
+                  <ScriptureLink reference={devo.reference} returnLabel="Return to Devotional" />
                 </View>
               </GlassPanel>
               <GlassPanel strong style={styles.sectionCard}>

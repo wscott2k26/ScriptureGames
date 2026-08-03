@@ -22,6 +22,7 @@ import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { GENESIS_BACKGROUNDS, GENESIS_TRIALS, getFaction, rankFor } from '@/src/genesis-season';
 import { loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
+import { syncGenesisJourneyCompletion } from '@/src/bible-journey/progress';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
 
 export default function SeasonVictory() {
@@ -31,12 +32,18 @@ export default function SeasonVictory() {
   const [season, setSeason] = useState<SeasonProgress | null>(null);
 
   useEffect(() => {
-    if (profile) void loadSeasonProgress(profile.id).then(setSeason);
+    if (!profile) return;
+    void loadSeasonProgress(profile.id).then(async (next) => {
+      setSeason(next);
+      if (next.completedTrials.length >= GENESIS_TRIALS.length) {
+        await syncGenesisJourneyCompletion(profile.id, next.completedTrials.length).catch(() => undefined);
+      }
+    });
   }, [profile]);
 
   if (!profile || !season) {
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5}>
+      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5} preserveSource>
         <SafeAreaView style={styles.center}><Text style={styles.loading}>Preparing the victory hall…</Text></SafeAreaView>
       </CinematicBackdrop>
     );
@@ -58,7 +65,7 @@ export default function SeasonVictory() {
 
   if (!unlocked) {
     return (
-      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5}>
+      <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.5} preserveSource>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <View style={styles.lockedWrap}>
             <GlassPanel strong style={styles.lockedPanel}>
@@ -74,7 +81,7 @@ export default function SeasonVictory() {
   }
 
   return (
-    <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.35}>
+    <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-10']} darkness={0.35} preserveSource>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {!reducedMotion ? <CelebrationBurst intensity="champion" colors={[colors.brand, '#F9E8B6', colors.brandSecondary, faction?.accent || colors.coral, '#FFFFFF']} /> : null}
@@ -123,6 +130,8 @@ export default function SeasonVictory() {
             </View>
           </GlassPanel>
 
+          <TactileButton label="Continue to Exodus" icon={<Ionicons name="arrow-forward-circle" size={20} color={colors.onBrand} />} onPress={() => router.push({ pathname: '/book-season', params: { bookId: 'EXO' } })} />
+          <TactileButton variant="glass" label="Choose Any Bible Book" icon={<Ionicons name="library" size={19} color={colors.onSurface} />} onPress={() => router.push('/book-library')} />
           <TactileButton label="Share My Champion Record" icon={<Ionicons name="share-social" size={20} color={colors.onBrand} />} onPress={() => void share()} />
           <TactileButton variant="glass" label="Return to Genesis Map" icon={<Ionicons name="map" size={19} color={colors.onSurface} />} onPress={() => router.replace('/(tabs)/journey')} />
           <Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/genesis-trial', params: { id: 'trial-10' } })} style={styles.replayLink}>

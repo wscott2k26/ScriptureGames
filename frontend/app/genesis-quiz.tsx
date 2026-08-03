@@ -23,13 +23,13 @@ import { useProfile } from '@/src/profile-context';
 import { colors } from '@/src/theme';
 import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
-import { ScriptureReferenceLink } from '@/src/components/ScriptureReferenceLink';
 import { TactileButton } from '@/src/components/premium/TactileButton';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
 import { getFaction, getTrial, type GenesisQuestion } from '@/src/genesis-season';
 import { completeSeasonTrial, loadSeasonProgress, type SeasonProgress } from '@/src/season-progress';
-import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
 import { useReducedMotionPreference } from '@/src/hooks/use-reduced-motion';
+import { sortSelectedQuizQuestions } from '@/src/quiz-ordering';
 
 function shuffle<T>(items: readonly T[]): T[] {
   const copy = [...items];
@@ -154,7 +154,7 @@ export default function GenesisQuizScreen() {
   if (done) {
     const message = percent >= 80 ? 'Gate Conquered' : percent >= 60 ? 'Gate Opened' : 'Trial Completed';
     return (
-      <CinematicBackdrop source={trial.background} darkness={0.48}>
+      <CinematicBackdrop source={trial.background} darkness={0.48} preserveSource>
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           {percent >= 60 && !reducedMotion && (
@@ -205,7 +205,7 @@ export default function GenesisQuizScreen() {
               <View style={styles.truthCopy}>
                 <Text style={styles.truthLabel}>TRIAL TRUTH</Text>
                 <Text style={styles.truthText}>{question.explanation}</Text>
-                <ScriptureReferenceLink reference={question.reference} testID="genesis-result-scripture" />
+                <ScriptureLink reference={question.reference} compact returnLabel="Return to Genesis Results" />
               </View>
             </GlassPanel>
 
@@ -226,7 +226,7 @@ export default function GenesisQuizScreen() {
   }
 
   return (
-    <CinematicBackdrop source={trial.background} darkness={0.5}>
+    <CinematicBackdrop source={trial.background} darkness={0.5} preserveSource>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.quizTopbar}>
@@ -243,10 +243,9 @@ export default function GenesisQuizScreen() {
           <Animated.View key={`question-${index}`} entering={reducedMotion ? undefined : SlideInRight.springify().damping(20)} exiting={reducedMotion ? undefined : SlideOutLeft.duration(180)}>
             <View style={styles.questionMeta}>
               <Text style={styles.questionEyebrow}>TRIAL {trial.number} · {trial.virtue.toUpperCase()}</Text>
-              <Text style={styles.questionReference}>READ BEFORE ANSWERING</Text>
+              <ScriptureLink reference={question.reference} compact tone="muted" returnLabel="Return to Genesis Trial" />
             </View>
             <Text style={styles.question}>{question.q}</Text>
-            <ScriptureReferenceLink reference={question.reference} label="Open Passage Before Answering" testID="genesis-open-passage" />
             <View style={styles.options}>
               {question.options.map((option, optionIndex) => {
                 const chosen = selected === optionIndex;
@@ -297,7 +296,7 @@ export default function GenesisQuizScreen() {
                 </View>
                 {!isCorrect ? <Text style={styles.correctAnswer}>Correct answer: {question.options[question.answer]}</Text> : null}
                 <Text style={styles.explanation}>{question.explanation}</Text>
-                <ScriptureReferenceLink reference={question.reference} testID="genesis-feedback-scripture" />
+                <ScriptureLink reference={question.reference} compact returnLabel="Return to Genesis Trial" />
               </GlassPanel>
             </Animated.View>
           )}
@@ -334,8 +333,8 @@ const styles = StyleSheet.create({
   questionMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 10 },
   questionEyebrow: { color: colors.brand, fontSize: 9, fontWeight: '900', letterSpacing: 1.25 },
   questionReference: { color: colors.muted, fontSize: 10, fontWeight: '700' },
-  question: { color: colors.onSurface, fontSize: 25, lineHeight: 34, fontWeight: '900', marginBottom: 8 },
-  options: { gap: 11, marginTop: 14 },
+  question: { color: colors.onSurface, fontSize: 25, lineHeight: 34, fontWeight: '900', marginBottom: 21 },
+  options: { gap: 11 },
   optionCard: { minHeight: 70, borderRadius: 21, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   optionChosen: { borderColor: colors.brand },
   optionRight: { borderColor: '#FFE9A8' },

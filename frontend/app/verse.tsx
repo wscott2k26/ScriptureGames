@@ -21,6 +21,7 @@ import { CinematicBackdrop } from '@/src/components/premium/CinematicBackdrop';
 import { GlassPanel } from '@/src/components/premium/GlassPanel';
 import { ScreenHeader } from '@/src/components/premium/ScreenHeader';
 import { TactileButton } from '@/src/components/premium/TactileButton';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
 import { colors, radii, spacing } from '@/src/theme';
 import { sfx } from '@/src/sfx';
@@ -194,7 +195,13 @@ export default function VerseMemory() {
     <CinematicBackdrop source={GENESIS_BACKGROUNDS['trial-07']} darkness={0.73}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ScreenHeader back eyebrow="VERSE MEMORY" title={`${verse.reference}`} subtitle={`Passage ${index + 1} of ${verses.length}${verse.translation ? ` · ${verse.translation}` : ''}`} />
+        <ScreenHeader
+          back
+          eyebrow="VERSE MEMORY"
+          title="Verse Memory"
+          subtitle={`Passage ${index + 1} of ${verses.length}${verse.translation ? ` · ${verse.translation}` : ''}`}
+          right={<ScriptureLink reference={verse.reference} compact tone="muted" returnLabel="Return to Verse Memory" />}
+        />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.progress}><View style={[styles.progressFill, { width: `${((index + 1) / verses.length) * 100}%` }]} /></View>
           <GlassPanel strong style={styles.verseCard}>
