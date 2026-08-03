@@ -52,7 +52,7 @@ for (const book of BOOK_MASTERY_BOOKS) {
   assert.equal(new Set(pool.map((question) => question.concept)).size, pool.length, `${book.title} concepts must be unique.`);
 
   for (const question of pool) {
-    assert.equal(question.referenceVisibility, 'reader-only', `${question.id} must hide its reference before answering.`);
+    assert.equal(question.referenceVisibility, 'reader-only', `${question.id} must use the Bible-reader-assisted reference mode.`);
     assert.ok(passageLocationFromReference(question.reference), `${question.id} must open a valid passage.`);
     assert.equal(question.options.length, 4, `${question.id} must have four options.`);
     assert.equal(new Set(question.options).size, 4, `${question.id} options must be distinct.`);
@@ -120,10 +120,11 @@ assert.match(dailyScreen, /Read it in context:/, 'Daily Bread feedback must prov
 assert.ok((dailyScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Daily Bread must retain question, feedback, and Witness Card Scripture links.');
 assert.ok((genesisScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Genesis must retain question, feedback, and result Scripture links.');
 assert.match(masteryScreen, /from '@\/src\/components\/ScriptureLink'/, 'Book Mastery must reuse the proven ScriptureLink component.');
+assert.match(masteryScreen, /mastery-question-scripture/, 'Book Mastery must provide the assigned passage in the top-right before answering.');
 assert.match(masteryScreen, /mastery-feedback-scripture/, 'Book Mastery must link right and wrong feedback to Scripture.');
-assert.doesNotMatch(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must not expose its answer passage before grading.');
-assert.equal((masteryScreen.match(/<ScriptureLink/g) || []).length, 1, 'Book Mastery must expose exactly one Scripture link, inside post-answer feedback.');
-assert.match(masteryScreen, /REFERENCE REVEALED AFTER ANSWER/, 'Book Mastery must not print an answer-giving reference before grading.');
+assert.doesNotMatch(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must not use the old full-width passage button.');
+assert.equal((masteryScreen.match(/<ScriptureLink/g) || []).length, 2, 'Book Mastery must expose one pre-answer lookup and one post-answer reference.');
+assert.doesNotMatch(masteryScreen, /REFERENCE REVEALED AFTER ANSWER/, 'Book Mastery questions name a passage to research and must not hide that lookup.');
 
 assert.match(scriptureLink, /router\.navigate/, 'Shared Scripture links must preserve the originating screen in navigation history.');
 assert.match(scriptureLink, /pathname: '\/\(tabs\)\/bible'/, 'Shared Scripture links must use the proven Bible tab destination.');
