@@ -1,0 +1,111 @@
+name: Scripture Games Build 20 TestFlight Submit Only
+
+on:
+  push:
+    branches:
+      - release/build20-testflight-submit
+    paths:
+      - '.github/status-triggers/ios-build20-submit-authorized.md'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scripture-games-build20-testflight-submit-only
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: Submit exact recovered Build 20 to TestFlight
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      BUILD_ID: 26960a20-2b9c-4560-9db1-ca5de1e35a9a
+      BUILD_SOURCE_SHA: d59d5cc00bf60f4de5f81e0e8d877d616ef8bf6b
+      VERIFIED_APP_SOURCE_SHA: 6d02cccfbd6bb91f6b85893302644b9d80980e96
+      EAS_PROJECT_ID: 18710e80-2a62-46ac-8d3a-d1711b7d920a
+
+    steps:
+      - name: Check out submit-only branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/build20-testflight-submit
+          fetch-depth: 0
+
+      - name: Verify explicit authorization and unchanged app source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/build20-testflight-submit"
+          test -f .github/status-triggers/ios-build20-submit-authorized.md
+          grep -Fq 'AUTHORIZED: submit exact existing iOS Build 20 to TestFlight.' .github/status-triggers/ios-build20-submit-authorized.md
+          grep -Fq 'NO NEW EAS BUILD.' .github/status-triggers/ios-build20-submit-authorized.md
+          grep -Fq 'NO ANDROID BUILD.' .github/status-triggers/ios-build20-submit-authorized.md
+          grep -Fq 'NO APP REVIEW OR PUBLIC RELEASE.' .github/status-triggers/ios-build20-submit-authorized.md
+          git merge-base --is-ancestor "$VERIFIED_APP_SOURCE_SHA" HEAD
+          git diff --exit-code "$VERIFIED_APP_SOURCE_SHA" HEAD -- frontend scripts supabase
+          test -n "${EXPO_TOKEN:-}"
+
+      - name: Set up Node and EAS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Authenticate Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Verify Expo identity and exact finished Build 20
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas whoami | tee /tmp/eas-whoami.txt
+          grep -Eq '^wscott2k8([[:space:]]|$)' /tmp/eas-whoami.txt
+          eas project:info --non-interactive | tee /tmp/eas-project.txt
+          grep -q "$EAS_PROJECT_ID" /tmp/eas-project.txt
+          eas build:view "$BUILD_ID" --json > /tmp/build20.json
+          python -m json.tool /tmp/build20.json
+          jq -e '
+            .id == env.BUILD_ID and
+            .platform == "IOS" and
+            .project.id == env.EAS_PROJECT_ID and
+            .distribution == "STORE" and
+            .buildProfile == "production" and
+            .appVersion == "1.0.0" and
+            .appBuildVersion == "20" and
+            .status == "FINISHED" and
+            .isForIosSimulator == false and
+            .gitCommitHash == env.BUILD_SOURCE_SHA
+          ' /tmp/build20.json
+
+      - name: Submit exact existing Build 20 to TestFlight
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive | tee ../ios-build20-submit.log
+
+      - name: Save submission record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-build20-testflight-submission
+          path: ios-build20-submit.log
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report successful Build 20 submission
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 submitted to TestFlight" --body "Submitted exact existing iOS Build 20 to App Store Connect/TestFlight. EAS build ID: $BUILD_ID. Build source: $BUILD_SOURCE_SHA, whose application source is the five-pass verified recovery $VERIFIED_APP_SOURCE_SHA. No new EAS build, Android build, App Review submission, or public release occurred. Workflow run: $GITHUB_RUN_ID. Apple processing confirmation is still required before declaring it available in TestFlight."
+
+      - name: Report submission blocker without retrying
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 TestFlight submission stopped" --body "The submit-only workflow stopped in run $GITHUB_RUN_ID. Target EAS build ID: $BUILD_ID. It contains no EAS build command and did not authorize Build 21, Android, App Review, or public release. No automatic retry is authorized."
