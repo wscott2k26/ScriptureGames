@@ -7,6 +7,7 @@ AUTHORIZED: submit exact existing iOS Build 20 to TestFlight.
 - iOS build number: `20`
 - Recovered application source: `6d02cccfbd6bb91f6b85893302644b9d80980e96`
 - Build source authorization: `d59d5cc00bf60f4de5f81e0e8d877d616ef8bf6b`
+- Retry reason: submission safety gate now installs frozen dependencies before reading Expo config; no prior submission occurred.
 
 NO NEW EAS BUILD.
 NO ANDROID BUILD.
