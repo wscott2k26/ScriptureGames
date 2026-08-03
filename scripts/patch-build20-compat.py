@@ -128,8 +128,16 @@ if "sortSelectedQuizQuestions" not in genesis:
     )
 write('app/genesis-quiz.tsx', genesis)
 
-# Align the recovery audit with the real upstream resolved-question models.
+# Align the recovery audit with the real upstream resolved-question models and Node filesystem paths.
 audit = read('scripts/audit-book-mastery.ts')
+audit = audit.replace(
+    "import { readFileSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';",
+    "import { readFileSync } from 'node:fs';\nimport { dirname, resolve } from 'node:path';\nimport { fileURLToPath } from 'node:url';",
+)
+audit = audit.replace(
+    "function readSource(relativePath: string): string {\n  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');\n}",
+    "const scriptDirectory = dirname(fileURLToPath(import.meta.url));\n\nfunction readSource(relativePath: string): string {\n  return readFileSync(resolve(scriptDirectory, relativePath), 'utf8');\n}",
+)
 audit = audit.replace(
     "const dailyScreen = readSource('../app/daily-challenge.tsx');",
     "const dailyScreen = readSource('../app/daily-challenge.tsx');\nconst dailyCore = readSource('../src/daily-challenge.ts');",
