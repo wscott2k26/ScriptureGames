@@ -128,11 +128,19 @@ if "sortSelectedQuizQuestions" not in genesis:
     )
 write('app/genesis-quiz.tsx', genesis)
 
-# Align the recovery audit with the resolved-question model used by the proven quiz screen.
+# Align the recovery audit with the real upstream resolved-question models.
 audit = read('scripts/audit-book-mastery.ts')
+audit = audit.replace(
+    "const dailyScreen = readSource('../app/daily-challenge.tsx');",
+    "const dailyScreen = readSource('../app/daily-challenge.tsx');\nconst dailyCore = readSource('../src/daily-challenge.ts');",
+)
 audit = audit.replace(
     "assert.match(classicScreen, /resolveQuizReference/, 'Classic Training must resolve every Scripture reference.');",
     "assert.match(classicScreen, /withResolvedQuizReference/, 'Classic Training must resolve every Scripture reference before rendering.');",
+)
+audit = audit.replace(
+    "assert.match(dailyScreen, /resolveQuizReference/, 'Daily Bread must resolve every Scripture reference.');",
+    "assert.match(dailyCore, /withResolvedQuizReference/, 'Daily Bread must resolve every Scripture reference before rendering.');",
 )
 write('scripts/audit-book-mastery.ts', audit)
 
