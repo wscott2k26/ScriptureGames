@@ -14,6 +14,7 @@ import { MaterialSurface } from '@/src/components/premium/MaterialSurface';
 import { MasteryAnswerFeedback } from '@/src/components/premium/MasteryAnswerFeedback';
 import { TactileButton } from '@/src/components/premium/TactileButton';
 import { TactilePressable as Pressable } from '@/src/components/premium/TactilePressable';
+import { ScriptureLink } from '@/src/components/ScriptureLink';
 import { getBibleBook } from '@/src/bible-library';
 import { getJourneyBook } from '@/src/bible-journey/catalog';
 import { canOpenJourneyBook } from '@/src/bible-journey/access';
@@ -64,7 +65,7 @@ export default function BookTrialScreen() {
     return fallback('Genesis uses the original Tournament.', 'Open the ten-gate Genesis arena from the Bible Journey hub.');
   }
   if (locked) {
-    return fallback(`${catalogBook.name} requires Premium.`, 'Genesis, Exodus, and Leviticus are free. Premium opens the remaining 63 books.', true);
+    return fallback(`${catalogBook.name} requires Premium.`, 'Genesis through Deuteronomy and Matthew through Acts are free. Premium opens the remaining 56 books.', true);
   }
 
   const question = trial.questions[index];
@@ -125,7 +126,7 @@ export default function BookTrialScreen() {
               <View style={styles.resultCopy}>
                 <Text style={styles.resultLabel}>LAST SCRIPTURE</Text>
                 <Text style={styles.resultText}>{question.explanation}</Text>
-                <Text style={styles.resultReference}>{question.reference}</Text>
+                <ScriptureLink reference={question.reference} returnLabel={`Return to ${catalogBook.name} Results`} testID="book-trial-result-scripture" />
               </View>
             </GlassPanel>
 
@@ -155,7 +156,7 @@ export default function BookTrialScreen() {
         <ScrollView contentContainerStyle={styles.quizScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.questionMeta}>
             <Text style={styles.questionEyebrow}>{catalogBook.name.toUpperCase()} · {trial.title.toUpperCase()}</Text>
-            <Text style={styles.questionReference}>{question.reference}</Text>
+            <Text style={styles.questionReference}>REFERENCE REVEALED AFTER ANSWER</Text>
           </View>
           <Text style={styles.question}>{question.prompt}</Text>
 
@@ -194,7 +195,7 @@ export default function BookTrialScreen() {
               <View style={styles.explanationCopy}>
                 <Text style={styles.explanationLabel}>{selected === question.answer ? 'CORRECT' : 'SCRIPTURE TRUTH'}</Text>
                 <Text style={styles.explanationText}>{question.explanation}</Text>
-                <Text style={styles.explanationReference}>{question.reference}</Text>
+                <ScriptureLink reference={question.reference} returnLabel={`Return to ${catalogBook.name} Trial`} testID="book-trial-feedback-scripture" />
               </View>
             </GlassPanel>
           ) : null}

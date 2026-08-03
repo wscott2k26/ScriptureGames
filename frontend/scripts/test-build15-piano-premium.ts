@@ -17,14 +17,14 @@ function check(name: string, run: () => void) {
   }
 }
 
-check('four free books', () => {
+check('ten free books', () => {
   assert.deepEqual(
     BIBLE_JOURNEY_BOOKS.filter((book) => book.access === 'free').map((book) => book.id),
-    ['GEN', 'EXO', 'LEV', 'MAT'],
+    ['GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'MAT', 'MRK', 'LUK', 'JHN', 'ACT'],
   );
 });
 check('remaining books Premium', () => {
-  for (const id of ['NUM', 'MRK', 'REV']) {
+  for (const id of ['JOS', 'ROM', 'REV']) {
     assert.equal(BIBLE_JOURNEY_BOOKS.find((book) => book.id === id)?.access, 'premium');
   }
 });
@@ -85,13 +85,14 @@ check('Bible return flow', () => {
 });
 const premium = read('app/premium.tsx');
 const tutorial = read('src/tutorial-core.ts');
-check('four-book copy', () => {
-  assert.match(premium, /Genesis, Exodus, Leviticus, and Matthew/);
-  assert.match(premium, /Four Full Books/);
-  assert.match(tutorial, /Genesis, Exodus, Leviticus, and Matthew/);
+check('ten-book copy', () => {
+  assert.match(premium, /Genesis through Deuteronomy and Matthew through Acts/);
+  assert.match(premium, /Ten Full Books/);
+  assert.match(premium, /remaining 56 Journey books/);
+  assert.match(tutorial, /Genesis through Deuteronomy and Matthew through Acts/);
   assert.doesNotMatch(
     premium + '\n' + tutorial,
-    /first three|Three Full Books|Books 4.?66|Numbers through Revelation|beyond the first three/i,
+    /first three|Three Full Books|Four Full Books|remaining 62 Journey books|Books 4.?66|beyond the first three/i,
   );
 });
 check('Genesis preserved', () => {

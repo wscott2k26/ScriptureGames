@@ -41,7 +41,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     points: [
       'Start with Genesis and continue in Bible order.',
       'Choose Any Book without damaging your recommended path.',
-      'Genesis, Exodus, Leviticus, and Matthew are free. The remaining 62 Journey books require Premium.',
+      'Genesis through Deuteronomy and Matthew through Acts are free. The remaining 56 Journey books require Premium.',
     ],
   },
   {
@@ -96,7 +96,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: 'premium',
     eyebrow: 'OPTIONAL UPGRADE',
     title: 'Premium',
-    description: 'Premium clearly opens the remaining 62 Journey books and Premium peaceful-photo collection once a validated store entitlement exists.',
+    description: 'Premium clearly opens the remaining 56 Journey books and Premium peaceful-photo collection once a validated store entitlement exists.',
     icon: 'diamond',
     points: [
       'Free progress never silently unlocks Premium books.',

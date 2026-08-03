@@ -12,7 +12,7 @@ import { DEFAULT_PREFERENCES, restorePreferences } from '../src/preferences-core
 import { resolveMotionIntensity } from '../src/motion-intensity.ts';
 
 assert.equal(PREMIUM_PRODUCT_ID, 'com.willywill.scripturegames.premium');
-const freeJourneyBookIds = new Set(['GEN', 'EXO', 'LEV', 'MAT']);
+const freeJourneyBookIds = new Set(['GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'MAT', 'MRK', 'LUK', 'JHN', 'ACT']);
 for (const book of BIBLE_JOURNEY_BOOKS) {
   assert.equal(canAccessJourneyBook(book.id, false), freeJourneyBookIds.has(book.id), `${book.name} has the wrong free/Premium access rule.`);
   assert.equal(canAccessJourneyBook(book.id, true), true, `Premium must unlock ${book.name}.`);

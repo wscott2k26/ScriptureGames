@@ -55,7 +55,12 @@ for (const token of [
   "router.replace('/book-library')",
   "pathname: '/book-season'",
   'Save failed',
+  'REFERENCE REVEALED AFTER ANSWER',
+  'book-trial-feedback-scripture',
+  'book-trial-result-scripture',
 ]) assert.equal(trial.includes(token), true, `Book trial route must include ${token}.`);
+assert.doesNotMatch(trial, /<Text style=\{styles\.questionReference\}>\{question\.reference\}<\/Text>/, 'Book trials must not reveal references before grading.');
+assert.doesNotMatch(trial, /<Text style=\{styles\.explanationReference\}>\{question\.reference\}<\/Text>/, 'Book-trial feedback references must be clickable.');
 
 const victory = read('app/book-victory.tsx');
 for (const token of [
@@ -115,12 +120,14 @@ assert.doesNotMatch(entitlement, /AsyncStorage/, 'Production Premium access must
 
 const premium = read('app/premium.tsx');
 for (const token of [
-  'Genesis, Exodus, Leviticus, and Matthew',
-  'remaining 62 Journey books',
+  'Genesis through Deuteronomy and Matthew through Acts',
+  'remaining 56 Journey books',
+  'Ten Full Books',
   'Unlock Complete Bible Journey',
   'Restore Purchase',
   'usePremiumEntitlement',
   'No charge was attempted',
 ]) assert.equal(premium.includes(token), true, `Premium screen must include ${token}.`);
+assert.doesNotMatch(premium, /remaining 62 Journey books/, 'Premium copy must not retain the old four-free-book count.');
 
 console.log('Bible journey route, Settings, and Premium contracts passed.');

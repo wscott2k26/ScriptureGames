@@ -12,14 +12,14 @@ import { TactileButton } from '@/src/components/premium/TactileButton';
 import { colors, radii, spacing } from '@/src/theme';
 
 const PREMIUM_FEATURES = [
-  ['Remaining 62 Journey Books', 'Genesis, Exodus, Leviticus, and Matthew remain free. Premium opens the other 62 book seasons.'],
+  ['Remaining 56 Journey Books', 'Genesis through Deuteronomy and Matthew through Acts remain free. Premium opens the other 56 book seasons.'],
   ['Choose Any Book', 'Open any unlocked Bible season without losing your recommended Genesis-to-Revelation path.'],
   ['Forty Premium Scenes', 'Use the full peaceful atmosphere library, including Bible lands, oceans, mountains, gardens, and worship scenes.'],
   ['Complete Mastery Record', 'Earn private book seals, testament progress, best scores, and a 66-book completion certificate.'],
 ] as const;
 
 const ALWAYS_FREE = [
-  ['Four Full Books', 'Genesis Tournament plus the complete Exodus, Leviticus, and Matthew trial seasons.'],
+  ['Ten Full Books', 'Genesis Tournament plus complete Exodus–Deuteronomy and Matthew–Acts trial seasons.'],
   ['Complete Bible Reader', 'All 66 public-domain Bible books remain readable offline regardless of Premium status.'],
   ['Memory Training', 'Keep the 13 memory passages and Scripture practice tools available without Premium.'],
   ['Lumi and Faith Tools', 'Typed Lumi, guarded voice, Faith Journeys, Prayer Garden, and core training remain available.'],
@@ -42,10 +42,10 @@ export default function Premium() {
               <Ionicons name={hasPremium ? 'checkmark-circle' : 'diamond'} size={38} color={hasPremium ? colors.success : colors.brand} />
             </View>
             <Text style={styles.heroEyebrow}>{hasPremium ? 'PREMIUM ACTIVE' : 'ONE COMPLETE JOURNEY'}</Text>
-            <Text style={styles.heroTitle}>{hasPremium ? 'All 66 Bible books are unlocked.' : 'Continue beyond the four free books.'}</Text>
+            <Text style={styles.heroTitle}>{hasPremium ? 'All 66 Bible books are unlocked.' : 'Continue beyond the ten free books.'}</Text>
             <Text style={styles.heroCopy}>{hasPremium
-              ? 'The remaining 62 Journey books and all 50 peaceful backgrounds are available on this player profile.'
-              : 'Genesis, Exodus, Leviticus, and Matthew are free. Premium opens the remaining 62 Journey books, all mastery records, and the full peaceful background collection.'}</Text>
+              ? 'The remaining 56 Journey books and all 50 peaceful backgrounds are available on this player profile.'
+              : 'Genesis through Deuteronomy and Matthew through Acts are free. Premium opens the remaining 56 Journey books, all mastery records, and the full peaceful background collection.'}</Text>
 
             {hasPremium ? (
               <TactileButton label="Continue Bible Journey" icon={<Ionicons name="map" size={20} color={colors.onBrand} />} onPress={() => router.replace('/(tabs)/bible-journey')} />
