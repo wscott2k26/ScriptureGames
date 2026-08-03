@@ -1,5 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
-# Recovery attempt 3: catalog-aware free-book assertion.
+# Recovery attempt 4: audit the proven shared ScriptureLink and Bible tab.
 
 on:
   push:
@@ -92,6 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/recover-build20.py
+          python scripts/patch-build20-audit.py
 
       - name: Prove the recovery contract is green
         working-directory: frontend
@@ -112,7 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/build20-recovery.yml scripts/recover-build20.py
+          rm -f .github/workflows/build20-recovery.yml scripts/recover-build20.py scripts/patch-build20-audit.py
           git add -A
           git status --short
           git commit -m 'fix: restore Build 18 experience and layer verified mastery'
