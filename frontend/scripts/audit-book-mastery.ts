@@ -121,7 +121,8 @@ assert.ok((dailyScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Daily Bread
 assert.ok((genesisScreen.match(/<ScriptureLink/g) || []).length >= 3, 'Genesis must retain question, feedback, and result Scripture links.');
 assert.match(masteryScreen, /from '@\/src\/components\/ScriptureLink'/, 'Book Mastery must reuse the proven ScriptureLink component.');
 assert.match(masteryScreen, /mastery-feedback-scripture/, 'Book Mastery must link right and wrong feedback to Scripture.');
-assert.match(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must provide passage reading before answering.');
+assert.doesNotMatch(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must not expose its answer passage before grading.');
+assert.equal((masteryScreen.match(/<ScriptureLink/g) || []).length, 1, 'Book Mastery must expose exactly one Scripture link, inside post-answer feedback.');
 assert.match(masteryScreen, /REFERENCE REVEALED AFTER ANSWER/, 'Book Mastery must not print an answer-giving reference before grading.');
 
 assert.match(scriptureLink, /router\.navigate/, 'Shared Scripture links must preserve the originating screen in navigation history.');
