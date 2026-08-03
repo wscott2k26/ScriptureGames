@@ -1,0 +1,248 @@
+name: Scripture Games Final Guarded Build 21
+
+on:
+  push:
+    branches:
+      - release/build21-ios-final
+    paths:
+      - .github/release-trigger-build21-final.txt
+
+concurrency:
+  group: scripture-games-build21-final
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  build-ios-21:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SOURCE_SHA: 50f935d5bd69a9fea2b29bc74cba3dd7c9375180
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check out final release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce immutable app source and build-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/build21-ios-final"
+          test -n "$EXPO_TOKEN"
+
+          expected_trigger=$'AUTHORIZE_ONE_IOS_BUILD_21_ONLY\nSOURCE_SHA=50f935d5bd69a9fea2b29bc74cba3dd7c9375180\nFINAL_PREFLIGHT=VERIFIED_GENERATED_BIBLE'
+          test "$(cat .github/release-trigger-build21-final.txt)" = "$expected_trigger"
+
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          git diff --quiet "$SOURCE_SHA"..HEAD -- frontend backend scripts support-site
+
+          mapfile -t changed < <(git diff --name-only "$SOURCE_SHA"..HEAD | sort)
+          printf '%s\n' "${changed[@]}" > /tmp/release-files.txt
+          cat > /tmp/expected-release-files.txt <<'FILES'
+          .github/release-trigger-build21-final.txt
+          .github/workflows/build21-ios-final.yml
+          FILES
+          diff -u /tmp/expected-release-files.txt /tmp/release-files.txt
+
+          forbidden_submit="eas sub""mit"
+          forbidden_auto="--auto-""submit"
+          ! grep -Fq -- "$forbidden_submit" .github/workflows/build21-ios-final.yml
+          ! grep -Fq -- "$forbidden_auto" .github/workflows/build21-ios-final.yml
+          ! grep -Eq 'eas build[^\n]*android|--platform[[:space:]]+android' .github/workflows/build21-ios-final.yml
+
+      - name: Open final tracking issue
+        id: tracker
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          issue_url=$(gh issue create \
+            --title "Build 21 final guarded build in progress — TestFlight not uploaded" \
+            --body "Final one-time iOS production build attempt from immutable app source \`$SOURCE_SHA\`. No TestFlight submission, Android build, duplicate build, App Review, or public release is included. GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          echo "issue_number=${issue_url##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install proven validation toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22 eas-cli@16.20.0
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Refuse duplicate or conflicting iOS build
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build:list --platform ios --limit 50 --json --non-interactive > /tmp/ios-builds.json
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/ios-builds.json', 'utf8'));
+          const builds = Array.isArray(parsed) ? parsed : (parsed.builds || parsed.results || []);
+          const ios = builds.filter((b) => String(b.platform || '').toUpperCase() === 'IOS');
+          const build21 = ios.filter((b) => String(b.appBuildVersion || '') === '21');
+          if (build21.length) throw new Error(`Build 21 already exists: ${build21.map((b) => b.id).join(', ')}`);
+          const active = new Set(['NEW', 'CREATED', 'PENDING', 'IN_QUEUE', 'IN_PROGRESS']);
+          const activeProduction = ios.filter((b) => String(b.buildProfile || '').toLowerCase() === 'production' && active.has(String(b.status || '').toUpperCase()));
+          if (activeProduction.length) throw new Error(`Active iOS production build exists: ${activeProduction.map((b) => b.id).join(', ')}`);
+          const finished20 = ios.find((b) => String(b.appBuildVersion || '') === '20' && String(b.status || '').toUpperCase() === 'FINISHED');
+          if (!finished20) throw new Error('Finished Build 20 was not found; next build number is not safe to assume.');
+          console.log(`Verified finished Build 20: ${finished20.id}`);
+          NODE
+
+      - name: Run complete regression and export gate
+        working-directory: frontend
+        run: yarn validate
+
+      - name: Verify exact generated Bible release payload
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t tracked_changes < <(git diff --name-only "$SOURCE_SHA" -- frontend backend scripts support-site | sort)
+          printf '%s\n' "${tracked_changes[@]}" > /tmp/post-validation-tracked.txt
+          printf '%s\n' 'frontend/src/bible.generated.ts' > /tmp/expected-post-validation-tracked.txt
+          diff -u /tmp/expected-post-validation-tracked.txt /tmp/post-validation-tracked.txt
+
+          grep -Fq 'complete: true' frontend/src/bible.generated.ts
+          grep -Fq 'bookCount: 66' frontend/src/bible.generated.ts
+          grep -Fq 'chapterCount: 1189' frontend/src/bible.generated.ts
+          grep -Fq 'verseCount: 31098' frontend/src/bible.generated.ts
+          test "$(grep -c '^import BOOK_' frontend/src/bible.generated.ts)" = '66'
+
+          mapfile -t generated_books < <(git ls-files --others --exclude-standard -- frontend/src/bible-data | sort)
+          test "${#generated_books[@]}" = '66'
+          for file in "${generated_books[@]}"; do
+            case "$file" in
+              frontend/src/bible-data/*.json) ;;
+              *) echo "Unexpected generated file: $file" >&2; exit 1 ;;
+            esac
+          done
+
+          unexpected_untracked=$(git ls-files --others --exclude-standard -- frontend backend scripts support-site | grep -Ev '^frontend/src/bible-data/[^/]+\.json$' || true)
+          test -z "$unexpected_untracked"
+
+          echo "Verified release payload: one generated Bible index plus 66 Bible book files; no unrelated source changes."
+
+      - name: Launch exactly one iOS production Build 21
+        id: launch
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build --platform ios --profile production --non-interactive --no-wait --json > /tmp/build21-launch.json
+          cat /tmp/build21-launch.json
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/build21-launch.json', 'utf8'));
+          const builds = Array.isArray(parsed) ? parsed : (parsed.builds || [parsed]);
+          if (builds.length !== 1) throw new Error(`Expected one build; received ${builds.length}.`);
+          const build = builds[0];
+          const failures = [];
+          if (!build.id) failures.push('missing build ID');
+          if (String(build.platform || '').toUpperCase() !== 'IOS') failures.push(`platform=${build.platform}`);
+          if (String(build.buildProfile || '').toLowerCase() !== 'production') failures.push(`profile=${build.buildProfile}`);
+          if (String(build.distribution || '').toUpperCase() !== 'STORE') failures.push(`distribution=${build.distribution}`);
+          if (String(build.appVersion || '') !== '1.0.0') failures.push(`appVersion=${build.appVersion}`);
+          if (String(build.appBuildVersion || '') !== '21') failures.push(`appBuildVersion=${build.appBuildVersion}`);
+          if (failures.length) throw new Error(failures.join('; '));
+          console.log(`build_id=${build.id}`);
+          NODE
+
+      - name: Record exact Build 21 ID
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.tracker.outputs.issue_number }}
+          BUILD_ID: ${{ steps.launch.outputs.build_id }}
+        run: |
+          set -euo pipefail
+          gh issue edit "$ISSUE_NUMBER" --body "Exact iOS production Build 21 launched.\n\n- EAS build ID: \`$BUILD_ID\`\n- Immutable app source: \`$SOURCE_SHA\`\n- Release commit: \`$GITHUB_SHA\`\n- TestFlight/App Store Connect submission: not authorized and not present\n- Android build: not present\n- GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Wait for and verify exact Build 21
+        working-directory: frontend
+        shell: bash
+        env:
+          BUILD_ID: ${{ steps.launch.outputs.build_id }}
+        run: |
+          set -euo pipefail
+          finished=0
+          for attempt in $(seq 1 180); do
+            eas build:view "$BUILD_ID" --json > /tmp/build21-view.json
+            status=$(node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/tmp/build21-view.json','utf8'));const b=p.build||p;process.stdout.write(String(b.status||''));")
+            echo "Build status: $status"
+            case "$status" in
+              FINISHED) finished=1; break ;;
+              ERRORED|CANCELED) exit 1 ;;
+            esac
+            sleep 30
+          done
+          test "$finished" = '1'
+
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/build21-view.json', 'utf8'));
+          const build = parsed.build || parsed;
+          const expectedCommit = process.env.GITHUB_SHA;
+          const failures = [];
+          if (String(build.status || '').toUpperCase() !== 'FINISHED') failures.push(`status=${build.status}`);
+          if (String(build.platform || '').toUpperCase() !== 'IOS') failures.push(`platform=${build.platform}`);
+          if (String(build.buildProfile || '').toLowerCase() !== 'production') failures.push(`profile=${build.buildProfile}`);
+          if (String(build.distribution || '').toUpperCase() !== 'STORE') failures.push(`distribution=${build.distribution}`);
+          if (String(build.appVersion || '') !== '1.0.0') failures.push(`appVersion=${build.appVersion}`);
+          if (String(build.appBuildVersion || '') !== '21') failures.push(`appBuildVersion=${build.appBuildVersion}`);
+          if (String(build.gitCommitHash || '') !== expectedCommit) failures.push(`gitCommitHash=${build.gitCommitHash}, expected=${expectedCommit}`);
+          if (build.submission) failures.push('unexpected submission attached');
+          if (failures.length) throw new Error(failures.join('; '));
+          fs.writeFileSync('/tmp/build21-record.json', JSON.stringify(build, null, 2));
+          console.log(`Verified Build 21 ${build.id} with zero submission.`);
+          NODE
+
+      - name: Preserve Build 21 record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-build21-final-record
+          path: /tmp/build21-record.json
+          retention-days: 30
+
+      - name: Mark Build 21 verified
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.tracker.outputs.issue_number }}
+          BUILD_ID: ${{ steps.launch.outputs.build_id }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" \
+            --title "Build 21 iOS build verified — TestFlight not uploaded" \
+            --body "The exact one-time iOS production Build 21 completed successfully.\n\n- EAS build ID: \`$BUILD_ID\`\n- App version: \`1.0.0\`\n- iOS build number: \`21\`\n- Immutable app source: \`$SOURCE_SHA\`\n- Release commit: \`$GITHUB_SHA\`\n- TestFlight/App Store Connect submissions: zero\n- Android cloud builds: zero\n- GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Record protected stop
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.tracker.outputs.issue_number }}
+          BUILD_ID: ${{ steps.launch.outputs.build_id }}
+        run: |
+          body="Final Build 21 workflow stopped. No automatic retry is authorized.\n\n- Immutable app source: \`$SOURCE_SHA\`\n- EAS build ID, if launched: \`${BUILD_ID:-not launched}\`\n- TestFlight upload: not performed\n- Android build: not performed\n- GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue edit "$ISSUE_NUMBER" --title "Build 21 final guarded build stopped — no automatic retry" --body "$body"
