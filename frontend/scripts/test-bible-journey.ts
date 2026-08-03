@@ -34,12 +34,14 @@ for (const book of BIBLE_JOURNEY_BOOKS) {
   assert.equal(getJourneyBook(book.id)?.id, book.id, `${book.name} must resolve by id.`);
 }
 
-assert.equal(isBookFree('GEN'), true);
-assert.equal(isBookFree('EXO'), true);
-assert.equal(isBookFree('LEV'), true);
-assert.equal(isBookFree('MAT'), true);
-assert.equal(isBookFree('NUM'), false);
-assert.equal(isBookFree('REV'), false);
+const expectedFreeBookIds = ['GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'MAT', 'MRK', 'LUK', 'JHN', 'ACT'];
+assert.deepEqual(
+  BIBLE_JOURNEY_BOOKS.filter((book) => book.access === 'free').map((book) => book.id),
+  expectedFreeBookIds,
+  'Exactly the first five Old Testament and first five New Testament Journey books must be free.',
+);
+for (const bookId of expectedFreeBookIds) assert.equal(isBookFree(bookId), true, `${bookId} must be free.`);
+for (const bookId of ['JOS', 'ROM', 'REV']) assert.equal(isBookFree(bookId), false, `${bookId} must remain Premium.`);
 assert.equal(getNextJourneyBook('GEN')?.id, 'EXO');
 assert.equal(getNextJourneyBook('LEV')?.id, 'NUM');
 assert.equal(getNextJourneyBook('JUD')?.id, 'REV');
