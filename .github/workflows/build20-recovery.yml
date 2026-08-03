@@ -1,5 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
-# Recovery attempt 4: audit the proven shared ScriptureLink and Bible tab.
+# Recovery attempt 5: proven Build 18 overlap files always win.
 
 on:
   push:
@@ -71,6 +71,27 @@ jobs:
             done <<< "$conflicts"
           fi
 
+      - name: Restore proven Build 18 overlap files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout HEAD -- \
+            .github/workflows/quality-gate.yml \
+            frontend/app/quiz-play.tsx \
+            frontend/app/daily-challenge.tsx \
+            frontend/app/genesis-quiz.tsx \
+            frontend/src/daily-challenge.ts \
+            frontend/package.json \
+            scripts/audit-visual-master.py
+          git add \
+            .github/workflows/quality-gate.yml \
+            frontend/app/quiz-play.tsx \
+            frontend/app/daily-challenge.tsx \
+            frontend/app/genesis-quiz.tsx \
+            frontend/src/daily-challenge.ts \
+            frontend/package.json \
+            scripts/audit-visual-master.py
+
       - name: Prove the recovery contract is red before implementation
         shell: bash
         run: |
@@ -93,6 +114,7 @@ jobs:
           set -euo pipefail
           python scripts/recover-build20.py
           python scripts/patch-build20-audit.py
+          python scripts/patch-build20-compat.py
 
       - name: Prove the recovery contract is green
         working-directory: frontend
@@ -113,7 +135,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/build20-recovery.yml scripts/recover-build20.py scripts/patch-build20-audit.py
+          rm -f .github/workflows/build20-recovery.yml scripts/recover-build20.py scripts/patch-build20-audit.py scripts/patch-build20-compat.py
           git add -A
           git status --short
           git commit -m 'fix: restore Build 18 experience and layer verified mastery'
