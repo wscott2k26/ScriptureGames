@@ -136,7 +136,13 @@ export default function BookMasteryScreen() {
           <GlassPanel strong style={styles.questionCard}>
             <View style={styles.questionMeta}>
               <Text style={styles.skill}>{question.skill.toUpperCase()}</Text>
-              <Text style={styles.noGiveaway}>REFERENCE REVEALED AFTER ANSWER</Text>
+              <ScriptureLink
+                reference={question.reference}
+                compact
+                tone="muted"
+                returnLabel="Return to Book Mastery"
+                testID="mastery-question-scripture"
+              />
             </View>
             <Text style={styles.question}>{question.q}</Text>
           </GlassPanel>
@@ -191,7 +197,6 @@ const styles = StyleSheet.create({
   questionCard: { borderRadius: radii.xl, minHeight: 190, padding: spacing.xl, justifyContent: 'center', gap: spacing.md },
   questionMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   skill: { color: colors.brand, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  noGiveaway: { flex: 1, color: colors.muted, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.7, textAlign: 'right' },
   question: { color: colors.onSurface, fontSize: 23, lineHeight: 31, fontWeight: '900' },
   options: { gap: spacing.md },
   feedback: { borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },

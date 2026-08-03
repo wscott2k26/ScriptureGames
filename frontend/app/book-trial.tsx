@@ -156,7 +156,17 @@ export default function BookTrialScreen() {
         <ScrollView contentContainerStyle={styles.quizScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.questionMeta}>
             <Text style={styles.questionEyebrow}>{catalogBook.name.toUpperCase()} · {trial.title.toUpperCase()}</Text>
-            <Text style={styles.questionReference}>REFERENCE REVEALED AFTER ANSWER</Text>
+            {question.kind === 'reference' ? (
+              <Text style={styles.questionReference}>REFERENCE REVEALED AFTER ANSWER</Text>
+            ) : (
+              <ScriptureLink
+                reference={question.reference}
+                compact
+                tone="muted"
+                returnLabel={`Return to ${catalogBook.name} Trial`}
+                testID="book-trial-question-scripture"
+              />
+            )}
           </View>
           <Text style={styles.question}>{question.prompt}</Text>
 
