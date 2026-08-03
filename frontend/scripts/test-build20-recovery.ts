@@ -41,7 +41,7 @@ requireText(masteryCore, "title: 'Matthew', testament: 'new'", 'First free New T
 requireText(read('app/book-mastery.tsx'), "from '@/src/components/ScriptureLink'", 'Proven Scripture link reuse');
 requireText(read('app/book-mastery.tsx'), 'REFERENCE REVEALED AFTER ANSWER', 'No pre-answer reference giveaway');
 requireText(localApi, 'sortSelectedQuizQuestions', 'Chronological classic quiz ordering');
-requireText(quizPlay, 'resolveQuizReference', 'Resolved clickable classic references');
+requireText(quizPlay, 'withResolvedQuizReference', 'Resolved clickable classic references');
 requireText(packageJson, 'test:build20', 'Build 20 regression script');
 requireText(packageJson, 'test:book-mastery', 'Book Mastery test script');
 requireText(packageJson, 'test:quiz-ordering', 'Chronology test script');
