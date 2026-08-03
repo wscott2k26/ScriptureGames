@@ -1,4 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
+# Recovery attempt 3: catalog-aware free-book assertion.
 
 on:
   push:
