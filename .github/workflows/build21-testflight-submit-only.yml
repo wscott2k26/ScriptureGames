@@ -38,7 +38,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "release/build21-testflight-submit"
           test -n "$EXPO_TOKEN"
 
-          expected_trigger=$'AUTHORIZE_ONE_TESTFLIGHT_UPLOAD_BUILD_21_ONLY\nBUILD_ID=f93a4447-8cc4-45ad-acd6-307f4133ec3e\nRELEASE_SHA=80ee3c601ecc7e34a915e66472856c8d0c2287c2\nPREFLIGHT_RETRY=ALLOW_SAFE_BUILD_VIEW'
+          expected_trigger=$'AUTHORIZE_ONE_TESTFLIGHT_UPLOAD_BUILD_21_ONLY\nBUILD_ID=f93a4447-8cc4-45ad-acd6-307f4133ec3e\nRELEASE_SHA=80ee3c601ecc7e34a915e66472856c8d0c2287c2\nPREFLIGHT_RETRY=ANCHORED_EXACT_SUBMIT_GATE'
           actual_trigger="$(cat .github/release-trigger-build21-testflight-submit.txt)"
           test "$actual_trigger" = "$expected_trigger"
 
@@ -63,7 +63,8 @@ jobs:
             echo "Automatic build submission is prohibited." >&2
             exit 1
           fi
-          test "$(grep -Fc 'eas submit --platform ios' .github/workflows/build21-testflight-submit-only.yml)" = "1"
+          submit_count=$(grep -Ec '^[[:space:]]+eas submit --platform ios --profile production --id "\$BUILD_ID" --non-interactive --wait' .github/workflows/build21-testflight-submit-only.yml)
+          test "$submit_count" = "1"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -118,12 +119,6 @@ jobs:
           console.log(`Verified exact finished iOS Build 21 ${build.id} with zero submissions.`);
           NODE
 
-          eas submission:list --platform ios --limit 100 --json --non-interactive > /tmp/submissions-before.json
-          if grep -Fq "$BUILD_ID" /tmp/submissions-before.json; then
-            echo "Build 21 already has a submission record; refusing a duplicate upload." >&2
-            exit 1
-          fi
-
       - name: Open TestFlight submission tracking issue
         id: tracker
         shell: bash
@@ -142,28 +137,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive 2>&1 | tee /tmp/build21-submit.log
-
-      - name: Verify EAS submission record exists
-        working-directory: frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          eas submission:list --platform ios --limit 100 --json --non-interactive > /tmp/submissions-after.json
-          if ! grep -Fq "$BUILD_ID" /tmp/submissions-after.json; then
-            echo "The exact Build 21 submission record was not found after upload." >&2
-            exit 1
-          fi
-          cp /tmp/build21.json /tmp/build21-verified.json
+          eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive --wait 2>&1 | tee /tmp/build21-submit.log
 
       - name: Preserve submission evidence
         uses: actions/upload-artifact@v4
         with:
           name: scripture-games-build21-testflight-submission-record
           path: |
-            /tmp/build21-verified.json
-            /tmp/submissions-before.json
-            /tmp/submissions-after.json
+            /tmp/build21.json
             /tmp/build21-submit.log
           retention-days: 30
 
