@@ -76,7 +76,7 @@ jobs:
           set -euo pipefail
           cd frontend
           set +e
-          yarn test:build20 > /tmp/build20-red.log 2>&1
+          node --experimental-strip-types scripts/test-build20-recovery.ts > /tmp/build20-red.log 2>&1
           red_status=$?
           set -e
           cat /tmp/build20-red.log
