@@ -35,7 +35,10 @@ check(catalog.includes("['GEN', 'Genesis'"), 'Genesis is missing from the journe
 check(catalog.includes("['EXO', 'Exodus'"), 'Exodus is missing from the journey catalog.');
 check(catalog.includes("['LEV', 'Leviticus'"), 'Leviticus is missing from the journey catalog.');
 check(catalog.includes("['REV', 'Revelation'"), 'Revelation is missing from the journey catalog.');
-check(catalog.includes("FREE_JOURNEY_BOOK_IDS = new Set(['GEN', 'EXO', 'LEV', 'MAT'])"), 'Genesis, Exodus, Leviticus, and Matthew are not the exact free access boundary.');
+check(
+  catalog.includes("FREE_JOURNEY_BOOK_IDS = new Set(['GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'MAT', 'MRK', 'LUK', 'JHN', 'ACT'])"),
+  'The first five Old Testament and first five New Testament books are not the exact free access boundary.',
+);
 check(catalog.includes('BIBLE_JOURNEY_BOOKS'), 'Canonical Bible Journey export is missing.');
 
 const progressCore = read('src/bible-journey/progress-core.ts');
@@ -114,6 +117,9 @@ for (const token of ['PREMIUM_PRODUCT_ID', 'purchase', 'restore', 'store-unavail
 check(!entitlement.includes('AsyncStorage'), 'Premium entitlement is granted through a local flag.');
 check(!/is_premium\s*:\s*true/.test(entitlement), 'Premium entitlement is faked in the client.');
 const premium = read('app/premium.tsx');
+check(premium.includes('Genesis through Deuteronomy and Matthew through Acts'), 'Premium screen does not describe the ten free Journey books.');
+check(premium.includes('remaining 56 Journey books'), 'Premium screen does not describe the correct remaining Journey count.');
+check(!premium.includes('remaining 62 Journey books'), 'Premium screen retains the obsolete four-book boundary.');
 check(premium.includes('No charge was attempted'), 'Premium screen does not clearly state the protected store boundary.');
 check(premium.includes('13 memory passages'), 'Existing free memory passage access is not preserved in Premium copy.');
 
