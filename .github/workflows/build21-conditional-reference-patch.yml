@@ -1,0 +1,90 @@
+name: Apply Build 21 Conditional Reference Patch
+
+on:
+  push:
+    branches:
+      - fix/build21-conditional-reference-visibility
+    paths:
+      - .github/workflows/build21-conditional-reference-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/build21-conditional-reference-visibility
+          fetch-depth: 0
+
+      - name: Apply narrow source and audit updates
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}')
+              target.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'frontend/app/book-trial.tsx',
+              '            <Text style={styles.questionReference}>REFERENCE REVEALED AFTER ANSWER</Text>',
+              '''            {question.kind === 'reference' ? (
+              <Text style={styles.questionReference}>REFERENCE REVEALED AFTER ANSWER</Text>
+            ) : (
+              <ScriptureLink
+                reference={question.reference}
+                compact
+                tone="muted"
+                returnLabel={`Return to ${catalogBook.name} Trial`}
+                testID="book-trial-question-scripture"
+              />
+            )}''',
+          )
+
+          replace_once(
+              'frontend/app/book-mastery.tsx',
+              '''            <View style={styles.questionMeta}>
+              <Text style={styles.skill}>{question.skill.toUpperCase()}</Text>
+              <Text style={styles.noGiveaway}>REFERENCE REVEALED AFTER ANSWER</Text>
+            </View>''',
+              '''            <View style={styles.questionMeta}>
+              <Text style={styles.skill}>{question.skill.toUpperCase()}</Text>
+              <ScriptureLink
+                reference={question.reference}
+                compact
+                tone="muted"
+                returnLabel="Return to Book Mastery"
+                testID="mastery-question-scripture"
+              />
+            </View>''',
+          )
+
+          replace_once(
+              'frontend/scripts/audit-book-mastery.ts',
+              '''assert.doesNotMatch(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must not expose its answer passage before grading.');
+assert.equal((masteryScreen.match(/<ScriptureLink/g) || []).length, 1, 'Book Mastery must expose exactly one Scripture link, inside post-answer feedback.');
+assert.match(masteryScreen, /REFERENCE REVEALED AFTER ANSWER/, 'Book Mastery must not print an answer-giving reference before grading.');''',
+              '''assert.doesNotMatch(masteryScreen, /Open Passage Before Answering/, 'Book Mastery must not use the old full-width passage button.');
+assert.match(masteryScreen, /mastery-question-scripture/, 'Book Mastery must provide the assigned passage in the top-right before answering.');
+assert.equal((masteryScreen.match(/<ScriptureLink/g) || []).length, 2, 'Book Mastery must expose one pre-answer lookup and one post-answer reference.');
+assert.doesNotMatch(masteryScreen, /REFERENCE REVEALED AFTER ANSWER/, 'Book Mastery questions name a passage to research and must not hide that lookup.');''',
+          )
+          PY
+
+      - name: Commit source correction
+        shell: bash
+        run: |
+          git config user.name "scripture-games-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add frontend/app/book-trial.tsx frontend/app/book-mastery.tsx frontend/scripts/audit-book-mastery.ts
+          git diff --cached --check
+          git commit -m "fix: conditionally show pre-answer Scripture references [skip ci]"
+          git push origin HEAD:fix/build21-conditional-reference-visibility
