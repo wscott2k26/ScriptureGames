@@ -1,0 +1,195 @@
+name: Scripture Games Build 21 TestFlight Submit Only
+
+on:
+  push:
+    branches:
+      - release/build21-testflight-submit
+    paths:
+      - .github/release-trigger-build21-testflight-submit.txt
+
+concurrency:
+  group: scripture-games-build21-testflight-submit-only
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  submit-existing-build-21:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BUILD_ID: f93a4447-8cc4-45ad-acd6-307f4133ec3e
+      RELEASE_SHA: 80ee3c601ecc7e34a915e66472856c8d0c2287c2
+      APP_SOURCE_SHA: 50f935d5bd69a9fea2b29bc74cba3dd7c9375180
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Check out exact submit-only branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce exact authorization and submit-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/build21-testflight-submit"
+          test -n "$EXPO_TOKEN"
+
+          expected_trigger=$'AUTHORIZE_ONE_TESTFLIGHT_UPLOAD_BUILD_21_ONLY\nBUILD_ID=f93a4447-8cc4-45ad-acd6-307f4133ec3e\nRELEASE_SHA=80ee3c601ecc7e34a915e66472856c8d0c2287c2'
+          actual_trigger="$(cat .github/release-trigger-build21-testflight-submit.txt)"
+          test "$actual_trigger" = "$expected_trigger"
+
+          git merge-base --is-ancestor "$RELEASE_SHA" HEAD
+          git diff --quiet "$RELEASE_SHA"..HEAD -- frontend backend scripts support-site
+
+          mapfile -t changed < <(git diff --name-only "$RELEASE_SHA"..HEAD | sort)
+          printf '%s\n' "${changed[@]}" > /tmp/changed-files.txt
+          cat > /tmp/expected-files.txt <<'FILES'
+          .github/release-trigger-build21-testflight-submit.txt
+          .github/workflows/build21-testflight-submit-only.yml
+          FILES
+          diff -u /tmp/expected-files.txt /tmp/changed-files.txt
+
+          forbidden_build="eas bu""ild"
+          forbidden_auto="--auto-""submit"
+          if grep -Fq -- "$forbidden_build" .github/workflows/build21-testflight-submit-only.yml; then
+            echo "A build command is prohibited in this submit-only workflow." >&2
+            exit 1
+          fi
+          if grep -Fq -- "$forbidden_auto" .github/workflows/build21-testflight-submit-only.yml; then
+            echo "Automatic build submission is prohibited." >&2
+            exit 1
+          fi
+          test "$(grep -Fc 'eas submit --platform ios' .github/workflows/build21-testflight-submit-only.yml)" = "1"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frozen dependencies and pinned EAS CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global yarn@1.22.22
+          npm install --global eas-cli@16.20.0
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Verify account, project, exact Build 21, and zero prior submission
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(eas whoami)" = "wscott2k8"
+
+          eas project:info --json > /tmp/project.json
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/project.json', 'utf8'));
+          const id = parsed.id || parsed.projectId || parsed.project?.id;
+          if (id !== '18710e80-2a62-46ac-8d3a-d1711b7d920a') {
+            throw new Error(`Unexpected EAS project: ${id}`);
+          }
+          NODE
+
+          eas build:view "$BUILD_ID" --json > /tmp/build21.json
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/build21.json', 'utf8'));
+          const build = parsed.build || parsed;
+          const failures = [];
+          if (build.id !== process.env.BUILD_ID) failures.push(`id=${build.id}`);
+          if (String(build.status || '').toUpperCase() !== 'FINISHED') failures.push(`status=${build.status}`);
+          if (String(build.platform || '').toUpperCase() !== 'IOS') failures.push(`platform=${build.platform}`);
+          if (String(build.buildProfile || '').toLowerCase() !== 'production') failures.push(`profile=${build.buildProfile}`);
+          if (String(build.distribution || '').toUpperCase() !== 'STORE') failures.push(`distribution=${build.distribution}`);
+          if (String(build.appVersion || '') !== '1.0.0') failures.push(`appVersion=${build.appVersion}`);
+          if (String(build.appBuildVersion || '') !== '21') failures.push(`appBuildVersion=${build.appBuildVersion}`);
+          if (String(build.gitCommitHash || '') !== process.env.RELEASE_SHA) failures.push(`gitCommitHash=${build.gitCommitHash}`);
+          const submissions = Array.isArray(build.submissions) ? build.submissions : [];
+          if (build.submission || submissions.length > 0) failures.push('existing submission found on build record');
+          if (failures.length) throw new Error(`Exact Build 21 verification failed: ${failures.join('; ')}`);
+          console.log(`Verified exact finished iOS Build 21 ${build.id} with zero submissions.`);
+          NODE
+
+          eas submission:list --platform ios --limit 100 --json --non-interactive > /tmp/submissions-before.json
+          if grep -Fq "$BUILD_ID" /tmp/submissions-before.json; then
+            echo "Build 21 already has a submission record; refusing a duplicate upload." >&2
+            exit 1
+          fi
+
+      - name: Open TestFlight submission tracking issue
+        id: tracker
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          issue_url=$(gh issue create \
+            --title "Build 21 TestFlight upload in progress" \
+            --body "Submitting the exact existing iOS Build 21 only.\n\n- EAS build ID: \`$BUILD_ID\`\n- Release commit: \`$RELEASE_SHA\`\n- Verified app source: \`$APP_SOURCE_SHA\`\n- New EAS builds: zero\n- Android builds: zero\n- App Review/public release: not authorized\n- GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          issue_number="${issue_url##*/}"
+          echo "issue_number=$issue_number" >> "$GITHUB_OUTPUT"
+
+      - name: Submit exact existing Build 21 to TestFlight
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive 2>&1 | tee /tmp/build21-submit.log
+
+      - name: Verify EAS submission record exists
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas submission:list --platform ios --limit 100 --json --non-interactive > /tmp/submissions-after.json
+          if ! grep -Fq "$BUILD_ID" /tmp/submissions-after.json; then
+            echo "The exact Build 21 submission record was not found after upload." >&2
+            exit 1
+          fi
+          cp /tmp/build21.json /tmp/build21-verified.json
+
+      - name: Preserve submission evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-build21-testflight-submission-record
+          path: |
+            /tmp/build21-verified.json
+            /tmp/submissions-before.json
+            /tmp/submissions-after.json
+            /tmp/build21-submit.log
+          retention-days: 30
+
+      - name: Mark upload accepted by EAS
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.tracker.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          gh issue edit "$ISSUE_NUMBER" \
+            --title "Build 21 submitted to TestFlight — Apple processing" \
+            --body "The exact existing iOS Build 21 was submitted successfully through EAS.\n\n- EAS build ID: \`$BUILD_ID\`\n- App version: \`1.0.0\`\n- iOS build number: \`21\`\n- Release commit: \`$RELEASE_SHA\`\n- Verified app source: \`$APP_SOURCE_SHA\`\n- New EAS builds: zero\n- Android builds: zero\n- App Review/public release: zero\n- Apple processing confirmation is the remaining availability check\n- GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Record protected submission stop
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.tracker.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          body="Build 21 submit-only workflow stopped or failed. No retry or new build is authorized.\n\n- Exact EAS build ID: \`$BUILD_ID\`\n- New EAS builds: zero\n- Android builds: zero\n- App Review/public release: zero\n- GitHub run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -n "${ISSUE_NUMBER:-}" ]; then
+            gh issue edit "$ISSUE_NUMBER" --title "Build 21 TestFlight upload stopped — no retry authorized" --body "$body"
+          else
+            gh issue create --title "Build 21 TestFlight upload stopped — no retry authorized" --body "$body"
+          fi
