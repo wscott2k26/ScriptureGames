@@ -1,5 +1,6 @@
 name: Apply Build 21 Conditional Reference Patch
 
+# Second push triggers this already-registered source-only workflow.
 on:
   push:
     branches:
