@@ -1,5 +1,9 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+
+import { BIBLE_JOURNEY_BOOKS } from '../src/bible-journey/catalog.ts';
+import { canOpenJourneyBook } from '../src/bible-journey/access.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), 'utf8');
@@ -46,6 +50,38 @@ requireText(packageJson, 'test:build20', 'Build 20 regression script');
 requireText(packageJson, 'test:book-mastery', 'Book Mastery test script');
 requireText(packageJson, 'test:quiz-ordering', 'Chronology test script');
 
+const expectedOpenJourneyBooks = ['GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'MAT', 'MRK', 'LUK', 'JHN', 'ACT'];
+assert.deepEqual(
+  BIBLE_JOURNEY_BOOKS.filter((book) => book.access === 'free').map((book) => book.id),
+  expectedOpenJourneyBooks,
+  'Build 21 must open exactly the first five Old Testament and first five New Testament Journey books.',
+);
+for (const bookId of expectedOpenJourneyBooks) {
+  assert.equal(canOpenJourneyBook(bookId, false), true, `${bookId} must open without Premium.`);
+}
+for (const bookId of ['JOS', 'ROM']) {
+  assert.equal(canOpenJourneyBook(bookId, false), false, `${bookId} must remain Premium-gated.`);
+}
+
+const bookTrial = read('app/book-trial.tsx');
+requireText(bookTrial, "from '@/src/components/ScriptureLink'", 'Shared ScriptureLink in non-Genesis trials');
+requireText(bookTrial, 'REFERENCE REVEALED AFTER ANSWER', 'Hidden pre-answer Journey reference label');
+requireText(bookTrial, 'testID="book-trial-feedback-scripture"', 'Clickable post-answer Journey reference');
+requireText(bookTrial, 'testID="book-trial-result-scripture"', 'Clickable completed-trial Journey reference');
+if (bookTrial.includes('<Text style={styles.questionReference}>{question.reference}</Text>')) {
+  throw new Error('Non-Genesis trials still reveal the Scripture reference in the top-right before grading.');
+}
+if (bookTrial.includes('<Text style={styles.explanationReference}>{question.reference}</Text>')) {
+  throw new Error('Non-Genesis post-answer Scripture remains plain text instead of a clickable link.');
+}
+
+const masteryScreen = read('app/book-mastery.tsx');
+if (masteryScreen.includes('Open Passage Before Answering')) {
+  throw new Error('Book Mastery still exposes the answer passage before grading.');
+}
+const masteryLinkCount = (masteryScreen.match(/<ScriptureLink/g) || []).length;
+assert.equal(masteryLinkCount, 1, 'Book Mastery must expose Scripture only once, in post-answer feedback.');
+
 for (const obsolete of [
   '../.github/workflows/ios-build18-testflight-once.yml',
   '../.github/status-triggers/ios-build18-authorized.md',
@@ -54,4 +90,4 @@ for (const obsolete of [
   if (fs.existsSync(path.resolve(root, obsolete))) throw new Error(`Obsolete release machinery remains: ${obsolete}`);
 }
 
-console.log('Build 20 recovery contract passed: Build 18 experience, mastery, chronology, Scripture links, and three ambient choices coexist.');
+console.log('Build 20/21 recovery contract passed: restored experience, ten open Journey books, hidden pre-answer references, clickable post-answer Scripture, mastery, chronology, and three ambient choices coexist.');
