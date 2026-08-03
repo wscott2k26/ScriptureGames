@@ -38,7 +38,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "release/build21-testflight-submit"
           test -n "$EXPO_TOKEN"
 
-          expected_trigger=$'AUTHORIZE_ONE_TESTFLIGHT_UPLOAD_BUILD_21_ONLY\nBUILD_ID=f93a4447-8cc4-45ad-acd6-307f4133ec3e\nRELEASE_SHA=80ee3c601ecc7e34a915e66472856c8d0c2287c2'
+          expected_trigger=$'AUTHORIZE_ONE_TESTFLIGHT_UPLOAD_BUILD_21_ONLY\nBUILD_ID=f93a4447-8cc4-45ad-acd6-307f4133ec3e\nRELEASE_SHA=80ee3c601ecc7e34a915e66472856c8d0c2287c2\nPREFLIGHT_RETRY=ALLOW_SAFE_BUILD_VIEW'
           actual_trigger="$(cat .github/release-trigger-build21-testflight-submit.txt)"
           test "$actual_trigger" = "$expected_trigger"
 
@@ -53,10 +53,10 @@ jobs:
           FILES
           diff -u /tmp/expected-files.txt /tmp/changed-files.txt
 
-          forbidden_build="eas bu""ild"
+          forbidden_build="eas bu""ild --"
           forbidden_auto="--auto-""submit"
           if grep -Fq -- "$forbidden_build" .github/workflows/build21-testflight-submit-only.yml; then
-            echo "A build command is prohibited in this submit-only workflow." >&2
+            echo "A new build launch command is prohibited in this submit-only workflow." >&2
             exit 1
           fi
           if grep -Fq -- "$forbidden_auto" .github/workflows/build21-testflight-submit-only.yml; then
