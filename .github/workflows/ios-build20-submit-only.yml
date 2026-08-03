@@ -49,16 +49,25 @@ jobs:
           git diff --exit-code "$VERIFIED_APP_SOURCE_SHA" HEAD -- frontend scripts supabase
           test -n "${EXPO_TOKEN:-}"
 
-      - name: Set up Node and EAS
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
 
       - name: Authenticate Expo
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install frozen app dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          yarn install --frozen-lockfile --non-interactive --network-timeout 600000
 
       - name: Verify Expo identity and exact finished Build 20
         shell: bash
