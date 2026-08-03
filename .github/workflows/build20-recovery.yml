@@ -1,5 +1,5 @@
 name: Build 20 Recovery Assemble and Verify
-# Recovery attempt 8: TypeScript-safe filesystem audit paths.
+# Recovery attempt 9: save verified app source separately from protected workflows.
 
 on:
   push:
@@ -131,11 +131,18 @@ jobs:
         working-directory: frontend
         run: yarn validate
 
-      - name: Remove one-use recovery machinery and commit verified source
+      - name: Commit verified app source without protected workflow changes
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/build20-recovery.yml scripts/recover-build20.py scripts/patch-build20-audit.py scripts/patch-build20-compat.py
+          rm -f scripts/recover-build20.py scripts/patch-build20-audit.py scripts/patch-build20-compat.py
+          rm -rf frontend/src/bible-data
+          git checkout HEAD -- \
+            .github/workflows/build20-recovery.yml \
+            .github/workflows/quality-gate.yml \
+            .github/workflows/ios-build18-testflight-once.yml \
+            .github/status-triggers/ios-build18-authorized.md \
+            frontend/src/bible.generated.ts
           git add -A
           git status --short
           git commit -m 'fix: restore Build 18 experience and layer verified mastery'
@@ -148,7 +155,7 @@ jobs:
           sha="$(git rev-parse HEAD)"
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title 'Build 20 recovery source verified — no EAS run' \
-            --body "Recovered from exact Build 18 source and merged chronological ten-book mastery without replacing proven Lumi, background, piano, Premium, Journey, or Scripture-link systems. Added bundled Gentle Rain and Quiet Reading Room ambience. Full validation passed, including Build 12–20 tests, Bible audits, Expo Doctor, TypeScript, ESLint, and local iOS/Android exports.\n\nVerified recovery commit: \`$sha\`\n\nNo EAS build, TestFlight upload, Android cloud build, App Review submission, or public release occurred."
+            --body "Recovered from exact Build 18 source and merged chronological ten-book mastery without replacing proven Lumi, background, piano, Premium, Journey, or Scripture-link systems. Added bundled Gentle Rain and Quiet Reading Room ambience. Full validation passed, including Build 12–20 tests, Bible audits, Expo Doctor, TypeScript, ESLint, and local iOS/Android exports.\n\nVerified recovery commit: \`$sha\`\n\nNo EAS build, TestFlight upload, Android cloud build, App Review submission, or public release occurred. Protected workflow cleanup will be handled separately through the connected GitHub account."
 
       - name: Report exact recovery blocker
         if: failure()
