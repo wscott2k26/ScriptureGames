@@ -1,0 +1,89 @@
+name: Watch Build 20 iOS-Only Result
+
+on:
+  push:
+    branches:
+      - monitor/build20-only
+    paths:
+      - '.github/status-triggers/watch-build20-only.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: Verify Build 20 completion without submitting
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_SHA: d59d5cc00bf60f4de5f81e0e8d877d616ef8bf6b
+
+    steps:
+      - name: Wait for the exact Build 20 workflow run
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_run_id=""
+          for _ in $(seq 1 60); do
+            target_run_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build20-only.yml/runs?branch=release%2Fbuild20-ios-only&event=push&per_page=20" --jq ".workflow_runs[] | select(.head_sha == env.TARGET_SHA) | .id" | head -n1 || true)
+            if [ -n "$target_run_id" ]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$target_run_id"
+          echo "TARGET_RUN_ID=$target_run_id" >> "$GITHUB_ENV"
+
+      - name: Poll the exact run to completion
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 360); do
+            status=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$TARGET_RUN_ID" --jq '.status')
+            conclusion=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$TARGET_RUN_ID" --jq '.conclusion // ""')
+            echo "status=$status conclusion=$conclusion"
+            if [ "$status" = "completed" ]; then
+              echo "TARGET_CONCLUSION=$conclusion" >> "$GITHUB_ENV"
+              test "$conclusion" = "success"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Build 20 watcher timed out before completion." >&2
+          exit 1
+
+      - name: Download and verify the build-only record
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/build20
+          gh run download "$TARGET_RUN_ID" --repo "$GITHUB_REPOSITORY" --name scripture-games-ios-build20-build-only-record --dir /tmp/build20
+          record=$(find /tmp/build20 -name 'ios-build20-only.json' -print -quit)
+          test -n "$record"
+          jq -e '
+            length == 1 and
+            .[0].platform == "IOS" and
+            .[0].project.id == "18710e80-2a62-46ac-8d3a-d1711b7d920a" and
+            .[0].distribution == "STORE" and
+            .[0].buildProfile == "production" and
+            .[0].appVersion == "1.0.0" and
+            .[0].appBuildVersion == "20" and
+            .[0].isForIosSimulator == false and
+            ((.[0].submissions // []) | length == 0)
+          ' "$record"
+          build_id=$(jq -r '.[0].id' "$record")
+          echo "BUILD_ID=$build_id" >> "$GITHUB_ENV"
+
+      - name: Report verified Build 20 completion
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 iOS-only build completed" --body "Verified one iOS production Build 20 from source authorization $TARGET_SHA. EAS build ID: $BUILD_ID. The record contains zero submissions. No TestFlight upload, Android cloud build, App Review submission, or public release occurred. Workflow run: $TARGET_RUN_ID."
+
+      - name: Report watcher or build failure
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 iOS-only verification stopped" --body "The read-only Build 20 watcher or the exact build workflow stopped. Target authorization SHA: $TARGET_SHA. Target workflow run: ${TARGET_RUN_ID:-not found}. No automatic retry, second EAS build, TestFlight upload, Android build, App Review submission, or public release is authorized."
