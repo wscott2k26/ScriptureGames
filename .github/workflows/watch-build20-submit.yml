@@ -1,0 +1,66 @@
+name: Watch Build 20 TestFlight Submission
+
+on:
+  push:
+    branches:
+      - monitor/build20-submit
+    paths:
+      - '.github/status-triggers/watch-build20-submit.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: Verify exact Build 20 submission workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_SHA: fbb98468c80e81d4a2936a02ba7bfec615a80236
+
+    steps:
+      - name: Find exact submit-only workflow run
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_run_id=""
+          for _ in $(seq 1 60); do
+            target_run_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build20-submit-only.yml/runs?branch=release%2Fbuild20-testflight-submit&event=push&per_page=20" --jq ".workflow_runs[] | select(.head_sha == env.TARGET_SHA) | .id" | head -n1 || true)
+            if [ -n "$target_run_id" ]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$target_run_id"
+          echo "TARGET_RUN_ID=$target_run_id" >> "$GITHUB_ENV"
+
+      - name: Poll submit-only run to completion
+        shell: bash
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 360); do
+            status=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$TARGET_RUN_ID" --jq '.status')
+            conclusion=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$TARGET_RUN_ID" --jq '.conclusion // ""')
+            echo "status=$status conclusion=$conclusion"
+            if [ "$status" = "completed" ]; then
+              echo "TARGET_CONCLUSION=$conclusion" >> "$GITHUB_ENV"
+              test "$conclusion" = "success"
+              exit 0
+            fi
+            sleep 20
+          done
+          exit 1
+
+      - name: Report verified workflow success
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 submit-only workflow completed" --body "The exact Build 20 TestFlight submit-only workflow completed successfully. Workflow run: $TARGET_RUN_ID. No new EAS build or Android build was launched. Apple processing confirmation remains the final availability check."
+
+      - name: Report workflow failure
+        if: failure()
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 submit-only workflow needs attention" --body "The exact submit-only workflow stopped or could not be verified. Target SHA: $TARGET_SHA. Target run: ${TARGET_RUN_ID:-not found}. No automatic retry or new build is authorized."
