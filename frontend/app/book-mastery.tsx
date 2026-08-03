@@ -139,7 +139,6 @@ export default function BookMasteryScreen() {
               <Text style={styles.noGiveaway}>REFERENCE REVEALED AFTER ANSWER</Text>
             </View>
             <Text style={styles.question}>{question.q}</Text>
-            <ScriptureLink reference={question.reference} label="Open Passage Before Answering" returnLabel="Return to Book Mastery" testID="mastery-open-passage" />
           </GlassPanel>
 
           <View style={styles.options}>
