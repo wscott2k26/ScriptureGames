@@ -1,0 +1,31 @@
+name: Probe Corrected Build 20 Submission
+
+on:
+  push:
+    branches:
+      - monitor/build20-submit
+    paths:
+      - '.github/status-triggers/probe-build20-submit.md'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_SHA: 0788d8c6a2c22a24a57b01489806d0f787a9eada
+    steps:
+      - name: Report exact current workflow state
+        shell: bash
+        run: |
+          set -euo pipefail
+          data=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ios-build20-submit-only.yml/runs?branch=release%2Fbuild20-testflight-submit&event=push&per_page=20")
+          run_id=$(jq -r --arg sha "$TARGET_SHA" '.workflow_runs[] | select(.head_sha == $sha) | .id' <<<"$data" | head -n1)
+          test -n "$run_id"
+          status=$(jq -r --arg sha "$TARGET_SHA" '.workflow_runs[] | select(.head_sha == $sha) | .status' <<<"$data" | head -n1)
+          conclusion=$(jq -r --arg sha "$TARGET_SHA" '.workflow_runs[] | select(.head_sha == $sha) | (.conclusion // "pending")' <<<"$data" | head -n1)
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Build 20 corrected submission status: $status" --body "Exact corrected submit-only run: $run_id. Target SHA: $TARGET_SHA. Status: $status. Conclusion: $conclusion. This probe is read-only and launched no build or submission."
