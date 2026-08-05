@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BIBLE_JOURNEY_BOOKS } from '../src/bible-journey/catalog.ts';
-import { PREMIUM_PRODUCT_ID, hasValidatedPremiumEntitlement } from '../src/premium-entitlement-core.ts';
+import { PREMIUM_PRODUCT_ID } from '../src/premium-entitlement-core.ts';
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), 'utf8');
@@ -28,18 +28,8 @@ check('remaining books Premium', () => {
     assert.equal(BIBLE_JOURNEY_BOOKS.find((book) => book.id === id)?.access, 'premium');
   }
 });
-check('validated entitlement only', () => {
-  assert.equal(hasValidatedPremiumEntitlement({ is_premium: true }), false);
-  assert.equal(hasValidatedPremiumEntitlement({
-    is_premium: true,
-    premium_entitlement_source: 'app-store',
-    premium_product_id: PREMIUM_PRODUCT_ID,
-  }), true);
-  assert.equal(hasValidatedPremiumEntitlement({
-    is_premium: true,
-    premium_entitlement_source: 'app-store',
-    premium_product_id: 'wrong',
-  }), false);
+check('exact lifetime product', () => {
+  assert.equal(PREMIUM_PRODUCT_ID, 'com.willywill.scripturegames.premium');
 });
 
 const localApi = read('src/local-api.ts');
@@ -49,9 +39,11 @@ check('honest profile migration', () => {
   assert.doesNotMatch(localApi, /TestFlight beta ships with all content unlocked/);
 });
 const provider = read('src/premium-entitlement.tsx');
-check('provider validates', () => {
-  assert.match(provider, /hasValidatedPremiumEntitlement\(profile\)/);
+check('provider rejects local profile authority', () => {
+  assert.doesNotMatch(provider, /hasValidatedPremiumEntitlement\(profile\)/);
   assert.doesNotMatch(provider, /Boolean\(profile\?\.is_premium\)/);
+  assert.doesNotMatch(provider, /useProfile\(\)/);
+  assert.match(provider, /createPurchaseClient/);
 });
 const audio = read('src/audio-context.tsx');
 check('piano load gate', () => {
