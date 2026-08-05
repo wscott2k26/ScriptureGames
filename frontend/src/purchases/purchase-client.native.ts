@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import Purchases, {
-  ENTITLEMENT_VERIFICATION_MODE,
   LOG_LEVEL,
   type CustomerInfo,
   type CustomerInfoUpdateListener,
@@ -87,7 +86,7 @@ export function createPurchaseClient(): PurchaseClient {
         await Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
         Purchases.configure({
           apiKey,
-          entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL,
+          entitlementVerificationMode: Purchases.ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL,
         });
         configured = true;
         lastSnapshot = { ...unavailable, configured: true, failure: null };
