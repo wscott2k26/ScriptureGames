@@ -8,3 +8,8 @@ export function canAccessJourneyBook(bookId: string, hasPremium: boolean): boole
   if (!book) return false;
   return book.access === 'free' || hasPremium;
 }
+
+/** @deprecated Legacy profile migration shim. RevenueCat owns all runtime access. */
+export function hasValidatedPremiumEntitlement(_profile: unknown): boolean {
+  return false;
+}
