@@ -60,6 +60,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Reject automatic release automation
+        run: node scripts/audit-release-automation.mjs
+
       - name: Install dependencies
         shell: bash
         run: |
