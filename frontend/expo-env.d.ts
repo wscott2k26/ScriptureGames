@@ -1,3 +1,7 @@
 /// <reference types="expo/types" />
 
-// NOTE: This file should not be edited and should be in your git ignore
+declare namespace NodeJS {
+  interface ProcessEnv {
+    EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY?: string;
+  }
+}
