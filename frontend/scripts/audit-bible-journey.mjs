@@ -111,16 +111,38 @@ for (const token of ['Choose Peaceful Background', 'Motion Off', 'Gentle Motion'
 }
 
 const entitlement = read('src/premium-entitlement.tsx');
-for (const token of ['PREMIUM_PRODUCT_ID', 'purchase', 'restore', 'store-unavailable', 'hasPremium']) {
+for (const token of ['PREMIUM_PRODUCT_ID', 'purchaseLifetime', 'restore', 'store-unavailable', 'hasPremium', 'localizedPrice', 'createPurchaseClient']) {
   check(entitlement.includes(token), `Premium entitlement boundary is missing ${token}.`);
 }
 check(!entitlement.includes('AsyncStorage'), 'Premium entitlement is granted through a local flag.');
+check(!entitlement.includes('useProfile()'), 'Premium entitlement still uses a local player profile as purchase authority.');
 check(!/is_premium\s*:\s*true/.test(entitlement), 'Premium entitlement is faked in the client.');
+
+const purchaseClient = read('src/purchases/purchase-client.native.ts');
+for (const token of [
+  'EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY',
+  'Purchases.purchasePackage',
+  'Purchases.restorePurchases',
+  'Purchases.ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL',
+  'hasTrustedPremiumEntitlement',
+]) {
+  check(purchaseClient.includes(token), `Native RevenueCat boundary is missing ${token}.`);
+}
+
+const purchaseCore = read('src/purchases/purchase-core.ts');
+check(purchaseCore.includes("PREMIUM_ENTITLEMENT_ID = 'premium'"), 'RevenueCat Premium entitlement ID is missing.');
+check(purchaseCore.includes("PREMIUM_PRODUCT_ID = 'com.willywill.scripturegames.premium'"), 'Apple Premium product ID is missing.');
+check(purchaseCore.includes("verification === 'VERIFIED'"), 'Trusted RevenueCat verification is not required.');
+check(purchaseCore.includes("verification === 'VERIFIED_ON_DEVICE'"), 'On-device trusted verification is not accepted.');
+
 const premium = read('app/premium.tsx');
 check(premium.includes('Genesis through Deuteronomy and Matthew through Acts'), 'Premium screen does not describe the ten free Journey books.');
 check(premium.includes('remaining 56 Journey books'), 'Premium screen does not describe the correct remaining Journey count.');
 check(!premium.includes('remaining 62 Journey books'), 'Premium screen retains the obsolete four-book boundary.');
-check(premium.includes('No charge was attempted'), 'Premium screen does not clearly state the protected store boundary.');
+check(premium.includes('One-time lifetime purchase'), 'Premium screen does not clearly disclose the lifetime purchase model.');
+check(premium.includes('localizedPrice'), 'Premium screen does not display Apple localized pricing.');
+check(premium.includes('Restore Purchase'), 'Premium screen does not expose purchase restoration.');
+check(!/No charge was attempted|billing is not connected/i.test(premium), 'Premium screen retains the obsolete placeholder store boundary.');
 check(premium.includes('13 memory passages'), 'Existing free memory passage access is not preserved in Premium copy.');
 
 const mastery = read('src/components/premium/MasteryAnswerFeedback.tsx');
@@ -157,4 +179,4 @@ if (failures.length) {
 }
 
 console.log('COMPLETE BIBLE JOURNEY AUDIT — PASS');
-console.log(`${passed} checks passed across catalog, progress, storage, routes, Genesis invariants, Premium, backgrounds, motion, mastery, and healthy retention.`);
+console.log(`${passed} checks passed across catalog, progress, storage, routes, Genesis invariants, RevenueCat Premium, backgrounds, motion, mastery, and healthy retention.`);
