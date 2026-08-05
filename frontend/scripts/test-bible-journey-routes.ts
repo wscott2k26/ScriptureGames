@@ -110,24 +110,37 @@ const entitlement = read('src/premium-entitlement.tsx');
 for (const token of [
   'PREMIUM_PRODUCT_ID',
   'hasPremium',
-  'purchase',
+  'purchaseLifetime',
   'restore',
   'store-unavailable',
-  'refresh',
+  'createPurchaseClient',
+  'localizedPrice',
 ]) assert.equal(entitlement.includes(token), true, `Premium entitlement boundary must include ${token}.`);
 assert.doesNotMatch(entitlement, /is_premium\s*:\s*true/, 'The client must never fake a Premium profile flag.');
+assert.doesNotMatch(entitlement, /useProfile\(\)/, 'Build 22 Premium must not use a local player profile as purchase authority.');
 assert.doesNotMatch(entitlement, /AsyncStorage/, 'Production Premium access must not be granted through a local flag.');
+
+const nativePurchaseClient = read('src/purchases/purchase-client.native.ts');
+for (const token of [
+  'EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY',
+  'Purchases.purchasePackage',
+  'Purchases.restorePurchases',
+  'Purchases.ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL',
+  'refresh',
+]) assert.equal(nativePurchaseClient.includes(token), true, `Native purchase client must include ${token}.`);
 
 const premium = read('app/premium.tsx');
 for (const token of [
   'Genesis through Deuteronomy and Matthew through Acts',
   'remaining 56 Journey books',
   'Ten Full Books',
-  'Unlock Complete Bible Journey',
+  'Unlock Forever',
   'Restore Purchase',
   'usePremiumEntitlement',
-  'No charge was attempted',
+  'localizedPrice',
+  'One-time lifetime purchase',
 ]) assert.equal(premium.includes(token), true, `Premium screen must include ${token}.`);
 assert.doesNotMatch(premium, /remaining 62 Journey books/, 'Premium copy must not retain the old four-free-book count.');
+assert.doesNotMatch(premium, /No charge was attempted|billing is not connected/i, 'Build 22 must not retain placeholder store copy.');
 
-console.log('Bible journey route, Settings, and Premium contracts passed.');
+console.log('Bible journey route, Settings, and RevenueCat Premium contracts passed.');
