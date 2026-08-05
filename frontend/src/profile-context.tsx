@@ -11,6 +11,8 @@ export type Profile = {
   completed_nodes: string[];
   badges: string[];
   last_active: string;
+  // Legacy compatibility only. Build 22 purchase access is owned by RevenueCat,
+  // and these fields must never be used to unlock Premium.
   is_premium?: boolean;
   premium_entitlement_source?: 'app-store' | 'play-store';
   premium_product_id?: string;

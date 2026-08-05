@@ -1,4 +1,10 @@
-# Scripture Games — Draft App Store Metadata
+# Scripture Games — Build 22 App Store Metadata
+
+Prepared: August 5, 2026  
+App version: 1.0.0  
+Release target: Build 22  
+Bundle ID: `com.willywill.scripturegames`  
+App Store Connect ID: `6795368257`
 
 ## Name
 
@@ -6,84 +12,142 @@ Scripture Games
 
 ## Subtitle
 
-Enter Genesis. Master the Word.
+Play. Learn. Live Scripture.
 
 ## Promotional text
 
-Choose your faction, enter ten cinematic Genesis trials, train with Bible games, complete a fresh Daily Trial, and rise from challenger to Genesis Champion.
+Turn Bible study into a daily adventure with Scripture challenges, a complete offline Bible, family-friendly play, Church Mode, sermon notes, and a cinematic journey through all 66 books.
 
 ## Description
 
-ENTER THE WORD. FACE THE TRIALS. RISE THROUGH THE RANKS.
+Scripture Games is a biblical competition-adventure built for daily study, family learning, and practical use in church.
 
-Scripture Games turns Bible learning into a premium competition-adventure built around knowledge, wisdom, and faithful choices.
+ENTER THE GENESIS TOURNAMENT
+Journey through ten cinematic trials covering Genesis 1–50. Read the briefing, make story decisions, answer Scripture questions, unlock the next gate, and rise toward the Genesis Champion Hall.
 
-GENESIS TOURNAMENT — SEASON ONE
+CONTINUE THROUGH THE COMPLETE BIBLE JOURNEY
+Explore book-by-book seasons from Genesis to Revelation. Ten complete Journey books remain free: Genesis through Deuteronomy and Matthew through Acts. An optional one-time lifetime purchase unlocks the remaining 56 Journey books, the full peaceful scene collection, and complete mastery records.
 
-• Choose Lionguard, Dovebound, or Torchbearers
-• Journey through ten connected trials spanning Genesis 1–50
-• Enter cinematic story briefings and make meaningful decisions
-• Face randomized five-question Scripture challenges
-• Earn Manna, rank points, best scores, streaks, and achievements
-• Open every gate and enter the Genesis Champion Hall
+BUILD A DAILY FAITH RHYTHM
+Complete the Daily Bread Run across rotating Scripture fields. Grow your Faith Flame, use a Grace Leaf when life interrupts your routine, earn XP, and progress through Seed, Lamp, Lion, and Crown weekly leagues.
 
-THE FULL TRAINING EXPERIENCE
+READ THE COMPLETE BIBLE OFFLINE
+Access all 66 books of the public-domain World English Bible without requiring an internet connection after installation. Jump directly to a reference, search Scripture, move between books and chapters, and continue where you stopped. The full Bible reader is always free.
 
-• Complete a new five-question Daily Scripture Trial
-• Train with 168 questions across 15 Bible topics
-• Read 15 illustrated stories in Explorer or Scholar mode
-• Practice 13 memory passages from the World English Bible Classic
-• Solve multi-round Bible word puzzles
-• Open a daily devotional with reflection, prayer, and practice
-• Ask the curated local Bible Companion about familiar Scripture topics
+USE IT IN CHURCH
+Switch on large-text Church Mode, bookmark verses, add private notes, highlight passages in four colors, save chapter-linked sermon notes, and share verses through the device’s native share sheet.
 
-PLAYER AND FAMILY FEATURES
+LEARN THROUGH PLAY
+Train across Bible topics, explore illustrated stories, practice memory passages, solve word puzzles, complete devotionals, unlock achievements, and review clear Scripture references after answers.
 
-• Create multiple local players without an account
-• Review rank, weekly XP, achievements, and daily progress
-• Create kid profiles through Family Hub
-• Review seven-day local learning activity
-• Adjust haptics, motion, and cinematic text
-• Play offline after installation
+MADE FOR FAMILIES
+Create local family profiles, switch between players, track seven-day learning activity, and compete on a leaderboard containing only real profiles saved on the device.
 
-LOCAL-FIRST BETA
+PRIVATE BY DESIGN
+Scripture Games contains no ads, public social feed, or required account registration. Player progress, prayer entries, Bible notes, bookmarks, highlights, family profiles, and settings stay on the device. RevenueCat processes an anonymous app customer identifier and purchase information only to display, validate, preserve, and restore Complete Bible Journey Premium.
 
-All content is unlocked in this release candidate. Progress and companion history stay on the device by default. The app contains no advertising, public social feed, active purchase flow, or analytics SDK.
+Features include:
+- Complete 66-book offline World English Bible
+- Bible reference lookup and full-text search
+- Bookmarks, highlights, reading history, and private verse notes
+- Church Mode and chapter-linked sermon notes
+- Ten-trial Genesis Tournament
+- Ten complete free Bible Journey books
+- Optional lifetime unlock for the remaining 56 Journey books
+- Daily Bread challenges and a forgiving Faith Flame rhythm
+- Weekly Seed, Lamp, Lion, and Crown leagues
+- Bible-topic training, illustrated stories, memory passages, puzzles, and devotionals
+- Local family profiles and achievements
+- Reduced-motion, haptic, and cinematic-text controls
 
-Scripture Games is an educational faith-based experience. Its companion is not a substitute for emergency help, medical care, legal advice, mental-health treatment, or pastoral care from a trusted local community.
+Scripture Games uses the public-domain World English Bible. It is designed as a study and learning companion and is not affiliated with a specific church or denomination.
 
 ## Keywords
 
-Bible,Genesis,quiz,Christian,Scripture,faith,stories,verses,family,kids
+Bible,Scripture,Christian,quiz,trivia,church,devotional,study,Genesis,faith,verse,family,offline
 
-## TestFlight Beta App Description
+## Category proposal
 
-Scripture Games is a local-first biblical competition-adventure with a complete ten-trial Genesis season, three factions, 62 tournament questions, a Daily Trial, 168 training questions, 15 stories, 13 memory passages, word puzzles, devotionals, achievements, Family Hub profiles, and a curated on-device companion. All beta content is unlocked and no account is required.
+Primary: Education  
+Secondary: Games — Trivia
 
-## TestFlight Feedback Notes
+## Copyright
 
-Please test clean onboarding, returning players, all three factions, every Genesis gate, story decisions, trial rewards and replays, Daily Trial reward protection, all five tabs, training topics, stories in both modes, verse memory, rapid puzzle taps, devotionals, companion history and safety responses, achievements, Family Hub child switching, settings, reduced motion, airplane-mode use, relaunch persistence, and both scoped and full data reset.
+© 2026 Storm And Me LLC
 
-Do not enter private or sensitive information into the companion.
+## In-App Purchase metadata
 
-## Review notes draft
+### Type
 
-- The app launches into local onboarding on a clean install.
-- No account is required.
-- All release-candidate content is available without payment.
-- The app is local-first and designed to remain functional in airplane mode after installation.
-- Family Hub and Companion history are stored locally on the device.
-- The Companion uses curated local responses and does not provide professional advice.
-- No public user-generated content, advertising, analytics tracking, or purchase flow is active.
+Non-Consumable
+
+### Reference name
+
+Complete Bible Journey Premium
+
+### Product ID
+
+`com.willywill.scripturegames.premium`
+
+### Display name
+
+Complete Bible Journey Premium
+
+The display name is exactly 30 characters, within Apple’s current limit.
+
+### Description
+
+Unlock all Journey books and peaceful scenes.
+
+The description is exactly 45 characters, within Apple’s current limit.
+
+### Customer-facing purchase disclosure
+
+Scripture Games includes an optional one-time lifetime purchase, Complete Bible Journey Premium. The purchase unlocks the remaining 56 Bible Journey book seasons, the full peaceful scene collection, and complete mastery records. Ten complete Journey books, the entire offline Bible reader, core quizzes, Lumi, and faith tools remain available without purchase.
+
+### In-App Purchase review notes
+
+Open Scripture Games, create or select a local player, open Complete Bible Journey, and choose any book marked Premium, or open the Premium screen directly. The screen displays Apple’s localized lifetime price. Tap **Unlock Forever** to open Apple’s confirmation sheet. Tap **Restore Purchase** to restore an eligible purchase made with the same Apple Account. No app login is required.
+
+Upload a separate App Review screenshot from the exact TestFlight Build 22 showing the Premium screen, localized Apple price, Unlock Forever button, and Restore Purchase button.
+
+## TestFlight beta description
+
+Scripture Games is a local-first biblical competition-adventure with a complete offline Bible, Church Mode, sermon notes, Daily Bread Run, Genesis Tournament, book-by-book Bible Journey, training games, family profiles, Lumi, and an optional one-time Complete Bible Journey Premium purchase. No app account is required.
+
+## TestFlight feedback notes
+
+Please test clean onboarding, returning players, all three factions, Genesis trials, Daily Bread reward protection, the full Bible reader, Church Mode, search, bookmarks, highlights, notes, Training Hub, Lumi, Family Hub, reduced motion, airplane-mode use, relaunch persistence, and local data reset.
+
+For Premium, verify Apple’s localized price, purchase, immediate unlock, relaunch persistence, local-profile switching, cancellation, and Restore Purchase. Do not enter private or sensitive information into Lumi or feedback fields.
+
+## App Privacy proposal — confirm against the exact processed binary
+
+Apple requires the declaration to include third-party SDK practices. Build 22 integrates RevenueCat for purchase validation and restoration.
+
+Proposed declarations:
+
+- **Data collected:** Yes, through RevenueCat.
+- **Identifiers — User ID:** RevenueCat anonymous App User ID; used for App Functionality; not used for tracking.
+- **Purchases — Purchase History:** product and transaction/entitlement information; used for App Functionality; not used for tracking.
+- **Product Interaction:** declare only if the final RevenueCat configuration or generated privacy report shows retained offering, paywall, or purchase-interaction events.
+- **Tracking:** No.
+- **Advertising:** None.
+- **Developer marketing:** None.
+- **Required app account:** None.
+
+Scripture Games does not intentionally send RevenueCat local player names, optional family email, Bible notes, prayer entries, Lumi messages, quiz answers, bookmarks, highlights, sermon notes, or reading history.
+
+Before publishing, inspect the privacy manifest generated by the exact archived Build 22 binary and compare it with RevenueCat’s active dashboard configuration. Do not reuse the former “No data collected” answer.
+
+## Suggested age-rating notes
+
+Complete Apple’s current questionnaire from the exact Build 22 experience. The app contains educational religious content and non-graphic references to death, conflict, judgment, crucifixion, and the flood. It contains no realistic graphic violence, gambling, unrestricted web access, public social content, advertising, or recurring subscription. It does contain an optional non-consumable purchase.
 
 ## Support and privacy
-
-Both URLs were deployed and returned HTTP 200 on July 30, 2026.
 
 - Support email: loftlatte25@gmail.com
 - Support URL: https://scripture-games-support.vercel.app/support/
 - Privacy policy URL: https://scripture-games-support.vercel.app/privacy/
 
-## Suggested age rating
-
-Complete Apple’s and Google’s questionnaires truthfully. The current release candidate contains educational religious content, no gambling, no unrestricted web access, no public social content, no advertising, and no purchases.
+The public privacy policy must be updated before App Review to disclose RevenueCat’s purchase-processing role and the data boundary described above.

@@ -60,6 +60,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Reject automatic release automation
+        run: node scripts/audit-release-automation.mjs
+
       - name: Install dependencies
         shell: bash
         run: |
@@ -84,6 +87,14 @@ jobs:
       - name: Audit premium faith and Lumi voice
         working-directory: frontend
         run: yarn audit:premium
+
+      - name: Test Build 22 Apple Premium
+        working-directory: frontend
+        run: yarn test:build22
+
+      - name: Audit Build 22 store configuration
+        working-directory: frontend
+        run: yarn audit:store
 
       - name: Test chronological quiz ordering
         working-directory: frontend

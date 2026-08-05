@@ -28,8 +28,13 @@ const ALWAYS_FREE = [
 
 export default function Premium() {
   const router = useRouter();
-  const { hasPremium, productId, status, message, purchase, restore } = usePremiumEntitlement();
-  const busy = status === 'checking';
+  const { hasPremium, productId, localizedPrice, status, message, purchase, restore } = usePremiumEntitlement();
+  const busy = status === 'checking' || status === 'purchasing' || status === 'restoring';
+  const purchaseLabel = localizedPrice
+    ? `Unlock Forever — ${localizedPrice}`
+    : status === 'checking'
+      ? 'Loading Apple Price…'
+      : 'Unlock Complete Bible Journey';
 
   return (
     <PeacefulBackdrop darkness={0.5}>
@@ -44,22 +49,22 @@ export default function Premium() {
             <Text style={styles.heroEyebrow}>{hasPremium ? 'PREMIUM ACTIVE' : 'ONE COMPLETE JOURNEY'}</Text>
             <Text style={styles.heroTitle}>{hasPremium ? 'All 66 Bible books are unlocked.' : 'Continue beyond the ten free books.'}</Text>
             <Text style={styles.heroCopy}>{hasPremium
-              ? 'The remaining 56 Journey books and all 50 peaceful backgrounds are available on this player profile.'
+              ? 'The remaining 56 Journey books and all 50 peaceful backgrounds are available for this Apple purchase identity.'
               : 'Genesis through Deuteronomy and Matthew through Acts are free. Premium opens the remaining 56 Journey books, all mastery records, and the full peaceful background collection.'}</Text>
 
             {hasPremium ? (
               <TactileButton label="Continue Bible Journey" icon={<Ionicons name="map" size={20} color={colors.onBrand} />} onPress={() => router.replace('/(tabs)/bible-journey')} />
             ) : (
               <TactileButton
-                label="Unlock Complete Bible Journey"
+                label={purchaseLabel}
                 icon={<Ionicons name="diamond" size={20} color={colors.onBrand} />}
-                disabled={busy}
+                disabled={busy || !localizedPrice}
                 onPress={() => void purchase()}
               />
             )}
             <TactileButton
               variant="glass"
-              label={busy ? 'Checking Purchase…' : 'Restore Purchase'}
+              label={status === 'restoring' ? 'Restoring Purchase…' : 'Restore Purchase'}
               icon={<Ionicons name="refresh" size={19} color={colors.onSurface} />}
               disabled={busy}
               onPress={() => void restore()}
@@ -69,12 +74,12 @@ export default function Premium() {
           {message ? (
             <GlassPanel strong style={[styles.statusCard, hasPremium && styles.statusActive]}>
               <Ionicons
-                name={hasPremium ? 'shield-checkmark' : status === 'store-unavailable' ? 'information-circle' : 'search'}
+                name={hasPremium ? 'shield-checkmark' : status === 'verification-error' ? 'warning' : 'information-circle'}
                 size={24}
                 color={hasPremium ? colors.success : colors.brand}
               />
               <View style={styles.statusCopy}>
-                <Text style={styles.statusTitle}>{hasPremium ? 'Validated entitlement found' : status === 'store-unavailable' ? 'Store setup is still protected' : 'Restore result'}</Text>
+                <Text style={styles.statusTitle}>{hasPremium ? 'Verified lifetime access' : 'Apple purchase status'}</Text>
                 <Text style={styles.statusText}>{message}</Text>
               </View>
             </GlassPanel>
@@ -97,8 +102,8 @@ export default function Premium() {
           <GlassPanel style={styles.notice}>
             <Ionicons name="shield-checkmark" size={24} color={colors.brandSecondary} />
             <View style={styles.noticeCopy}>
-              <Text style={styles.noticeTitle}>Honest store boundary</Text>
-              <Text style={styles.noticeText}>This source branch will not create a local fake Premium flag. Until Apple and Google product configuration, native billing, receipt validation, and sandbox testing are connected, tapping unlock reports that the store is unavailable. No charge was attempted.</Text>
+              <Text style={styles.noticeTitle}>One-time lifetime purchase</Text>
+              <Text style={styles.noticeText}>Apple will show the final localized price and confirmation sheet before charging. Restore Purchase is available for an eligible purchase made with the same Apple Account.</Text>
               <Text style={styles.productId}>Product: {productId}</Text>
             </View>
           </GlassPanel>
