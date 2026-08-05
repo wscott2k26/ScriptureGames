@@ -4,9 +4,9 @@
 
 **Goal:** Replace the protected placeholder Premium flow with one verified Apple non-consumable lifetime purchase through RevenueCat while preserving the physically tested Build 21 experience and preventing accidental Expo charges or unsafe GitHub automation.
 
-**Architecture:** Keep the existing `usePremiumEntitlement()` public interface so Journey, backgrounds, and navigation do not need broad rewrites. Put RevenueCat behind a small injectable purchase client, make the RevenueCat `premium` entitlement the only authority for app-wide access, and keep web/unsupported platforms fail-closed. Before any app merge, archive legacy release workflows and add a repository audit that rejects automatic EAS builds, automatic submissions, workflow chains, and release polling.
+**Architecture:** Preserve the existing `usePremiumEntitlement()` public hook so Journey, backgrounds, and navigation do not need broad rewrites. Put RevenueCat behind a small platform-resolved `PurchaseClient`, make the RevenueCat `premium` entitlement the only authority for app-wide access, and keep web and unsupported platforms fail-closed. Before any app merge, archive every legacy executable workflow except the source-only quality gate and add an audit that rejects automatic EAS builds, submissions, workflow chains, polling, auto-merges, and pushes back to `main`.
 
-**Tech Stack:** Expo SDK 54.0.36, React Native 0.81.5, React 19.1.0, TypeScript 5.9.3, Expo Router 6.0.24, `react-native-purchases` 10.4.4, RevenueCat Entitlements/Offerings, Apple StoreKit 2 through RevenueCat, Node-based regression scripts, GitHub Actions quality gate.
+**Tech Stack:** Expo SDK 54.0.36, React Native 0.81.5, React 19.1.0, TypeScript 5.9.3, Expo Router 6.0.24, `react-native-purchases` 10.4.4, RevenueCat Entitlements and Offerings, Apple StoreKit through RevenueCat, Node regression scripts, GitHub Actions source-only quality gate.
 
 ## Global Constraints
 
@@ -17,74 +17,79 @@
 - Apple product type: Non-Consumable.
 - Apple product ID: `com.willywill.scripturegames.premium`.
 - RevenueCat entitlement ID: `premium`.
-- RevenueCat offering ID: `default` with exactly one lifetime package for the Apple product.
+- RevenueCat offering ID: `default`, containing exactly one lifetime package for the Apple product.
 - The ten free Journey books remain `GEN`, `EXO`, `LEV`, `NUM`, `DEU`, `MAT`, `MRK`, `LUK`, `JHN`, and `ACT`.
-- The remaining 56 Journey books require an active, trusted RevenueCat entitlement.
-- Complete offline Bible, core quizzes, Lumi, Faith Journeys, Prayer Garden, local profiles, and Build 21 free features remain free.
-- Premium is app-wide for the current Apple purchase identity, not tied to one local player profile.
-- Legacy profile fields may remain for data compatibility but must never unlock Premium.
-- No direct edits on `main`; implementation uses one isolated branch and one PR.
+- The remaining 56 Journey books require an active trusted RevenueCat entitlement.
+- Complete offline Bible, core quizzes, Lumi, Faith Journeys, Prayer Garden, local profiles, and all Build 21 free features remain free.
+- Premium is app-wide for the current Apple purchase identity, not attached to one local player profile.
+- Legacy profile fields remain only for data compatibility and must never unlock Premium.
+- No direct edits on `main`; use one isolated implementation branch and one PR.
 - No EAS build, EAS submission, TestFlight upload, Android cloud build, or App Review submission during source implementation.
 - Never use `--auto-submit`.
 - Never automatically retry a paid build.
-- A paid iOS build, TestFlight submission, and App Review submission require three separate explicit user authorizations.
-- Store passwords, `.p8` files, App Store Connect private keys, Apple In-App Purchase private keys, and RevenueCat secret keys are never committed or pasted into chat.
+- A paid iOS build, TestFlight upload, and App Review submission require three separate explicit user authorizations.
+- Apple passwords, `.p8` files, App Store Connect private keys, Apple In-App Purchase private keys, and RevenueCat secret keys are never committed or pasted into chat.
 - Only RevenueCat's public Apple SDK key may be compiled into the client.
 - Pin `react-native-purchases` to exactly `10.4.4`; do not float to `latest` during Build 22.
-- No existing regression test may be deleted, skipped, weakened, or changed merely to obtain a passing run.
+- Do not delete, skip, weaken, or rewrite an existing regression test merely to obtain a passing run.
 - Target CI budget: one complete PR quality-gate run and at most one corrective run after a real source correction.
+- Every shell section begins from the directory stated in that section; do not rely on the previous task's current directory.
 
 ---
 
 ## File Map
 
-### New purchase files
+### Create
 
-- `frontend/src/purchases/purchase-types.ts` — store-neutral states, results, errors, and `PurchaseClient` interface.
-- `frontend/src/purchases/purchase-core.ts` — pure entitlement verification, package selection, and error-normalization helpers.
-- `frontend/src/purchases/purchase-client.ts` — safe default/web implementation that never charges and never unlocks.
-- `frontend/src/purchases/purchase-client.native.ts` — iOS RevenueCat implementation; Android remains explicitly unsupported for Build 22.
-- `frontend/src/purchases/purchase-client-factory.ts` — creates the platform implementation and allows test injection.
-- `frontend/scripts/test-build22-purchases.ts` — pure purchase and app-wide entitlement regression contract.
-- `frontend/scripts/audit-build22-store-config.ts` — source/config audit for exact IDs, dependency pin, public-key boundary, and forbidden local unlocks.
-- `scripts/audit-release-automation.mjs` — repository safety audit that rejects paid or chained release automation.
+- `scripts/audit-release-automation.mjs` — rejects executable release automation.
+- `frontend/src/purchases/purchase-types.ts` — store-neutral purchase types and `PurchaseClient` interface.
+- `frontend/src/purchases/purchase-core.ts` — pure IDs, trusted-entitlement check, package selection, and error normalization.
+- `frontend/src/purchases/purchase-client.ts` — safe web/default implementation that never charges or unlocks.
+- `frontend/src/purchases/purchase-client.native.ts` — iOS RevenueCat implementation; Android remains unsupported for Build 22.
+- `frontend/scripts/test-build22-purchases.ts` — purchase, profile-independence, and UI source contract.
+- `frontend/scripts/audit-build22-store-config.ts` — exact IDs, dependency pin, and credential-boundary audit.
+- `frontend/BUILD_22_SOURCE_VALIDATION_20260805.md` — final source-only evidence.
 
-### Modified application files
+### Modify
 
-- `frontend/src/premium-entitlement.tsx` — preserve the public hook, remove profile authority, initialize the purchase client once, and expose price/purchase/restore states.
-- `frontend/src/premium-entitlement-core.ts` — retain Journey access logic and product ID; remove profile-validation authority from runtime use.
-- `frontend/app/premium.tsx` — show Apple's localized lifetime price and honest purchase/restore states.
-- `frontend/app/_layout.tsx` — preserve provider placement; only adjust provider props if test injection requires it.
-- `frontend/package.json` — add the exact RevenueCat dependency and Build 22 scripts to `validate` and `eas-build-post-install`.
-- `frontend/yarn.lock` — lock the exact dependency tree.
-- `frontend/eas.json` — reference only the RevenueCat public SDK key through `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY`; do not add any private credential.
-- `frontend/expo-env.d.ts` — declare the public environment variable.
-- `frontend/src/profile-context.tsx` — document legacy fields as non-authoritative; avoid a schema-breaking removal in Build 22.
-- `frontend/scripts/test-build15-piano-premium.ts` — update only the obsolete assertion that profile entitlement is authoritative; preserve the free-book and all other Build 15 assertions.
-- `.github/workflows/quality-gate.yml` — add release-automation, Build 22 purchase, and store-config audits.
-- `APP_STORE_METADATA.md`, `APP_REVIEW_NOTES.md`, `APP_STORE_SUBMISSION_1.0.0.md` — replace outdated “no purchase flow” statements with the final lifetime-purchase disclosure and review path.
+- `frontend/package.json`
+- `frontend/yarn.lock`
+- `frontend/expo-env.d.ts`
+- `frontend/src/premium-entitlement.tsx`
+- `frontend/src/premium-entitlement-core.ts`
+- `frontend/src/profile-context.tsx`
+- `frontend/app/premium.tsx`
+- `frontend/scripts/test-build15-piano-premium.ts`
+- `.github/workflows/quality-gate.yml`
+- `APP_STORE_METADATA.md`
+- `APP_REVIEW_NOTES.md`
+- `APP_STORE_SUBMISSION_1.0.0.md`
 
-### Archived release automation
+### Preserve unless a verified test requires a narrow change
 
-Move every active workflow except `quality-gate.yml` out of `.github/workflows/` into `docs/archive/github-workflows-pre-build22/` with a `.yml.txt` suffix. Archive the four `.github/release-triggers/` files beside them. This preserves history while making GitHub unable to execute them.
+- `frontend/app/_layout.tsx` — current provider placement is already correct.
+- `frontend/eas.json` — no private or public RevenueCat key is written here; the public SDK key is set through EAS Environment Variables immediately before the separately authorized build.
+- All gameplay, Bible, Lumi, audio, background, profile, and Journey files outside the purchase seam.
+
+### Archive
+
+Move every active `.github/workflows/*.yml` except `quality-gate.yml` to `docs/archive/github-workflows-pre-build22/` with `.txt` appended. Move all `.github/release-triggers/*.md` beside them. GitHub cannot execute archived `.txt` files, while the old workflow text remains available for history.
 
 ---
 
-### Task 1: Establish the Isolated Implementation Baseline
+### Task 1: Create the Isolated Baseline
 
 **Files:**
-- Create at execution time: isolated git worktree for branch `feature/build22-revenuecat-apple-premium`
-- Read: `frontend/package.json`
-- Read: `frontend/app.json`
-- Read: `frontend/eas.json`
-- Read: `frontend/src/premium-entitlement.tsx`
-- Read: `frontend/app/premium.tsx`
+- Create at execution time: worktree branch `feature/build22-revenuecat-apple-premium`
+- Read only: current Build 21 identifiers and Premium files
 
 **Interfaces:**
-- Consumes: exact current `main` SHA.
-- Produces: immutable baseline SHA recorded in the implementation PR and clean worktree evidence.
+- Consumes: exact current `origin/main` SHA.
+- Produces: clean isolated worktree and immutable baseline SHA.
 
-- [ ] **Step 1: Create an isolated worktree from current `main`**
+- [ ] **Step 1: Create the worktree**
+
+From the existing repository root:
 
 ```bash
 git fetch origin main
@@ -94,46 +99,47 @@ git rev-parse HEAD
 git status --short
 ```
 
-Expected: one SHA is printed and `git status --short` prints nothing.
+Expected: one SHA and an empty status.
 
-- [ ] **Step 2: Record the baseline without triggering CI**
+- [ ] **Step 2: Record the SHA outside the repository**
 
 ```bash
 printf '%s\n' "Build 22 baseline: $(git rev-parse HEAD)" > /tmp/scripture-games-build22-baseline.txt
 ```
 
-Expected: no repository file changes and no GitHub Actions run.
+Expected: no repository change and no Actions run.
 
-- [ ] **Step 3: Verify Build 21 identifiers before any edit**
+- [ ] **Step 3: Verify immutable identifiers**
 
 ```bash
-cd frontend
-node -e "const a=require('./app.json').expo; if(a.ios.bundleIdentifier!=='com.willywill.scripturegames') process.exit(1); console.log(a.version,a.ios.bundleIdentifier,a.extra.eas.projectId)"
+cd ../ScriptureGames-build22/frontend
+node -e "const a=require('./app.json').expo; if(a.version!=='1.0.0'||a.ios.bundleIdentifier!=='com.willywill.scripturegames') process.exit(1); console.log(a.version,a.ios.bundleIdentifier,a.extra.eas.projectId)"
 grep -F '6795368257' eas.json
 grep -F 'com.willywill.scripturegames.premium' src/premium-entitlement-core.ts
 ```
 
-Expected: version `1.0.0`, correct bundle ID, EAS project ID, App Store Connect ID, and Premium product ID.
+Expected: all exact IDs are found. Stop on any mismatch.
 
 - [ ] **Step 4: Do not commit**
 
-This task creates no repository change. Stop if the worktree is not clean or `main` changed unexpectedly.
+This task intentionally creates no commit.
 
 ---
 
-### Task 2: Quarantine Legacy Release Automation with a Failing Safety Audit
+### Task 2: Quarantine Legacy Automation Test-First
 
 **Files:**
 - Create: `scripts/audit-release-automation.mjs`
 - Modify: `.github/workflows/quality-gate.yml`
-- Move: all active `.github/workflows/*.yml` except `quality-gate.yml` to `docs/archive/github-workflows-pre-build22/*.yml.txt`
-- Move: `.github/release-triggers/*.md` to `docs/archive/github-workflows-pre-build22/release-triggers/*.md.txt`
+- Move: all other active workflows and release-trigger files into the docs archive
 
 **Interfaces:**
 - Consumes: repository root.
-- Produces: `node scripts/audit-release-automation.mjs`, which exits nonzero if an active workflow can build, submit, chain, poll, auto-merge, or mutate `main`.
+- Produces: `node scripts/audit-release-automation.mjs`, which passes only when `quality-gate.yml` is the sole active workflow and contains no release command.
 
-- [ ] **Step 1: Write the failing repository audit**
+- [ ] **Step 1: Write the failing audit**
+
+From `../ScriptureGames-build22` create:
 
 ```js
 // scripts/audit-release-automation.mjs
@@ -156,15 +162,11 @@ const forbidden = [
 ];
 
 for (const file of files) {
-  if (file === 'quality-gate.yml') continue;
   const source = readFileSync(join(workflowsDir, file), 'utf8');
+  if (file !== 'quality-gate.yml') violations.push(`unexpected active workflow: ${file}`);
   for (const pattern of forbidden) {
     if (pattern.test(source)) violations.push(`${file}: ${pattern}`);
   }
-}
-
-if (files.some((file) => file !== 'quality-gate.yml')) {
-  violations.push(`unexpected active workflows: ${files.filter((file) => file !== 'quality-gate.yml').join(', ')}`);
 }
 
 if (violations.length) {
@@ -173,19 +175,19 @@ if (violations.length) {
 console.log('Release automation audit passed: only the source-only quality gate is active.');
 ```
 
-- [ ] **Step 2: Run it and verify RED**
-
-Run:
+- [ ] **Step 2: Prove RED**
 
 ```bash
+cd ../ScriptureGames-build22
 node scripts/audit-release-automation.mjs
 ```
 
-Expected: FAIL listing the existing RC3, monitor, EAS, submission, and trigger workflows.
+Expected: FAIL and list the current RC3, monitor, EAS, submission, retry, and trigger workflows.
 
-- [ ] **Step 3: Archive executable workflows instead of deleting their history**
+- [ ] **Step 3: Archive all executable legacy workflows**
 
 ```bash
+cd ../ScriptureGames-build22
 mkdir -p docs/archive/github-workflows-pre-build22/release-triggers
 for file in .github/workflows/*.yml; do
   [ "$(basename "$file")" = "quality-gate.yml" ] && continue
@@ -199,33 +201,26 @@ rmdir .github/release-triggers
 
 Expected: `.github/workflows/quality-gate.yml` is the only active workflow.
 
-- [ ] **Step 4: Add the audit to the beginning of the quality gate**
+- [ ] **Step 4: Add the audit near the beginning of the quality gate**
 
-Add after checkout and runtime setup, before dependency installation:
+After checkout and Node setup, before dependency installation:
 
 ```yaml
       - name: Reject automatic release automation
         run: node scripts/audit-release-automation.mjs
 ```
 
-- [ ] **Step 5: Run the audit and verify GREEN**
+- [ ] **Step 5: Prove GREEN**
 
 ```bash
+cd ../ScriptureGames-build22
 node scripts/audit-release-automation.mjs
-```
-
-Expected: `Release automation audit passed: only the source-only quality gate is active.`
-
-- [ ] **Step 6: Inspect the exact workflow diff**
-
-```bash
-git diff --stat -- .github docs/archive scripts/audit-release-automation.mjs
 git grep -nE 'eas build|eas submit|--auto-submit|workflow_run|gh run rerun' -- .github/workflows || true
 ```
 
-Expected: only `quality-gate.yml` remains active and the grep produces no forbidden release command.
+Expected: audit PASS and grep returns no forbidden command.
 
-- [ ] **Step 7: Commit the safety boundary**
+- [ ] **Step 6: Commit one coherent safety change**
 
 ```bash
 git add .github docs/archive scripts/audit-release-automation.mjs
@@ -234,7 +229,7 @@ git commit -m "chore: quarantine legacy release automation"
 
 ---
 
-### Task 3: Add the Pinned RevenueCat Dependency and Store-Neutral Contracts
+### Task 3: Add the Pinned SDK and Pure Purchase Core
 
 **Files:**
 - Modify: `frontend/package.json`
@@ -244,24 +239,26 @@ git commit -m "chore: quarantine legacy release automation"
 - Create: `frontend/scripts/test-build22-purchases.ts`
 
 **Interfaces:**
-- Consumes: RevenueCat customer information represented by a minimal test shape.
 - Produces:
   - `PurchaseClient`
   - `PurchaseSnapshot`
+  - `PurchaseResult`
   - `PurchaseFailureCode`
-  - `hasTrustedPremiumEntitlement(customerInfo)`
-  - `selectLifetimeProduct(packages)`
-  - `normalizePurchaseError(error)`
+  - `PREMIUM_PRODUCT_ID`
+  - `PREMIUM_ENTITLEMENT_ID`
+  - `hasTrustedPremiumEntitlement()`
+  - `selectLifetimeProduct()`
+  - `normalizePurchaseError()`
 
-- [ ] **Step 1: Add the exact SDK version without running EAS**
+- [ ] **Step 1: Install the exact SDK without invoking EAS**
 
 ```bash
-cd frontend
+cd ../ScriptureGames-build22/frontend
 npx expo install react-native-purchases@10.4.4
 yarn why react-native-purchases
 ```
 
-Expected: `react-native-purchases@10.4.4` appears exactly in `package.json` and the lockfile.
+Expected: `package.json` and `yarn.lock` resolve exactly `10.4.4`.
 
 - [ ] **Step 2: Define the store-neutral contract**
 
@@ -297,7 +294,7 @@ export interface PurchaseClient {
 }
 ```
 
-- [ ] **Step 3: Write failing pure-core tests**
+- [ ] **Step 3: Write the failing pure tests**
 
 ```ts
 // scripts/test-build22-purchases.ts
@@ -306,6 +303,7 @@ import {
   PREMIUM_ENTITLEMENT_ID,
   PREMIUM_PRODUCT_ID,
   hasTrustedPremiumEntitlement,
+  normalizePurchaseError,
   selectLifetimeProduct,
 } from '../src/purchases/purchase-core.ts';
 
@@ -313,34 +311,37 @@ assert.equal(PREMIUM_PRODUCT_ID, 'com.willywill.scripturegames.premium');
 assert.equal(PREMIUM_ENTITLEMENT_ID, 'premium');
 assert.equal(hasTrustedPremiumEntitlement(undefined), false);
 assert.equal(hasTrustedPremiumEntitlement({ active: {} }), false);
-assert.equal(hasTrustedPremiumEntitlement({
-  active: { premium: { verification: 'FAILED' } },
-}), false);
-assert.equal(hasTrustedPremiumEntitlement({
-  active: { premium: { verification: 'VERIFIED' } },
-}), true);
-assert.equal(hasTrustedPremiumEntitlement({
-  active: { premium: { verification: 'VERIFIED_ON_DEVICE' } },
-}), true);
+assert.equal(hasTrustedPremiumEntitlement({ active: { premium: { verification: 'FAILED' } } }), false);
+assert.equal(hasTrustedPremiumEntitlement({ active: { premium: { verification: 'NOT_REQUESTED' } } }), false);
+assert.equal(hasTrustedPremiumEntitlement({ active: { premium: { verification: 'VERIFIED' } } }), true);
+assert.equal(hasTrustedPremiumEntitlement({ active: { premium: { verification: 'VERIFIED_ON_DEVICE' } } }), true);
 assert.equal(selectLifetimeProduct([
   { product: { identifier: 'wrong', priceString: '$0.99' } },
   { product: { identifier: PREMIUM_PRODUCT_ID, priceString: '$9.99' } },
 ])?.product.priceString, '$9.99');
+assert.equal(normalizePurchaseError({ code: '1', userCancelled: true }), 'cancelled');
+assert.equal(normalizePurchaseError({ code: 'PaymentPendingError' }), 'pending');
+assert.equal(normalizePurchaseError({ code: 'NetworkError' }), 'network');
+assert.equal(normalizePurchaseError({ code: 'ProductNotAvailableForPurchaseError' }), 'product-unavailable');
+assert.equal(normalizePurchaseError(new Error('unexpected')), 'unknown');
 console.log('Build 22 purchase core tests passed.');
 ```
 
-- [ ] **Step 4: Run the test and verify RED**
+- [ ] **Step 4: Prove RED**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 node --experimental-strip-types scripts/test-build22-purchases.ts
 ```
 
 Expected: FAIL because `purchase-core.ts` does not exist.
 
-- [ ] **Step 5: Implement the minimal pure core**
+- [ ] **Step 5: Implement the minimum pure core**
 
 ```ts
 // src/purchases/purchase-core.ts
+import type { PurchaseFailureCode } from './purchase-types';
+
 export const PREMIUM_PRODUCT_ID = 'com.willywill.scripturegames.premium';
 export const PREMIUM_ENTITLEMENT_ID = 'premium';
 
@@ -362,65 +363,7 @@ export function hasTrustedPremiumEntitlement(
 export function selectLifetimeProduct<T extends PackageLike>(packages: readonly T[]): T | null {
   return packages.find((item) => item.product.identifier === PREMIUM_PRODUCT_ID) ?? null;
 }
-```
 
-- [ ] **Step 6: Run tests and compatibility checks**
-
-```bash
-node --experimental-strip-types scripts/test-build22-purchases.ts
-npx expo install --check
-yarn typecheck
-```
-
-Expected: purchase test PASS, Expo dependency check PASS, TypeScript PASS.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add package.json yarn.lock src/purchases scripts/test-build22-purchases.ts
-git commit -m "test: define trusted Build 22 purchase core"
-```
-
----
-
-### Task 4: Implement the Fail-Closed Platform Purchase Clients
-
-**Files:**
-- Create: `frontend/src/purchases/purchase-client.ts`
-- Create: `frontend/src/purchases/purchase-client.native.ts`
-- Create: `frontend/src/purchases/purchase-client-factory.ts`
-- Modify: `frontend/src/purchases/purchase-core.ts`
-- Modify: `frontend/scripts/test-build22-purchases.ts`
-
-**Interfaces:**
-- Consumes: `PurchaseClient`, exact public Apple SDK key, RevenueCat offerings/customer info.
-- Produces: `createPurchaseClient()` and one configured singleton per app launch.
-
-- [ ] **Step 1: Extend tests for fail-closed error normalization**
-
-Add these assertions:
-
-```ts
-import { normalizePurchaseError } from '../src/purchases/purchase-core.ts';
-
-assert.equal(normalizePurchaseError({ code: '1', userCancelled: true }), 'cancelled');
-assert.equal(normalizePurchaseError({ code: 'PaymentPendingError' }), 'pending');
-assert.equal(normalizePurchaseError({ code: 'NetworkError' }), 'network');
-assert.equal(normalizePurchaseError({ code: 'ProductNotAvailableForPurchaseError' }), 'product-unavailable');
-assert.equal(normalizePurchaseError(new Error('unexpected')), 'unknown');
-```
-
-- [ ] **Step 2: Run RED**
-
-```bash
-node --experimental-strip-types scripts/test-build22-purchases.ts
-```
-
-Expected: FAIL because `normalizePurchaseError` is missing.
-
-- [ ] **Step 3: Add a resilient error normalizer**
-
-```ts
 export function normalizePurchaseError(error: unknown): PurchaseFailureCode {
   const value = error as { code?: unknown; userCancelled?: unknown } | null;
   if (value?.userCancelled === true) return 'cancelled';
@@ -434,7 +377,38 @@ export function normalizePurchaseError(error: unknown): PurchaseFailureCode {
 }
 ```
 
-- [ ] **Step 4: Implement the safe default client**
+- [ ] **Step 6: Prove GREEN and check compatibility**
+
+```bash
+cd ../ScriptureGames-build22/frontend
+node --experimental-strip-types scripts/test-build22-purchases.ts
+npx expo install --check
+yarn typecheck
+```
+
+Expected: all PASS.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add package.json yarn.lock src/purchases scripts/test-build22-purchases.ts
+git commit -m "test: define trusted Build 22 purchase core"
+```
+
+---
+
+### Task 4: Implement Fail-Closed Platform Clients
+
+**Files:**
+- Create: `frontend/src/purchases/purchase-client.ts`
+- Create: `frontend/src/purchases/purchase-client.native.ts`
+- Modify: `frontend/scripts/test-build22-purchases.ts`
+
+**Interfaces:**
+- Both platform files export `createPurchaseClient(): PurchaseClient`.
+- Metro resolves `.native.ts` for native builds and `.ts` for web/default builds.
+
+- [ ] **Step 1: Implement the safe default client**
 
 ```ts
 // src/purchases/purchase-client.ts
@@ -458,9 +432,9 @@ export function createPurchaseClient(): PurchaseClient {
 }
 ```
 
-- [ ] **Step 5: Implement the iOS native RevenueCat client**
+- [ ] **Step 2: Implement the native RevenueCat client**
 
-Use these exact rules in `purchase-client.native.ts`:
+Use this initialization and snapshot seam in `purchase-client.native.ts`:
 
 ```ts
 import { Platform } from 'react-native';
@@ -470,8 +444,12 @@ import Purchases, {
   type CustomerInfo,
   type PurchasesPackage,
 } from 'react-native-purchases';
-import { hasTrustedPremiumEntitlement, normalizePurchaseError, selectLifetimeProduct } from './purchase-core';
-import type { PurchaseClient, PurchaseSnapshot } from './purchase-types';
+import {
+  hasTrustedPremiumEntitlement,
+  normalizePurchaseError,
+  selectLifetimeProduct,
+} from './purchase-core';
+import type { PurchaseClient, PurchaseResult, PurchaseSnapshot } from './purchase-types';
 
 const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY?.trim() ?? '';
 let configured = false;
@@ -516,15 +494,47 @@ if (!configured) {
 return load();
 ```
 
-`purchaseLifetime()` must refuse to call StoreKit until `lifetimePackage` exists, call `Purchases.purchasePackage(lifetimePackage)`, and return `hasPremium: true` only when the returned customer information passes `hasTrustedPremiumEntitlement`.
+`refresh()` calls `load()` and maps failures without erasing a previously trusted provider state.
 
-`restore()` must call `Purchases.restorePurchases()` and use the same trusted-entitlement check.
+`purchaseLifetime()` must:
 
-`subscribe()` must register `Purchases.addCustomerInfoUpdateListener`, update from `snapshot(customerInfo)`, and remove the listener in cleanup.
+```ts
+if (!configured || !lifetimePackage) {
+  return { hasPremium: false, failure: lifetimePackage ? 'store-unavailable' : 'product-unavailable' };
+}
+try {
+  const { customerInfo } = await Purchases.purchasePackage(lifetimePackage);
+  const hasPremium = hasTrustedPremiumEntitlement(customerInfo.entitlements);
+  return { hasPremium, failure: hasPremium ? null : 'verification-failed' };
+} catch (error) {
+  return { hasPremium: false, failure: normalizePurchaseError(error) };
+}
+```
 
-- [ ] **Step 6: Run source-only verification**
+`restore()` calls `Purchases.restorePurchases()` and applies the same trusted-entitlement check.
+
+`subscribe(listener)` registers one `CustomerInfo` listener and returns cleanup that removes that exact listener.
+
+- [ ] **Step 3: Add static client-boundary assertions**
+
+Append to `test-build22-purchases.ts`:
+
+```ts
+import { readFileSync } from 'node:fs';
+const nativeClient = readFileSync('src/purchases/purchase-client.native.ts', 'utf8');
+const webClient = readFileSync('src/purchases/purchase-client.ts', 'utf8');
+assert.match(nativeClient, /ENTITLEMENT_VERIFICATION_MODE\.INFORMATIONAL/);
+assert.match(nativeClient, /Purchases\.purchasePackage/);
+assert.match(nativeClient, /Purchases\.restorePurchases/);
+assert.match(nativeClient, /EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY/);
+assert.doesNotMatch(nativeClient + webClient, /ASC_PRIVATE_KEY|APPLE_IAP_PRIVATE_KEY|REVENUECAT_V2_SECRET_KEY/);
+assert.doesNotMatch(webClient, /react-native-purchases/);
+```
+
+- [ ] **Step 4: Run source-only checks**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 node --experimental-strip-types scripts/test-build22-purchases.ts
 yarn typecheck
 yarn lint
@@ -532,9 +542,9 @@ yarn export:ios
 yarn export:android
 ```
 
-Expected: all commands PASS. No EAS command is run.
+Expected: all PASS. No EAS command is run.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/purchases scripts/test-build22-purchases.ts
@@ -543,25 +553,24 @@ git commit -m "feat: add fail-closed RevenueCat purchase client"
 
 ---
 
-### Task 5: Make the Existing Premium Provider App-Wide and Testable
+### Task 5: Replace Profile Authority While Preserving the Hook
 
 **Files:**
 - Modify: `frontend/src/premium-entitlement.tsx`
 - Modify: `frontend/src/premium-entitlement-core.ts`
 - Modify: `frontend/src/profile-context.tsx`
-- Modify: `frontend/scripts/test-build22-purchases.ts`
 - Modify: `frontend/scripts/test-build15-piano-premium.ts`
+- Modify: `frontend/scripts/test-build22-purchases.ts`
 
 **Interfaces:**
-- Consumes: `PurchaseClient`.
-- Produces: unchanged hook name `usePremiumEntitlement()` plus `localizedPrice` and richer status values.
+- Consumes: `createPurchaseClient()` and `PurchaseSnapshot`.
+- Produces: unchanged `usePremiumEntitlement()` name plus `localizedPrice` and explicit purchase states.
 
-- [ ] **Step 1: Add source-level regression assertions before modifying the provider**
+- [ ] **Step 1: Add failing provider assertions**
 
-Add to `test-build22-purchases.ts`:
+Append:
 
 ```ts
-import { readFileSync } from 'node:fs';
 const providerSource = readFileSync('src/premium-entitlement.tsx', 'utf8');
 assert.doesNotMatch(providerSource, /hasValidatedPremiumEntitlement\(profile\)/);
 assert.doesNotMatch(providerSource, /useProfile\(\)/);
@@ -569,17 +578,16 @@ assert.match(providerSource, /createPurchaseClient/);
 assert.match(providerSource, /localizedPrice/);
 ```
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Prove RED**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 node --experimental-strip-types scripts/test-build22-purchases.ts
 ```
 
-Expected: FAIL because the current provider still uses the local profile.
+Expected: FAIL because the current provider uses the local profile.
 
-- [ ] **Step 3: Preserve the public context while changing its authority**
-
-The context must expose:
+- [ ] **Step 3: Preserve the public context with these exact fields**
 
 ```ts
 export type PremiumEntitlementStatus =
@@ -608,33 +616,47 @@ type PremiumEntitlementContextValue = {
 };
 ```
 
-Provider behavior:
+Provider rules:
 
-1. Create the client once with `useRef(createPurchaseClient())`.
+1. Create one client with `useRef<PurchaseClient | null>(null)` and initialize it once.
 2. Call `configure()` once after mount.
-3. Subscribe once to customer information changes.
+3. Subscribe once and remove the listener on unmount.
 4. Render children immediately with free access while checking.
-5. Set `hasPremium` only from `PurchaseSnapshot.hasPremium`.
-6. Never read `profile.is_premium` or other legacy entitlement fields.
-7. Treat cancellation as non-destructive.
-8. Treat pending as locked until a later trusted update.
-9. Preserve cached trusted Premium when a refresh has a temporary network failure.
-10. Never optimistically unlock before a trusted purchase or restore result.
+5. Set `hasPremium` only from trusted `PurchaseSnapshot.hasPremium`.
+6. Never read `profile.is_premium` or the other legacy fields.
+7. Cancellation does not unlock and does not show an alarming error.
+8. Pending remains locked until a later trusted listener update.
+9. A temporary network error must not erase already trusted in-memory Premium.
+10. A fresh install without a trusted response remains locked.
+11. Purchase and restore never optimistically unlock.
 
-- [ ] **Step 4: Mark legacy profile fields as non-authoritative without deleting them**
+- [ ] **Step 4: Keep Journey access pure**
 
-Add a code comment above the four legacy fields in `Profile`:
+In `premium-entitlement-core.ts`, retain:
+
+```ts
+export const PREMIUM_PRODUCT_ID = 'com.willywill.scripturegames.premium';
+export function canAccessJourneyBook(bookId: string, hasPremium: boolean): boolean {
+  const book = getJourneyBook(bookId);
+  if (!book) return false;
+  return book.access === 'free' || hasPremium;
+}
+```
+
+The old `hasValidatedPremiumEntitlement(profile)` may remain temporarily for migration tests, but runtime provider code must not import or call it.
+
+- [ ] **Step 5: Mark legacy fields clearly**
+
+Above the four legacy fields in `Profile` add:
 
 ```ts
 // Legacy compatibility only. Build 22 purchase access is owned by RevenueCat,
 // and these fields must never be used to unlock Premium.
 ```
 
-Do not migrate or rewrite saved profiles in this task.
+Do not rewrite saved profiles.
 
-- [ ] **Step 5: Correct the Build 15 regression assertion**
-
-Replace only the provider-authority assertion with:
+- [ ] **Step 6: Correct only the obsolete Build 15 provider assertion**
 
 ```ts
 check('provider rejects local profile authority', () => {
@@ -644,11 +666,12 @@ check('provider rejects local profile authority', () => {
 });
 ```
 
-Keep the ten-free-books, audio, quiz background, Scripture links, Bible return, copy, and Genesis assertions unchanged.
+Keep every other Build 15 assertion unchanged.
 
-- [ ] **Step 6: Run focused tests**
+- [ ] **Step 7: Prove GREEN**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 node --experimental-strip-types scripts/test-build22-purchases.ts
 yarn test:build15
 yarn test:journey
@@ -658,16 +681,16 @@ yarn lint
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/premium-entitlement.tsx src/premium-entitlement-core.ts src/profile-context.tsx scripts/test-build22-purchases.ts scripts/test-build15-piano-premium.ts
+git add src/premium-entitlement.tsx src/premium-entitlement-core.ts src/profile-context.tsx scripts/test-build15-piano-premium.ts scripts/test-build22-purchases.ts
 git commit -m "feat: make Premium a trusted app-wide entitlement"
 ```
 
 ---
 
-### Task 6: Update the Premium Screen Without Redesigning It
+### Task 6: Connect the Existing Premium Screen Without Redesign
 
 **Files:**
 - Modify: `frontend/app/premium.tsx`
@@ -675,9 +698,9 @@ git commit -m "feat: make Premium a trusted app-wide entitlement"
 
 **Interfaces:**
 - Consumes: `hasPremium`, `localizedPrice`, `status`, `message`, `purchase()`, and `restore()`.
-- Produces: existing Premium layout with accurate Apple purchase states.
+- Produces: current Premium layout with accurate Apple lifetime-purchase behavior.
 
-- [ ] **Step 1: Add failing UI source assertions**
+- [ ] **Step 1: Add failing UI assertions**
 
 ```ts
 const premiumSource = readFileSync('app/premium.tsx', 'utf8');
@@ -688,17 +711,14 @@ assert.doesNotMatch(premiumSource, /No charge was attempted/i);
 assert.match(premiumSource, /Restore Purchase/);
 ```
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Prove RED**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 node --experimental-strip-types scripts/test-build22-purchases.ts
 ```
 
-Expected: FAIL on current placeholder copy.
-
-- [ ] **Step 3: Change only purchase-dependent UI behavior**
-
-Use:
+- [ ] **Step 3: Add price and busy-state behavior**
 
 ```ts
 const { hasPremium, productId, localizedPrice, status, message, purchase, restore } = usePremiumEntitlement();
@@ -710,33 +730,25 @@ const purchaseLabel = localizedPrice
     : 'Unlock Complete Bible Journey';
 ```
 
-The purchase button must be disabled while busy or when `localizedPrice` is absent. Keep the Restore button visible.
+Disable purchase while busy or when `localizedPrice` is absent. Keep Restore visible.
 
-Replace the placeholder notice with:
+Replace the placeholder notice with exactly:
 
 ```text
 One-time lifetime purchase
 Apple will show the final localized price and confirmation sheet before charging. Restore Purchase is available for an eligible purchase made with the same Apple Account.
 ```
 
-Do not promise Family Sharing unless it is enabled and physically verified later.
+Do not promise Family Sharing until enabled and physically verified.
 
-- [ ] **Step 4: Preserve the Build 21 visual structure**
+- [ ] **Step 4: Preserve visual and navigation contracts**
 
-Do not change:
+Do not change backdrop darkness, hero structure, section order, feature lists, always-free copy structure, route destinations, Genesis/Journey artwork, or theme tokens.
 
-- backdrop darkness
-- hero panel structure
-- section order
-- feature lists
-- always-free list
-- route destinations
-- Genesis/Journey artwork
-- theme tokens
-
-- [ ] **Step 5: Run focused UI and visual checks**
+- [ ] **Step 5: Run focused and visual checks**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 node --experimental-strip-types scripts/test-build22-purchases.ts
 yarn test:build15
 yarn audit:visual
@@ -757,20 +769,19 @@ git commit -m "feat: connect Premium screen to lifetime Apple pricing"
 
 ---
 
-### Task 7: Add Build-Time Configuration and Store-Config Audits
+### Task 7: Add Environment Typing and Store Safety Audits
 
 **Files:**
-- Modify: `frontend/eas.json`
 - Modify: `frontend/expo-env.d.ts`
 - Create: `frontend/scripts/audit-build22-store-config.ts`
 - Modify: `frontend/package.json`
 - Modify: `.github/workflows/quality-gate.yml`
 
 **Interfaces:**
-- Consumes: `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY` at native build time.
-- Produces: source-only audit that fails on missing IDs, wrong dependency version, private-key leakage, or local entitlement authority.
+- Consumes at build time: `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY`.
+- Produces: `yarn test:build22` and `yarn audit:store`.
 
-- [ ] **Step 1: Declare the public build variable**
+- [ ] **Step 1: Declare only the public key**
 
 ```ts
 // expo-env.d.ts addition
@@ -781,15 +792,11 @@ declare namespace NodeJS {
 }
 ```
 
-- [ ] **Step 2: Reference the public key in EAS profiles without embedding a value**
+Do not add a value to Git. Do not modify `eas.json` for this key.
 
-Do not place an actual key in Git. Add this comment-equivalent requirement to release documentation rather than a fake value: the variable is set in EAS Environment Variables for production immediately before the authorized Build 22 build. Local source validation intentionally runs with it absent and must remain fail-closed.
+- [ ] **Step 2: Write the config audit**
 
-Do not add `ASC_*`, `APPLE_IAP_*`, or `REVENUECAT_V2_SECRET_KEY` to `eas.json`.
-
-- [ ] **Step 3: Write the store-config audit**
-
-The audit must assert:
+`audit-build22-store-config.ts` must load `package.json`, `app.json`, `eas.json`, `premium-entitlement-core.ts`, `purchase-core.ts`, both purchase clients, and `premium-entitlement.tsx`, then assert:
 
 ```ts
 assert.equal(pkg.dependencies['react-native-purchases'], '10.4.4');
@@ -797,27 +804,31 @@ assert.equal(app.expo.ios.bundleIdentifier, 'com.willywill.scripturegames');
 assert.equal(eas.submit.production.ios.ascAppId, '6795368257');
 assert.match(core, /com\.willywill\.scripturegames\.premium/);
 assert.match(purchaseCore, /PREMIUM_ENTITLEMENT_ID = 'premium'/);
-assert.doesNotMatch(allClientSource, /ASC_PRIVATE_KEY|APPLE_IAP_PRIVATE_KEY|REVENUECAT_V2_SECRET_KEY/);
-assert.doesNotMatch(provider, /is_premium|premium_entitlement_source|premium_product_id/);
+assert.doesNotMatch(clientSource, /ASC_PRIVATE_KEY|APPLE_IAP_PRIVATE_KEY|REVENUECAT_V2_SECRET_KEY/);
+assert.doesNotMatch(provider, /hasValidatedPremiumEntitlement\(profile\)|useProfile\(\)/);
 ```
 
-Also scan tracked source for PEM headers and fail on:
+Recursively scan tracked text source and fail on:
 
 ```text
 -----BEGIN PRIVATE KEY-----
 -----BEGIN EC PRIVATE KEY-----
 ```
 
-- [ ] **Step 4: Add scripts**
+Exclude archived historical workflow text only from command-pattern checks, not from private-key checks.
+
+- [ ] **Step 3: Register scripts**
+
+Add:
 
 ```json
 "test:build22": "node --experimental-strip-types scripts/test-build22-purchases.ts",
 "audit:store": "node --experimental-strip-types scripts/audit-build22-store-config.ts"
 ```
 
-Append `yarn test:build22 && yarn audit:store` to both `validate` and `eas-build-post-install` before exports.
+Append `yarn test:build22 && yarn audit:store` to both `validate` and `eas-build-post-install` before local exports.
 
-- [ ] **Step 5: Add the focused jobs to the quality gate**
+- [ ] **Step 4: Add two source-only quality-gate steps**
 
 ```yaml
       - name: Test Build 22 Apple Premium
@@ -829,115 +840,104 @@ Append `yarn test:build22 && yarn audit:store` to both `validate` and `eas-build
         run: yarn audit:store
 ```
 
-- [ ] **Step 6: Run focused verification**
+- [ ] **Step 5: Run focused checks**
 
 ```bash
-node ../scripts/audit-release-automation.mjs
+cd ../ScriptureGames-build22
+node scripts/audit-release-automation.mjs
+cd frontend
 yarn test:build22
 yarn audit:store
 yarn typecheck
 yarn lint
 ```
 
-Expected: all PASS with no EAS invocation.
+Expected: all PASS and zero EAS activity.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add eas.json expo-env.d.ts scripts/audit-build22-store-config.ts package.json ../.github/workflows/quality-gate.yml
+git add expo-env.d.ts scripts/audit-build22-store-config.ts package.json ../.github/workflows/quality-gate.yml
 git commit -m "chore: add Build 22 store and release safety gates"
 ```
 
 ---
 
-### Task 8: Update Store Metadata, Privacy Disclosure, and Review Instructions
+### Task 8: Correct Store Metadata and Support Disclosures
 
 **Files:**
 - Modify: `APP_STORE_METADATA.md`
 - Modify: `APP_REVIEW_NOTES.md`
 - Modify: `APP_STORE_SUBMISSION_1.0.0.md`
-- Modify: Vercel `scripture-games-support` privacy/support source only if its repository source is identified and reviewed
+- Modify Vercel support/privacy source only after identifying its exact source repository
 
 **Interfaces:**
-- Consumes: finalized Build 22 purchase behavior.
-- Produces: accurate copy for App Store Connect and reviewer navigation.
+- Produces: accurate customer disclosure and reviewer path.
 
-- [ ] **Step 1: Write exact customer-facing disclosure**
-
-Use this wording consistently:
+- [ ] **Step 1: Use this customer-facing disclosure**
 
 ```text
 Scripture Games includes an optional one-time lifetime purchase, Complete Bible Journey Premium. The purchase unlocks the remaining 56 Bible Journey book seasons, the full peaceful scene collection, and complete mastery records. Ten complete Journey books, the entire offline Bible reader, core quizzes, Lumi, and faith tools remain available without purchase.
 ```
 
-- [ ] **Step 2: Write exact App Review navigation**
+- [ ] **Step 2: Use this App Review path**
 
 ```text
 Open Scripture Games → select or create a local player → open Complete Bible Journey → choose any Premium-marked book, or open the Premium screen directly. The screen displays Apple's localized lifetime price. Tap Unlock Forever to open Apple's purchase sheet. Tap Restore Purchase to restore an eligible prior purchase. No login is required.
 ```
 
-- [ ] **Step 3: Remove all outdated statements**
+- [ ] **Step 3: Remove obsolete statements**
 
-Search and remove statements that claim:
+Remove claims that there is no active purchase flow, all release content is unlocked, purchases are “none,” Premium belongs to one player profile, or Unlock can never charge.
 
-- there is no active purchase flow
-- all release content is unlocked
-- purchases/subscriptions are “none”
-- Premium is attached to one player profile
-- tapping Unlock can never charge
+- [ ] **Step 4: Document RevenueCat narrowly**
 
-- [ ] **Step 4: Update privacy disclosure narrowly**
+State that RevenueCat processes purchase-related identifiers, transaction records, product interaction, and entitlement status for app functionality. Do not claim prayer notes, Bible notes, Lumi messages, family names, quiz answers, or reading history are sent to RevenueCat.
 
-Document that RevenueCat processes purchase-related identifiers, transaction records, product interaction, and entitlement status for app functionality. Do not claim that prayer notes, Bible notes, Lumi messages, family names, quiz answers, or reading history are sent to RevenueCat.
+- [ ] **Step 5: Verify Vercel source before writing**
 
-- [ ] **Step 5: Verify support-site source before editing Vercel**
+Use Vercel to confirm the `scripture-games-support` production project and deployment. Identify its source repository before any deployment. If source cannot be proven, leave production untouched and place the final copy in the repository evidence report.
 
-Use Vercel to identify the exact production project and deployment. Do not deploy from an unverified local directory. If the source repository cannot be identified, document the required text and leave production untouched until its source is confirmed.
-
-- [ ] **Step 6: Commit repository metadata**
+- [ ] **Step 6: Commit from the repository root**
 
 ```bash
+cd ../ScriptureGames-build22
 git add APP_STORE_METADATA.md APP_REVIEW_NOTES.md APP_STORE_SUBMISSION_1.0.0.md
 git commit -m "docs: prepare Build 22 lifetime purchase review metadata"
 ```
 
 ---
 
-### Task 9: Configure Apple and RevenueCat Without Exposing Credentials
+### Task 9: Configure Apple and RevenueCat Securely
 
 **Files:**
 - No app source change required for dashboard setup
-- Optional create after review: `.github/workflows/store-connect-inspect.yml` as read-only, manual-dispatch-only automation
-- Optional create after review: `scripts/store-connect-inspect.mjs`
+- Optional only after separate review: manual-dispatch read-only store inspection workflow
 
 **Interfaces:**
-- Consumes secure credentials added directly by the user to encrypted service settings.
-- Produces Apple product, RevenueCat product/entitlement/offering, and sanitized configuration evidence.
+- Consumes: credentials entered directly by the user into Apple and RevenueCat secure dashboards.
+- Produces: exact Apple product, RevenueCat entitlement/offering, and public SDK key.
 
-- [ ] **Step 1: Confirm Apple business readiness manually**
+- [ ] **Step 1: Confirm Apple business readiness**
 
-In App Store Connect, Account Holder confirms:
+The Account Holder confirms in App Store Connect:
 
-- Paid Apps Agreement is active
-- tax information is complete
-- banking information is complete
-- Scripture Games app ID is `6795368257`
-- bundle ID is `com.willywill.scripturegames`
+- Paid Apps Agreement active
+- tax information complete
+- banking information complete
+- app ID `6795368257`
+- bundle ID `com.willywill.scripturegames`
 
-Stop if any business requirement is incomplete; do not create a paid build.
+Stop if any item is incomplete. No paid build is created.
 
-- [ ] **Step 2: Generate the two separate Apple keys**
-
-Create:
+- [ ] **Step 2: Generate two separate Apple credentials**
 
 1. App Store Connect API team key with App Manager role.
 2. Apple In-App Purchase key under Users and Access → Integrations → In-App Purchase.
 
-Record issuer ID and key ID securely. Download each `.p8` once. Do not paste either key into chat.
+Store issuer IDs, key IDs, and one-time `.p8` downloads securely. Do not paste private keys into chat.
 
-- [ ] **Step 3: Create the RevenueCat project and iOS app**
-
-Use:
+- [ ] **Step 3: Create the RevenueCat app**
 
 ```text
 Project: Scripture Games
@@ -945,11 +945,9 @@ Platform: App Store
 Bundle ID: com.willywill.scripturegames
 ```
 
-Upload the App Store Connect API credential and Apple In-App Purchase credential directly in RevenueCat's secure dashboard.
+Upload the App Store Connect API credential and Apple In-App Purchase credential directly into RevenueCat's secure Apple app configuration.
 
-- [ ] **Step 4: Create or import the exact product**
-
-Apple product:
+- [ ] **Step 4: Create or import the Apple product**
 
 ```text
 Type: Non-Consumable
@@ -959,9 +957,9 @@ Display Name: Complete Bible Journey Premium
 Description: Unlock all 66 Bible Journey book seasons, complete mastery records, and the full peaceful scene collection with one lifetime purchase.
 ```
 
-Choose the final price deliberately. Do not invent a price in source code; the app displays Apple's localized price.
+Choose the price deliberately in Apple. Never hardcode the price in the app.
 
-- [ ] **Step 5: Configure RevenueCat entitlement and offering**
+- [ ] **Step 5: Configure the RevenueCat entitlement and offering**
 
 ```text
 Entitlement ID: premium
@@ -972,38 +970,29 @@ Attached product: com.willywill.scripturegames.premium
 
 Verify exactly one lifetime package is active in the current offering.
 
-- [ ] **Step 6: Add only the public SDK key to the build environment**
+- [ ] **Step 6: Set only the public SDK key for the future build**
 
-Set `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY` in the EAS production environment. Do not trigger a build.
+Set `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY` in the EAS production environment. This action must not start a build.
 
-- [ ] **Step 7: Keep App Store Connect private automation optional and read-only first**
+- [ ] **Step 7: Keep Apple API automation read-only first**
 
-If a GitHub bridge is still desired, its first version must:
-
-- use `workflow_dispatch` only
-- request `mode=inspect`
-- contain no EAS commands
-- perform no Apple or RevenueCat write
-- print no credentials
-- emit only app ID, bundle ID, product ID, product state, offering ID, and entitlement ID
-
-Do not create a write-capable Apple workflow until the read-only output has been reviewed and a separate exact action contract is approved.
+A bridge is optional because this chat has no native App Store Connect connector. Its first version, if approved separately, must use `workflow_dispatch` only, accept only `mode=inspect`, contain no EAS command, perform no Apple/RevenueCat write, print no credential, and emit only sanitized IDs and states. Do not create write-capable automation until read-only evidence is reviewed.
 
 ---
 
-### Task 10: Run the Complete Local Regression Matrix Before Opening One PR
+### Task 10: Run the Full Source Matrix Once
 
 **Files:**
-- Modify only files required to correct real failures
 - Create: `frontend/BUILD_22_SOURCE_VALIDATION_20260805.md`
+- Modify only files required to correct real failures
 
 **Interfaces:**
-- Consumes: final implementation branch head.
-- Produces: one immutable source-validation report tied to one commit SHA.
+- Produces: one source-validation record tied to one final SHA.
 
-- [ ] **Step 1: Run focused safety checks first**
+- [ ] **Step 1: Run focused checks**
 
 ```bash
+cd ../ScriptureGames-build22
 node scripts/audit-release-automation.mjs
 cd frontend
 yarn test:build22
@@ -1016,204 +1005,168 @@ yarn lint
 
 Expected: all PASS.
 
-- [ ] **Step 2: Run the full validation chain exactly once locally**
+- [ ] **Step 2: Run the complete chain exactly once locally**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 yarn validate
 ```
 
-Expected: complete Bible generation/audit, cloud audit, Premium audit, quiz ordering, Book Mastery, Build 20 recovery, Lumi, voice, navigation, Journey, Build 13–18 regressions, runtime/content/visual audits, Expo Doctor, TypeScript, ESLint, and local iOS/Android exports all PASS.
+Expected: Bible generation/audit, cloud audit, Premium audit, quiz ordering, Book Mastery, Build 20 recovery, Lumi, voice, navigation, Journey, Build 13–18 regressions, runtime/content/visual audits, Expo Doctor, TypeScript, ESLint, and local iOS/Android exports all PASS.
 
 - [ ] **Step 3: Verify no paid operation occurred**
 
 ```bash
+cd ../ScriptureGames-build22
 git grep -nE 'eas build|eas submit|--auto-submit' -- .github/workflows || true
 git status --short
 ```
 
-Expected: no EAS command in active workflows and only intended source/report changes.
+Expected: no EAS command in active workflows and only intended changes.
 
-- [ ] **Step 4: Write the validation report**
+- [ ] **Step 4: Write the evidence report**
 
-Record:
+Record final SHA, every command, result, dependency version, modified files, zero EAS builds, zero submissions, zero Android cloud builds, and zero App Review actions. Do not claim sandbox purchase success.
 
-- final branch SHA
-- every command run
-- pass/fail result
-- exact dependency version
-- zero EAS builds
-- zero submissions
-- zero Android cloud builds
-- zero App Review actions
-- list of modified files
-
-Do not claim sandbox purchase success at the source-only stage.
-
-- [ ] **Step 5: Commit the report**
+- [ ] **Step 5: Commit and inspect**
 
 ```bash
+cd ../ScriptureGames-build22/frontend
 git add BUILD_22_SOURCE_VALIDATION_20260805.md
 git commit -m "docs: record Build 22 source validation"
-```
-
-- [ ] **Step 6: Inspect the entire diff against `main`**
-
-```bash
+cd ..
 git diff --stat origin/main...HEAD
 git diff --check origin/main...HEAD
 git log --oneline origin/main..HEAD
 ```
 
-Expected: no whitespace errors, no unrelated app redesign, and coherent batched commits.
+Expected: no unrelated redesign or whitespace error.
 
 ---
 
-### Task 11: Open One PR and Spend the CI Budget Once
+### Task 11: Open One PR and Use CI Once
 
 **Files:**
-- No additional source change unless CI finds a real defect
+- No new source change unless CI identifies a real defect
 
 **Interfaces:**
-- Consumes: locally validated branch.
-- Produces: one reviewed PR and one primary GitHub quality-gate run.
+- Produces: one reviewed implementation PR and one primary quality-gate run.
 
-- [ ] **Step 1: Push the branch once after local validation**
+- [ ] **Step 1: Push once after local validation**
 
 ```bash
+cd ../ScriptureGames-build22
 git push -u origin feature/build22-revenuecat-apple-premium
 ```
 
-- [ ] **Step 2: Open one PR with explicit release boundaries**
+- [ ] **Step 2: Open one PR**
 
-PR body must state:
+PR body must include:
 
 ```text
 Source implementation only. No EAS build, TestFlight upload, Android cloud build, App Review submission, or public release is authorized by this PR.
 ```
 
-Include the baseline SHA, final SHA, tests, exact product/entitlement IDs, workflow quarantine, and rollback to Build 21.
+Include baseline SHA, final SHA, exact IDs, workflow quarantine, test evidence, and Build 21 rollback.
 
-- [ ] **Step 3: Let the quality gate run once**
+- [ ] **Step 3: Allow one full quality-gate run**
 
-Do not push cosmetic changes while CI is running. If a job fails because of a real source defect, fix locally, rerun only the focused failing command locally, batch the correction into one commit, and push once.
+Do not push cosmetic changes while it runs. If a real defect appears, fix and prove it locally, batch one corrective commit, and push once. Retry only the failed job when possible.
 
-- [ ] **Step 4: Review CI evidence and exact diff**
+- [ ] **Step 4: Review exact evidence**
 
-Confirm:
+Confirm the release-automation audit, Build 22 purchase test, store audit, full legacy matrix, secret scan, and absence of EAS/submission runs.
 
-- release-automation audit passed
-- Build 22 purchase test passed
-- store-config audit passed
-- full legacy regression matrix passed
-- no EAS or submission workflow ran
-- no secret appears in logs or diff
+- [ ] **Step 5: Merge only after final workflow inventory**
 
-- [ ] **Step 5: Merge only after the active-workflow inventory is safe**
-
-Immediately before merge, verify `.github/workflows/` contains only `quality-gate.yml` and that merging cannot trigger an EAS build.
+Immediately before merge, verify `.github/workflows/` contains only `quality-gate.yml` and merging cannot start EAS.
 
 ---
 
-### Task 12: Paid Build, TestFlight, Sandbox, Screenshots, and App Review — Separate Gates
+### Task 12: Paid Build and Apple Release as Three Separate Gates
 
 **Files:**
-- Create after each completed gate: Build 22 release evidence documents
-- No source edits between approved build SHA and submission
+- Create release evidence after each completed gate
+- No source edit between approved source SHA and submission
 
 **Interfaces:**
-- Consumes: merged, approved, immutable Build 22 source SHA.
-- Produces: one paid iOS binary, one TestFlight upload, sandbox evidence, screenshots from that exact binary, and one App Review submission only after separate authorizations.
+- Produces: one iOS Build 22, one TestFlight upload, sandbox evidence, screenshots from that exact binary, and one App Review submission.
 
-- [ ] **Step 1: Paid-build authorization gate**
+- [ ] **Step 1: Check the next remote build number without building**
 
-Do not proceed until the user explicitly authorizes exactly one paid iOS Build 22 from the exact SHA.
-
-Authorized command must be equivalent to:
+From `../ScriptureGames-build22/frontend`, authenticate only after explicit approval to inspect Expo and run:
 
 ```bash
+eas build:version:get --platform ios --profile production
+```
+
+Expected: the remote value makes the next auto-incremented build number `22`. Stop on mismatch; do not build.
+
+- [ ] **Step 2: Paid-build authorization gate**
+
+Proceed only after the user authorizes exactly one paid iOS build from the exact SHA.
+
+```bash
+cd ../ScriptureGames-build22/frontend
 eas build --platform ios --profile production --non-interactive
 ```
 
-Forbidden:
+Forbidden: `--auto-submit`, Android, all-platform builds, automatic retry.
 
-```text
---auto-submit
---platform all
---platform android
-automatic retry
-```
+- [ ] **Step 3: Verify the artifact**
 
-- [ ] **Step 2: Verify the resulting artifact before submission**
+Confirm version `1.0.0`, build `22`, bundle ID, source SHA, finished status, exactly one new iOS build, and no Android build.
 
-Confirm:
+- [ ] **Step 4: TestFlight authorization gate**
 
-- version `1.0.0`
-- build number `22`
-- bundle ID `com.willywill.scripturegames`
-- source SHA matches authorization
-- build status is finished
-- exactly one new iOS build exists
-- no Android build exists
+Obtain separate authorization to submit that existing artifact without rebuilding.
 
-- [ ] **Step 3: TestFlight-submission authorization gate**
+- [ ] **Step 5: Run the physical sandbox matrix**
 
-Obtain separate explicit authorization to submit the already-built artifact. Submit it without rebuilding.
-
-- [ ] **Step 4: Run the physical sandbox matrix**
-
-Test on the exact TestFlight Build 22:
+On exact TestFlight Build 22 verify:
 
 1. fresh install without purchase
 2. localized price loads
 3. purchase succeeds
 4. Premium unlocks without restart
-5. force-close/relaunch preserves access
+5. relaunch preserves access
 6. offline access works after trusted validation
-7. switching local profiles preserves app-wide Premium
-8. reinstall and Restore Purchase recovers access
+7. switching local profiles preserves Premium
+8. reinstall and Restore Purchase recover access
 9. cancellation does not unlock
-10. pending/interrupted state does not unlock early
+10. pending/interrupted purchase does not unlock early
 11. ten free books remain free before purchase
-12. Premium-only book is locked before and open after purchase
-13. no duplicate-charge path appears
+12. Premium-only book locks before and opens after purchase
+13. no duplicate-charge path
 14. support/privacy links load
 15. Lumi, audio, backgrounds, Bible links, Journey, profiles, and Genesis remain functional
 
-Stop on any failure. Do not create another paid build without a new explicit authorization.
+Stop on any failure. A second paid build requires new authorization.
 
-- [ ] **Step 5: Capture real screenshots from Build 22**
+- [ ] **Step 6: Capture screenshots from exact Build 22**
 
-Capture the highest-resolution supported iPhone portrait screenshots from the exact binary:
+Capture Journey map/library, Daily Bread Run, Bible reader, Church Mode, notes/highlights/search, Training Hub, Family Hub, achievements/Witness Card, and Premium with localized lifetime price. Create the separate IAP review screenshot. Do not use development previews.
 
-- Journey map/library
-- Daily Bread Run
-- full Bible reader
-- Church Mode
-- notes/highlights/search
-- Training Hub
-- Family Hub
-- achievements/Witness Card
-- Premium screen with localized lifetime price
+- [ ] **Step 7: Complete the Apple submission package**
 
-Create the separate App Review screenshot showing the Premium purchase entry point. Do not use development-preview images.
+Attach the first non-consumable to the new app version. Verify price, availability, review notes, privacy answers, screenshots, age rating, support URL, and Paid Apps Agreement.
 
-- [ ] **Step 6: Complete Apple submission metadata**
+- [ ] **Step 8: App Review authorization gate**
 
-Attach the first non-consumable purchase to the new app version submission. Verify price, availability, review notes, privacy answers, screenshots, age rating, support URL, and Paid Apps Agreement state.
+Show the final checklist and obtain separate explicit authorization before Add for Review/Create Submission and Submit for Review.
 
-- [ ] **Step 7: App Review authorization gate**
+- [ ] **Step 9: Revoke temporary access after release**
 
-Show the final checklist and obtain separate explicit authorization before selecting Add for Review/Create Submission and Submit for Review.
-
-- [ ] **Step 8: Revoke temporary automation access after release**
-
-After Apple approval and production verification, revoke temporary App Store Connect automation keys that are no longer needed. Keep the Apple In-App Purchase key connected to RevenueCat if RevenueCat still requires it for production validation.
+After approval and production verification, revoke temporary App Store Connect automation keys no longer needed. Keep the Apple In-App Purchase key connected to RevenueCat while required for production validation.
 
 ---
 
 ## Plan Self-Review
 
-- Spec coverage: purchase architecture, app-wide entitlement, trusted verification, restore, offline behavior, localized price, free boundary, metadata, privacy, Apple/RevenueCat configuration, screenshots, sandbox testing, rollback, Expo cost controls, GitHub account safety, and three authorization gates are covered.
-- Placeholder scan: no `TBD`, `TODO`, “implement later,” or unspecified error-handling steps remain.
-- Type consistency: `PurchaseClient`, `PurchaseSnapshot`, `PurchaseResult`, `PurchaseFailureCode`, `createPurchaseClient`, `hasTrustedPremiumEntitlement`, `selectLifetimeProduct`, and `normalizePurchaseError` retain the same names across tasks.
-- Scope: all tasks lead to one working feature and are sequentially dependent; subscriptions, Android billing release, web purchases, Supabase purchase authority, and unrelated redesign remain out of scope.
+- **Spec coverage:** purchase architecture, app-wide entitlement, trusted verification, restore, offline continuity, localized price, free boundary, metadata, privacy, Apple/RevenueCat configuration, screenshots, sandbox testing, rollback, Expo cost controls, GitHub safety, and three authorization gates are covered.
+- **Placeholder scan:** no `TBD`, `TODO`, “implement later,” or unspecified error-handling instruction remains.
+- **Type consistency:** `PurchaseClient`, `PurchaseSnapshot`, `PurchaseResult`, `PurchaseFailureCode`, `createPurchaseClient`, `hasTrustedPremiumEntitlement`, `selectLifetimeProduct`, and `normalizePurchaseError` retain the same names throughout.
+- **File consistency:** every created file has an implementation task; `purchase-client-factory.ts` was removed because platform resolution already provides the factory seam.
+- **Directory consistency:** root and `frontend` commands explicitly change directory before use.
+- **Configuration consistency:** `eas.json` remains unchanged; the public RevenueCat key is supplied through EAS Environment Variables only at the authorized build gate.
+- **Scope:** all tasks lead to one working feature and are sequentially dependent. Subscriptions, Android billing release, web purchases, Supabase purchase authority, and unrelated redesign remain out of scope.
