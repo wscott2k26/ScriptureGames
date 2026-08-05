@@ -88,6 +88,14 @@ jobs:
         working-directory: frontend
         run: yarn audit:premium
 
+      - name: Test Build 22 Apple Premium
+        working-directory: frontend
+        run: yarn test:build22
+
+      - name: Audit Build 22 store configuration
+        working-directory: frontend
+        run: yarn audit:store
+
       - name: Test chronological quiz ordering
         working-directory: frontend
         run: yarn test:quiz-ordering
