@@ -20,7 +20,7 @@ assert.match(core, /PREMIUM_ENTITLEMENT_ID = 'premium'/);
 assert.doesNotMatch(provider, /useProfile\(\)|profile\.is_premium|premium_entitlement_source|premium_product_id/);
 assert.doesNotMatch(defaultClient, /hasPremium:\s*true/);
 assert.match(nativeClient, /EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY/);
-assert.match(nativeClient, /ENTITLEMENT_VERIFICATION_MODE\.INFORMATIONAL/);
+assert.match(nativeClient, /Purchases\.ENTITLEMENT_VERIFICATION_MODE\.INFORMATIONAL/);
 assert.match(nativeClient, /Purchases\.purchasePackage/);
 assert.match(nativeClient, /Purchases\.restorePurchases/);
 
