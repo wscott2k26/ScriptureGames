@@ -137,6 +137,8 @@ export function createPurchaseClient(): PurchaseClient {
   }
 
   function subscribe(listener: (snapshot: PurchaseSnapshot) => void): () => void {
+    if (Platform.OS !== 'ios' || !apiKey || !configured) return () => undefined;
+
     const customerInfoListener: CustomerInfoUpdateListener = (customerInfo) => {
       listener(updateSnapshot(customerInfo));
     };

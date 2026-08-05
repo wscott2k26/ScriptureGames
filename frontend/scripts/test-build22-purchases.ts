@@ -21,6 +21,13 @@ assert.equal(selectLifetimeProduct([
 ])?.product.priceString, '$9.99');
 assert.equal(selectLifetimeProduct([]), null);
 assert.equal(normalizePurchaseError({ code: '1', userCancelled: true }), 'cancelled');
+assert.equal(normalizePurchaseError({ code: '1' }), 'cancelled');
+assert.equal(normalizePurchaseError({ code: '20' }), 'pending');
+assert.equal(normalizePurchaseError({ code: '10' }), 'network');
+assert.equal(normalizePurchaseError({ code: '35' }), 'network');
+assert.equal(normalizePurchaseError({ code: '5' }), 'product-unavailable');
+assert.equal(normalizePurchaseError({ code: '8' }), 'verification-failed');
+assert.equal(normalizePurchaseError({ code: '23' }), 'store-unavailable');
 assert.equal(normalizePurchaseError({ code: 'PaymentPendingError' }), 'pending');
 assert.equal(normalizePurchaseError({ code: 'NetworkError' }), 'network');
 assert.equal(normalizePurchaseError({ code: 'ProductNotAvailableForPurchaseError' }), 'product-unavailable');
@@ -46,6 +53,7 @@ assert.match(nativeClientSource, /Purchases\.ENTITLEMENT_VERIFICATION_MODE\.INFO
 assert.match(nativeClientSource, /Purchases\.purchasePackage/);
 assert.match(nativeClientSource, /Purchases\.restorePurchases/);
 assert.match(nativeClientSource, /Platform\.OS !== 'ios'/);
+assert.match(nativeClientSource, /!apiKey \|\| !configured/);
 assert.match(premiumSource, /localizedPrice/);
 assert.match(premiumSource, /One-time lifetime purchase/);
 assert.doesNotMatch(premiumSource, /billing is not connected/i);
