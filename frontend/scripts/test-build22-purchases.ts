@@ -42,7 +42,7 @@ assert.match(providerSource, /purchaseLifetime/);
 assert.match(providerSource, /restore\(\)/);
 assert.match(defaultClientSource, /store-unavailable/);
 assert.doesNotMatch(defaultClientSource, /hasPremium:\s*true/);
-assert.match(nativeClientSource, /ENTITLEMENT_VERIFICATION_MODE\.INFORMATIONAL/);
+assert.match(nativeClientSource, /Purchases\.ENTITLEMENT_VERIFICATION_MODE\.INFORMATIONAL/);
 assert.match(nativeClientSource, /Purchases\.purchasePackage/);
 assert.match(nativeClientSource, /Purchases\.restorePurchases/);
 assert.match(nativeClientSource, /Platform\.OS !== 'ios'/);
