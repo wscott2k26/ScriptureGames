@@ -1,3 +1,4 @@
+# Corrective run after the credential-audit self-scan fix.
 name: Build 22 Source Bootstrap
 
 on:
