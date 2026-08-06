@@ -137,6 +137,7 @@ jobs:
           submission_id=$(grep -Eo 'submissions/[0-9a-f-]+' ios-build22-submit.log | tail -1 | cut -d/ -f2)
           test -n "$submission_id"
           echo "submission_id=$submission_id" >> "$GITHUB_OUTPUT"
+          export SUBMISSION_ID="$submission_id"
 
           node <<'NODE'
           const fs = require('fs');
@@ -157,8 +158,6 @@ jobs:
           };
           fs.writeFileSync('ios-build22-submission-record.json', JSON.stringify(record, null, 2));
           NODE
-        env:
-          SUBMISSION_ID: ${{ steps.submit.outputs.submission_id }}
 
       - name: Verify submission record
         shell: bash
