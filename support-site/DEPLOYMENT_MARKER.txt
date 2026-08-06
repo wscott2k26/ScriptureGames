@@ -1,0 +1,5 @@
+Scripture Games support site production deployment marker.
+
+Purpose: trigger Vercel to deploy the already-merged Build 22 privacy policy after connecting the repository and setting the root directory to support-site.
+
+No app source, Expo build, TestFlight submission, App Review submission, or public app release is performed by this file.
