@@ -1,0 +1,138 @@
+name: Scripture Games Build 22 Privacy Deploy Only
+
+on:
+  push:
+    branches:
+      - release/build22-privacy-deploy
+    paths:
+      - '.github/status-triggers/build22-privacy-deploy-authorized.md'
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  SOURCE_SHA: f16acf2ebd843e4c189b8f20f6302dc382e84aa3
+  VERCEL_PROJECT_ID: prj_t84npC6UEzsa2gltkuIOgrVfqZ6d
+  VERCEL_ORG_ID: team_Wy4ZZnoPn49PaajF9XG37WL6
+  PRODUCTION_PRIVACY_URL: https://scripture-games-support.vercel.app/privacy/
+
+jobs:
+  deploy_exact_privacy_site:
+    name: Deploy exact Build 22 privacy policy only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Check out isolated privacy branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/build22-privacy-deploy
+          fetch-depth: 0
+
+      - name: Enforce exact one-deployment boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/build22-privacy-deploy"
+          expected_trigger=$'AUTHORIZED: deploy the exact merged Build 22 support-site privacy policy to the existing Scripture Games support Vercel project.\nSOURCE_SHA=f16acf2ebd843e4c189b8f20f6302dc382e84aa3\nPROJECT_ID=prj_t84npC6UEzsa2gltkuIOgrVfqZ6d\nORG_ID=team_Wy4ZZnoPn49PaajF9XG37WL6\nNO EXPO BUILD.\nNO TESTFLIGHT ACTION.\nNO APP REVIEW SUBMISSION.\nNO PUBLIC APP RELEASE.\nNO AUTOMATIC RETRY.'
+          test "$(cat .github/status-triggers/build22-privacy-deploy-authorized.md)" = "$expected_trigger"
+
+          git fetch origin main --depth=1
+          test "$(git rev-parse origin/main)" = "$SOURCE_SHA"
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          git diff --exit-code "$SOURCE_SHA" HEAD -- frontend backend scripts supabase support-site
+
+          mapfile -t changed < <(git diff --name-only "$SOURCE_SHA"..HEAD | sort)
+          printf '%s\n' "${changed[@]}" > /tmp/changed-files.txt
+          cat > /tmp/expected-files.txt <<'FILES'
+          .github/status-triggers/build22-privacy-deploy-authorized.md
+          .github/workflows/build22-privacy-deploy-only.yml
+          FILES
+          diff -u /tmp/expected-files.txt /tmp/changed-files.txt
+
+          test "$(grep -Ec '^[[:space:]]+eas (build|submit)' .github/workflows/build22-privacy-deploy-only.yml || true)" = "0"
+          test "$(grep -Ec 'fastlane|deliver|pilot|app-store|app_review|submit_for_review' .github/workflows/build22-privacy-deploy-only.yml || true)" = "0"
+
+      - name: Verify exact corrected privacy source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f support-site/public/privacy/index.html
+          grep -Fq 'Effective August 5, 2026' support-site/public/privacy/index.html
+          grep -Fq 'Complete Bible Journey Premium' support-site/public/privacy/index.html
+          grep -Fq 'RevenueCat provides purchase validation and restoration' support-site/public/privacy/index.html
+          grep -Fq 'does not use RevenueCat for advertising or cross-app tracking' support-site/public/privacy/index.html
+          grep -Fq 'outputDirectory' support-site/vercel.json
+
+      - name: Confirm Vercel credential exists before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Link exact existing Vercel project locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p support-site/.vercel
+          cat > support-site/.vercel/project.json <<JSON
+          {"orgId":"$VERCEL_ORG_ID","projectId":"$VERCEL_PROJECT_ID"}
+          JSON
+
+      - name: Deploy exact support site to production
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd support-site
+          npx --yes vercel@latest deploy --prod --yes --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID" > ../build22-privacy-deployment-url.txt
+          cd ..
+          deployment_url=$(tail -1 build22-privacy-deployment-url.txt | tr -d '\r')
+          test -n "$deployment_url"
+          echo "deployment_url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify production privacy page
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            body=$(curl --fail --silent --show-error --location --max-time 20 "$PRODUCTION_PRIVACY_URL" || true)
+            if printf '%s' "$body" | grep -Fq 'Effective August 5, 2026' \
+              && printf '%s' "$body" | grep -Fq 'Complete Bible Journey Premium' \
+              && printf '%s' "$body" | grep -Fq 'RevenueCat provides purchase validation and restoration'; then
+              printf '%s' "$body" > build22-live-privacy.html
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Production privacy page did not update to the verified Build 22 policy in time.' >&2
+          exit 1
+
+      - name: Preserve deployment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-build22-privacy-deployment
+          path: |
+            build22-privacy-deployment-url.txt
+            build22-live-privacy.html
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report successful privacy deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Build 22 RevenueCat privacy policy deployed" \
+            --body "The exact merged Build 22 support-site privacy policy is live at $PRODUCTION_PRIVACY_URL. Vercel deployment: $DEPLOYMENT_URL. Source: $SOURCE_SHA. No Expo build, TestFlight action, App Review submission, Android build, or public app release occurred. Workflow run: $GITHUB_RUN_ID."
