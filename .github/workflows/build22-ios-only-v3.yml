@@ -1,0 +1,292 @@
+name: Scripture Games Build 22 iOS Only v3
+
+on:
+  push:
+    branches:
+      - release/build22-ios-only
+    paths:
+      - .github/release-trigger-build22-ios-only.txt
+
+concurrency:
+  group: scripture-games-build22-ios-only-v3
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      SOURCE_SHA: f16acf2ebd843e4c189b8f20f6302dc382e84aa3
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Check out release controller
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: release-control
+
+      - name: Enforce one-build release boundary
+        working-directory: release-control
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "release/build22-ios-only"
+          test -n "$EXPO_TOKEN"
+
+          expected_trigger=$'AUTHORIZE_ONE_IOS_BUILD_22_ONLY\nSOURCE_SHA=f16acf2ebd843e4c189b8f20f6302dc382e84aa3\nNO_SUBMISSION=TRUE\nNO_ANDROID=TRUE\nNO_PAID_RETRY=TRUE\nPREFLIGHT_FIX=LIMIT_50_AND_SPLIT_GUARDS'
+          test "$(cat .github/release-trigger-build22-ios-only.txt)" = "$expected_trigger"
+
+          git fetch origin main --depth=1
+          test "$(git rev-parse origin/main)" = "$SOURCE_SHA"
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+
+          mapfile -t changed < <(git diff --name-only "$SOURCE_SHA"..HEAD | sort)
+          printf '%s\n' "${changed[@]}" > /tmp/changed-files.txt
+          cat > /tmp/expected-files.txt <<'FILES'
+          .github/release-trigger-build22-ios-only.txt
+          .github/workflows/build22-ios-only-v3.yml
+          FILES
+          diff -u /tmp/expected-files.txt /tmp/changed-files.txt
+
+          forbidden_submit="eas sub""mit"
+          forbidden_auto="--auto-""submit"
+          forbidden_testflight="npx test""flight"
+          forbidden_android="--platform and""roid"
+          forbidden_all="--platform a""ll"
+          for forbidden in "$forbidden_submit" "$forbidden_auto" "$forbidden_testflight" "$forbidden_android" "$forbidden_all"; do
+            if grep -Fq -- "$forbidden" .github/workflows/build22-ios-only-v3.yml; then
+              echo "Prohibited release command found: $forbidden" >&2
+              exit 1
+            fi
+          done
+
+          build_launch_count=$(grep -Ec '^[[:space:]]+eas build --platform ios --profile production ' .github/workflows/build22-ios-only-v3.yml)
+          test "$build_launch_count" = "1"
+
+      - name: Check out immutable app source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+          path: source
+
+      - name: Verify exact source checkout
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git status --porcelain)" = ""
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: source/frontend/yarn.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+          npm install --global yarn@1.22.22
+          npm install --global eas-cli@16.20.0
+
+      - name: Install frozen dependencies
+        working-directory: source/frontend
+        run: yarn install --frozen-lockfile --non-interactive
+
+      - name: Verify Build 22 source and RevenueCat environment
+        working-directory: source/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          const eas = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const core = fs.readFileSync('src/purchases/purchase-core.ts', 'utf8');
+          const client = fs.readFileSync('src/purchases/purchase-client.native.ts', 'utf8');
+          const checks = [
+            [app.expo?.ios?.bundleIdentifier === 'com.willywill.scripturegames', 'bundle identifier'],
+            [app.expo?.extra?.eas?.projectId === '18710e80-2a62-46ac-8d3a-d1711b7d920a', 'EAS project ID'],
+            [eas.build?.production?.environment === 'production', 'EAS production environment'],
+            [eas.build?.production?.autoIncrement === true, 'iOS build auto-increment'],
+            [pkg.dependencies?.['react-native-purchases'] === '10.4.4', 'RevenueCat dependency'],
+            [core.includes("PREMIUM_PRODUCT_ID = 'com.willywill.scripturegames.premium'"), 'Apple product ID'],
+            [core.includes("PREMIUM_ENTITLEMENT_ID = 'premium'"), 'entitlement ID'],
+            [client.includes('EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY'), 'RevenueCat environment variable'],
+            [client.includes('ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL'), 'entitlement verification'],
+          ];
+          const failures = checks.filter(([ok]) => !ok).map(([, name]) => name);
+          if (failures.length) throw new Error(`Build 22 source contract mismatch: ${failures.join(', ')}`);
+          console.log('Build 22 source contract verified.');
+          NODE
+
+          eas env:get production \
+            --variable-name EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY \
+            --format short > /tmp/revenuecat-key.txt
+          node <<'NODE'
+          const fs = require('fs');
+          const output = fs.readFileSync('/tmp/revenuecat-key.txt', 'utf8');
+          if (!/appl_[A-Za-z0-9_-]+/.test(output) || /test_[A-Za-z0-9_-]+/.test(output)) {
+            throw new Error('Correct RevenueCat Apple production key was not found.');
+          }
+          console.log('RevenueCat Apple production key verified without printing it.');
+          NODE
+          rm -f /tmp/revenuecat-key.txt
+
+      - name: Verify Build 21 is latest and Build 22 is absent
+        working-directory: source/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build:list --platform ios --limit 50 --json --non-interactive > /tmp/ios-before.json
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/ios-before.json', 'utf8'));
+          const builds = Array.isArray(parsed) ? parsed : (parsed.builds || parsed.results || []);
+          const ios = builds.filter((b) => String(b.platform || '').toUpperCase() === 'IOS');
+          const existing22 = ios.filter((b) => String(b.appBuildVersion || '') === '22');
+          if (existing22.length) throw new Error(`Build 22 already exists: ${existing22.map((b) => b.id).join(', ')}`);
+
+          const activeStatuses = new Set(['NEW', 'CREATED', 'PENDING', 'IN_QUEUE', 'IN_PROGRESS']);
+          const active = ios.filter((b) =>
+            String(b.buildProfile || '').toLowerCase() === 'production' &&
+            activeStatuses.has(String(b.status || '').toUpperCase())
+          );
+          if (active.length) throw new Error(`An iOS production build is already active: ${active.map((b) => b.id).join(', ')}`);
+
+          const finished21 = ios.find((b) =>
+            String(b.appBuildVersion || '') === '21' &&
+            String(b.status || '').toUpperCase() === 'FINISHED'
+          );
+          if (!finished21) throw new Error('Finished iOS Build 21 was not found.');
+
+          const versions = ios
+            .map((b) => Number.parseInt(String(b.appBuildVersion || ''), 10))
+            .filter(Number.isFinite);
+          const latest = versions.length ? Math.max(...versions) : 0;
+          if (latest !== 21) throw new Error(`Latest known iOS build number is ${latest}, not 21.`);
+          console.log(`Verified finished Build 21 ${finished21.id}; Build 22 is absent and no production build is active.`);
+          NODE
+
+      - name: Run complete no-regression gate
+        working-directory: source/frontend
+        run: yarn validate
+
+      - name: Verify source remained immutable
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          git diff --exit-code
+          test "$(git status --porcelain --untracked-files=no)" = ""
+
+      - name: Launch exactly one iOS production Build 22
+        id: launch
+        working-directory: source/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          eas build --platform ios --profile production --non-interactive --no-wait --json > /tmp/build22-launch.json
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/build22-launch.json', 'utf8'));
+          const builds = Array.isArray(parsed) ? parsed : (parsed.builds || [parsed]);
+          if (builds.length !== 1) throw new Error(`Expected one build, received ${builds.length}.`);
+          const b = builds[0];
+          const checks = [
+            [Boolean(b.id), 'missing build ID'],
+            [String(b.platform || '').toUpperCase() === 'IOS', `platform=${b.platform}`],
+            [String(b.buildProfile || '').toLowerCase() === 'production', `profile=${b.buildProfile}`],
+            [String(b.distribution || '').toUpperCase() === 'STORE', `distribution=${b.distribution}`],
+            [String(b.appBuildVersion || '') === '22', `build=${b.appBuildVersion}`],
+            [String(b.appVersion || '') === '1.0.0', `version=${b.appVersion}`],
+          ];
+          const failures = checks.filter(([ok]) => !ok).map(([, message]) => message);
+          if (failures.length) throw new Error(`Unexpected launch response: ${failures.join('; ')}`);
+          console.log(`build_id=${b.id}`);
+          NODE
+
+      - name: Wait for and verify exact Build 22
+        working-directory: source/frontend
+        shell: bash
+        env:
+          BUILD_ID: ${{ steps.launch.outputs.build_id }}
+        run: |
+          set -euo pipefail
+          terminal=0
+          for attempt in $(seq 1 220); do
+            eas build:view "$BUILD_ID" --json > /tmp/build22-view.json
+            status=$(node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/tmp/build22-view.json','utf8'));const b=p.build||p;process.stdout.write(String(b.status||''));")
+            echo "Build status: $status"
+            case "$status" in
+              FINISHED) terminal=1; break ;;
+              ERRORED|CANCELED) exit 1 ;;
+            esac
+            sleep 30
+          done
+          test "$terminal" = "1"
+
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/build22-view.json', 'utf8'));
+          const b = parsed.build || parsed;
+          const checks = [
+            [String(b.status || '').toUpperCase() === 'FINISHED', `status=${b.status}`],
+            [String(b.platform || '').toUpperCase() === 'IOS', `platform=${b.platform}`],
+            [String(b.buildProfile || '').toLowerCase() === 'production', `profile=${b.buildProfile}`],
+            [String(b.distribution || '').toUpperCase() === 'STORE', `distribution=${b.distribution}`],
+            [String(b.appVersion || '') === '1.0.0', `version=${b.appVersion}`],
+            [String(b.appBuildVersion || '') === '22', `build=${b.appBuildVersion}`],
+            [String(b.gitCommitHash || '') === process.env.SOURCE_SHA, `source=${b.gitCommitHash}`],
+            [!b.submission, 'unexpected submission'],
+            [Boolean(b.artifacts?.buildUrl), 'signed artifact missing'],
+          ];
+          const failures = checks.filter(([ok]) => !ok).map(([, message]) => message);
+          if (failures.length) throw new Error(`Build verification failed: ${failures.join('; ')}`);
+          fs.writeFileSync('/tmp/build22-record.json', JSON.stringify(b, null, 2));
+          console.log(`Verified signed iOS Build 22 ${b.id} with no submission.`);
+          NODE
+
+      - name: Verify exactly one finished Build 22 exists
+        working-directory: source/frontend
+        shell: bash
+        env:
+          BUILD_ID: ${{ steps.launch.outputs.build_id }}
+        run: |
+          set -euo pipefail
+          eas build:list --platform ios --limit 50 --json --non-interactive > /tmp/ios-after.json
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/ios-after.json', 'utf8'));
+          const builds = Array.isArray(parsed) ? parsed : (parsed.builds || parsed.results || []);
+          const build22 = builds.filter((b) =>
+            String(b.platform || '').toUpperCase() === 'IOS' &&
+            String(b.appBuildVersion || '') === '22'
+          );
+          if (build22.length !== 1) throw new Error(`Found ${build22.length} Build 22 records.`);
+          if (String(build22[0].id) !== String(process.env.BUILD_ID)) throw new Error('Build 22 ID mismatch.');
+          if (String(build22[0].status || '').toUpperCase() !== 'FINISHED') throw new Error('Build 22 is not finished.');
+          console.log('Exactly one finished iOS Build 22 exists; no duplicate was launched.');
+          NODE
+
+      - name: Preserve Build 22 verification record
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripture-games-build22-ios-record
+          path: /tmp/build22-record.json
+          retention-days: 30
