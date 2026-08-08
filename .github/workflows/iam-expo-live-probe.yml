@@ -41,6 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           work="$(mktemp -d)"
+          export EAS_PROJECT_ROOT="$work"
           cd "$work"
           cat > package.json <<'JSON'
           {"name":"iam-read-only-probe","version":"1.0.0","private":true}
