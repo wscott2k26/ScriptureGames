@@ -1,4 +1,4 @@
-name: I AM Build 6 Team ID Probe
+name: I AM ASC Integration Status
 
 on:
   push:
@@ -9,13 +9,12 @@ permissions:
   contents: read
 
 jobs:
-  inspect-build:
+  status:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
-      I_AM_BUILD_ID: 796c5493-0ed7-4233-98ca-f3e89505c2c7
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -24,7 +23,7 @@ jobs:
         with:
           eas-version: latest
           token: ${{ env.EXPO_TOKEN }}
-      - name: Read signing team from finished Build 6 IPA
+      - name: Read exact I AM ASC link status only
         shell: bash
         run: |
           set -euo pipefail
@@ -32,31 +31,18 @@ jobs:
           export EAS_PROJECT_ROOT="$work"
           cd "$work"
           cat > package.json <<'JSON'
-          {"name":"iam-build6-team-probe","version":"1.0.0","private":true}
+          {"name":"iam-asc-status-probe","version":"1.0.0","private":true}
           JSON
           cat > app.json <<'JSON'
           {"expo":{"name":"I AM","slug":"iam-life-companion","owner":"wscott2k8","version":"1.0.0","ios":{"bundleIdentifier":"com.stormandme.iam"},"extra":{"eas":{"projectId":"a6265184-a95b-4414-ac0d-7d8359dd0bfe"}}}}
           JSON
-          eas build:view "$I_AM_BUILD_ID" --json > build.json
-          node <<'NODE' > artifact-url.txt
-          const b=require('./build.json'); const x=Array.isArray(b)?b[0]:b;
-          if(x.id!=='796c5493-0ed7-4233-98ca-f3e89505c2c7'||x.status!=='FINISHED'||x.appBuildVersion!=='6') process.exit(2);
-          const url=x.artifacts?.applicationArchiveUrl||x.artifacts?.buildUrl; if(!url) process.exit(3); process.stdout.write(url);
+          eas integrations:asc:status --json --non-interactive > asc-status.json
+          node <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('asc-status.json','utf8'));
+          const app=x?.appStoreConnectApp ?? x?.app?.appStoreConnectApp ?? x?.metadata?.appStoreConnectApp ?? null;
+          const key=x?.appStoreConnectApiKey ?? x?.app?.appStoreConnectApiKey ?? x?.metadata?.appStoreConnectApiKey ?? null;
+          console.log('ASC_APP_LINK_PRESENT=' + Boolean(app));
+          console.log('ASC_API_KEY_LINK_PRESENT=' + Boolean(key));
+          if (app) console.log('ASC_APP_SAFE=' + JSON.stringify({ascAppIdentifier:app.ascAppIdentifier??app.id??null,bundleIdentifier:app.bundleIdentifier??null,name:app.name??null}));
           NODE
-          curl --fail --silent --show-error --location "$(cat artifact-url.txt)" --output build6.ipa
-          unzip -q build6.ipa -d ipa
-          appdir="$(find ipa/Payload -maxdepth 1 -type d -name '*.app' | head -n1)"
-          openssl smime -inform der -verify -noverify -in "$appdir/embedded.mobileprovision" -out profile.plist >/dev/null 2>&1
-          python3 - "$appdir/Info.plist" profile.plist <<'PY'
-          import plistlib,sys
-          with open(sys.argv[1],'rb') as f: info=plistlib.load(f)
-          with open(sys.argv[2],'rb') as f: profile=plistlib.load(f)
-          teams=profile.get('TeamIdentifier') or []
-          team=teams[0] if teams else ''
-          bundle=info.get('CFBundleIdentifier','')
-          build=str(info.get('CFBundleVersion',''))
-          print('BUILD6_TEAM_IDENTIFIER=' + team)
-          print('BUILD6_BUNDLE_MATCH=' + ('true' if bundle=='com.stormandme.iam' else 'false'))
-          print('BUILD6_BUNDLE_VERSION_MATCH=' + ('true' if build=='6' else 'false'))
-          if not team or bundle!='com.stormandme.iam' or build!='6': raise SystemExit(7)
-          PY
