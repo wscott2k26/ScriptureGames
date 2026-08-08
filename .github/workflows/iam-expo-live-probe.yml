@@ -1,0 +1,64 @@
+name: I AM Expo Live Probe
+
+on:
+  push:
+    branches:
+      - iam-expo-live-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_NO_VCS: '1'
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+
+      - name: Verify Expo identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo "EXPO_TOKEN_PRESENT=false"
+            exit 2
+          fi
+          echo "EXPO_TOKEN_PRESENT=true"
+          eas account:view
+
+      - name: Read I AM project and build state only
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          cd "$work"
+          cat > package.json <<'JSON'
+          {"name":"iam-read-only-probe","version":"1.0.0","private":true}
+          JSON
+          cat > app.json <<'JSON'
+          {"expo":{"name":"I AM","slug":"iam-life-companion","owner":"wscott2k8","version":"1.0.0","ios":{"bundleIdentifier":"com.stormandme.iam"},"extra":{"eas":{"projectId":"a6265184-a95b-4414-ac0d-7d8359dd0bfe"}}}}
+          JSON
+          eas project:info > project-info.txt
+          eas build:list --platform ios --build-profile production --limit 50 --json --non-interactive > builds.json
+          node <<'NODE'
+          const fs=require('fs');
+          const text=fs.readFileSync('project-info.txt','utf8');
+          const builds=JSON.parse(fs.readFileSync('builds.json','utf8'));
+          const exact=builds.filter(b=>b?.message==='I AM first TestFlight release');
+          console.log('REMOTE_PROJECT_RESOLVED=' + (/iam-life-companion|I AM/i.test(text) ? 'true' : 'unknown'));
+          console.log('IOS_PRODUCTION_BUILD_COUNT=' + builds.length);
+          console.log('EXACT_RELEASE_MATCH_COUNT=' + exact.length);
+          for (const b of exact) {
+            console.log(JSON.stringify({id:b.id,status:b.status,appBuildVersion:b.appBuildVersion,createdAt:b.createdAt,message:b.message}));
+          }
+          NODE
