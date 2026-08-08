@@ -59,7 +59,7 @@ jobs:
           console.log('REMOTE_PROJECT_RESOLVED=' + (/iam-life-companion|I AM/i.test(text) ? 'true' : 'unknown'));
           console.log('IOS_PRODUCTION_BUILD_COUNT=' + builds.length);
           console.log('EXACT_RELEASE_MATCH_COUNT=' + exact.length);
-          for (const b of exact) {
-            console.log(JSON.stringify({id:b.id,status:b.status,appBuildVersion:b.appBuildVersion,createdAt:b.createdAt,message:b.message}));
+          for (const b of builds) {
+            console.log('BUILD_SUMMARY=' + JSON.stringify({id:b.id,status:b.status,appVersion:b.appVersion,appBuildVersion:b.appBuildVersion,createdAt:b.createdAt,updatedAt:b.updatedAt,message:b.message??null,buildProfile:b.buildProfile,distribution:b.distribution}));
           }
           NODE
