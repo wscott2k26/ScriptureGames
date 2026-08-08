@@ -29,37 +29,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${EXPO_TOKEN:-}" ]; then
-            echo "EXPO_TOKEN_PRESENT=false"
-            exit 2
-          fi
-          echo "EXPO_TOKEN_PRESENT=true"
           eas account:view
 
-      - name: Read I AM project and build state only
+      - name: Inspect finished I AM build 6 and Apple submission state
         shell: bash
         run: |
           set -euo pipefail
-          work="$(mktemp -d)"
-          export EAS_PROJECT_ROOT="$work"
-          cd "$work"
-          cat > package.json <<'JSON'
-          {"name":"iam-read-only-probe","version":"1.0.0","private":true}
-          JSON
-          cat > app.json <<'JSON'
-          {"expo":{"name":"I AM","slug":"iam-life-companion","owner":"wscott2k8","version":"1.0.0","ios":{"bundleIdentifier":"com.stormandme.iam"},"extra":{"eas":{"projectId":"a6265184-a95b-4414-ac0d-7d8359dd0bfe"}}}}
-          JSON
-          eas project:info > project-info.txt
-          eas build:list --platform ios --build-profile production --limit 50 --json --non-interactive > builds.json
+          eas build:view 796c5493-0ed7-4233-98ca-f3e89505c2c7 --json > build.json
           node <<'NODE'
           const fs=require('fs');
-          const text=fs.readFileSync('project-info.txt','utf8');
-          const builds=JSON.parse(fs.readFileSync('builds.json','utf8'));
-          const exact=builds.filter(b=>b?.message==='I AM first TestFlight release');
-          console.log('REMOTE_PROJECT_RESOLVED=' + (/iam-life-companion|I AM/i.test(text) ? 'true' : 'unknown'));
-          console.log('IOS_PRODUCTION_BUILD_COUNT=' + builds.length);
-          console.log('EXACT_RELEASE_MATCH_COUNT=' + exact.length);
-          for (const b of builds) {
-            console.log('BUILD_SUMMARY=' + JSON.stringify({id:b.id,status:b.status,appVersion:b.appVersion,appBuildVersion:b.appBuildVersion,createdAt:b.createdAt,updatedAt:b.updatedAt,message:b.message??null,buildProfile:b.buildProfile,distribution:b.distribution}));
+          let x=JSON.parse(fs.readFileSync('build.json','utf8'));
+          if (Array.isArray(x)) x=x[0];
+          console.log('BUILD6=' + JSON.stringify({id:x.id,status:x.status,appVersion:x.appVersion,appBuildVersion:x.appBuildVersion,createdAt:x.createdAt,updatedAt:x.updatedAt,message:x.message??null,buildProfile:x.buildProfile,distribution:x.distribution}));
+          const submissions=Array.isArray(x.submissions)?x.submissions:[];
+          console.log('BUILD6_SUBMISSION_COUNT=' + submissions.length);
+          for (const s of submissions) {
+            console.log('SUBMISSION_SUMMARY=' + JSON.stringify({id:s.id,status:s.status,createdAt:s.createdAt,updatedAt:s.updatedAt,submissionPlatform:s.submissionPlatform??s.platform??null}));
           }
           NODE
