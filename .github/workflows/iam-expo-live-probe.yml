@@ -35,6 +35,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          work="$(mktemp -d)"
+          export EAS_PROJECT_ROOT="$work"
+          cd "$work"
+          cat > package.json <<'JSON'
+          {"name":"iam-read-only-build-view","version":"1.0.0","private":true}
+          JSON
+          cat > app.json <<'JSON'
+          {"expo":{"name":"I AM","slug":"iam-life-companion","owner":"wscott2k8","version":"1.0.0","ios":{"bundleIdentifier":"com.stormandme.iam"},"extra":{"eas":{"projectId":"a6265184-a95b-4414-ac0d-7d8359dd0bfe"}}}}
+          JSON
           eas build:view 796c5493-0ed7-4233-98ca-f3e89505c2c7 --json > build.json
           node <<'NODE'
           const fs=require('fs');
