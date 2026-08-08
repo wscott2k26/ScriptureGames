@@ -1,4 +1,4 @@
-name: I AM Existing Build 6 Submit
+name: I AM Build 6 Signing Probe
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  submit-existing-build:
+  inspect-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: '1'
@@ -20,73 +20,49 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ env.EXPO_TOKEN }}
-
-      - name: Prepare exact I AM project context
+      - name: Fetch finished Build 6 artifact and verify identity
         shell: bash
         run: |
           set -euo pipefail
           work="$(mktemp -d)"
-          echo "EAS_PROJECT_ROOT=$work" >> "$GITHUB_ENV"
-          cat > "$work/package.json" <<'JSON'
-          {"name":"iam-existing-build-submit","version":"1.0.0","private":true}
+          export EAS_PROJECT_ROOT="$work"
+          cd "$work"
+          cat > package.json <<'JSON'
+          {"name":"iam-build6-signing-probe","version":"1.0.0","private":true}
           JSON
-          cat > "$work/app.json" <<'JSON'
+          cat > app.json <<'JSON'
           {"expo":{"name":"I AM","slug":"iam-life-companion","owner":"wscott2k8","version":"1.0.0","ios":{"bundleIdentifier":"com.stormandme.iam"},"extra":{"eas":{"projectId":"a6265184-a95b-4414-ac0d-7d8359dd0bfe"}}}}
           JSON
-          cat > "$work/eas.json" <<'JSON'
-          {"cli":{"version":">= 19.1.0","appVersionSource":"remote"},"submit":{"production":{}}}
-          JSON
-
-      - name: Guard exact account build and zero prior submissions
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$EAS_PROJECT_ROOT"
-          actor="$(eas whoami | head -n 1)"
-          echo "$actor" | grep -q '^wscott2k8'
-          eas build:view "$I_AM_BUILD_ID" --json > before.json
-          node <<'NODE'
-          const fs=require('fs');
-          let b=JSON.parse(fs.readFileSync('before.json','utf8'));
-          if (Array.isArray(b)) b=b[0];
-          const submissions=Array.isArray(b.submissions)?b.submissions:[];
-          const ok = b.id==='796c5493-0ed7-4233-98ca-f3e89505c2c7' && b.status==='FINISHED' && b.appBuildVersion==='6' && b.buildProfile==='production' && b.distribution==='STORE' && submissions.length===0;
-          console.log('PRE_SUBMIT_GUARD=' + JSON.stringify({id:b.id,status:b.status,appBuildVersion:b.appBuildVersion,buildProfile:b.buildProfile,distribution:b.distribution,submissionCount:submissions.length}));
-          if (!ok) process.exit(42);
+          eas build:view "$I_AM_BUILD_ID" --json > build.json
+          node <<'NODE' > artifact-url.txt
+          const b=require('./build.json');
+          const x=Array.isArray(b)?b[0]:b;
+          if(x.id!=='796c5493-0ed7-4233-98ca-f3e89505c2c7'||x.status!=='FINISHED'||x.appBuildVersion!=='6') process.exit(2);
+          const url=x.artifacts?.applicationArchiveUrl||x.artifacts?.buildUrl;
+          if(!url) process.exit(3);
+          process.stdout.write(url);
           NODE
-
-      - name: Submit existing Build 6 only
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$EAS_PROJECT_ROOT"
-          eas submit --platform ios --id "$I_AM_BUILD_ID" --profile production --non-interactive --no-wait | tee submit-output.txt
-
-      - name: Confirm Expo created a submission record
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$EAS_PROJECT_ROOT"
-          found=0
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            eas build:view "$I_AM_BUILD_ID" --json > after.json
-            count="$(node -e "let b=require('./after.json'); if(Array.isArray(b))b=b[0]; console.log(Array.isArray(b.submissions)?b.submissions.length:0)")"
-            if [ "$count" -gt 0 ]; then found=1; break; fi
-            sleep 5
-          done
-          if [ "$found" -ne 1 ]; then
-            echo 'No submission record became visible after submit command.'
-            exit 43
-          fi
-          node <<'NODE'
-          let b=require('./after.json');
-          if(Array.isArray(b)) b=b[0];
-          const submissions=Array.isArray(b.submissions)?b.submissions:[];
-          console.log('POST_SUBMIT_COUNT=' + submissions.length);
-          for (const s of submissions) console.log('SUBMISSION_SUMMARY=' + JSON.stringify({id:s.id,status:s.status,createdAt:s.createdAt,updatedAt:s.updatedAt,submissionPlatform:s.submissionPlatform??s.platform??null}));
-          NODE
+          curl --fail --silent --show-error --location "$(cat artifact-url.txt)" --output build6.ipa
+          unzip -q build6.ipa -d ipa
+          appdir="$(find ipa/Payload -maxdepth 1 -type d -name '*.app' | head -n1)"
+          test -n "$appdir"
+          test -f "$appdir/embedded.mobileprovision"
+          openssl smime -inform der -verify -noverify -in "$appdir/embedded.mobileprovision" -out profile.plist >/dev/null 2>&1
+          python3 - "$appdir/Info.plist" profile.plist <<'PY'
+          import plistlib,sys
+          info_path,profile_path=sys.argv[1:3]
+          with open(info_path,'rb') as f: info=plistlib.load(f)
+          with open(profile_path,'rb') as f: profile=plistlib.load(f)
+          teams=profile.get('TeamIdentifier') or []
+          team=teams[0] if teams else ''
+          bundle=info.get('CFBundleIdentifier','')
+          build=str(info.get('CFBundleVersion',''))
+          print('BUILD6_SIGNING_TEAM_MATCH_EXPECTED=' + ('true' if team=='F45X8Q5Z3G' else 'false'))
+          print('BUILD6_BUNDLE_MATCH=' + ('true' if bundle=='com.stormandme.iam' else 'false'))
+          print('BUILD6_BUNDLE_VERSION_MATCH=' + ('true' if build=='6' else 'false'))
+          if team!='F45X8Q5Z3G' or bundle!='com.stormandme.iam' or build!='6': raise SystemExit(7)
+          PY
